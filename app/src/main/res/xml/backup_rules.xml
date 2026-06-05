@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Auto Backup rules for Android < 12. Tells the system which items to
+    include in the cloud backup that runs when the device is idle + on
+    Wi-Fi + plugged in. See data_extraction_rules.xml for Android 12+.
+-->
+<full-backup-content>
+    <!-- Room database file (foods, food_log, water_log, activity_log,
+         weight_log). The -shm/-wal sidecars are included implicitly. -->
+    <include domain="database" path="food_tracker.db" />
+
+    <!-- DataStore Preferences files. user_prefs holds profile, haptics,
+         theme mode, seed version; reminder_prefs holds reminder config. -->
+    <include domain="file" path="datastore/user_prefs.preferences_pb" />
+    <include domain="file" path="datastore/reminder_prefs.preferences_pb" />
+</full-backup-content>

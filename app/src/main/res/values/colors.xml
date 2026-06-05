@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Brand mint family — kept in sync with ui/theme/Color.kt -->
+    <color name="mint_primary">#FF5FE0CC</color>
+    <color name="mint_primary_container">#FF15403A</color>
+
+    <!-- Window + splash background. We use the same mint container in both
+         light and dark variants so launch never flashes white. -->
+    <color name="launcher_background">#FF15403A</color>
+    <color name="splash_background">#FF15403A</color>
+</resources>

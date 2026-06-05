@@ -1,0 +1,61 @@
+# Gradle
+.gradle
+/build
+build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Kotlin
+.kotlin/
+*.iml
+
+# Local config / secrets
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.env
+.env.*
+secrets.properties
+
+# Build outputs
+/app/release/
+/app/debug/
+*.apk
+*.aab
+
+# IntelliJ / Android Studio
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deploymentTargetDropDown.xml
+/.idea/shelf/
+/.idea/sonarlint/
+/.idea/codeStyles/
+/.idea/dictionaries/
+/.idea/tasks.xml
+/.idea/usage.statistics.xml
+/.idea/dataSources/
+/.idea/dataSources.xml
+/.idea/httpRequests/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs / temp
+*.log
+*.tmp
+hs_err_pid*
+
+# Claude
+.claude/
