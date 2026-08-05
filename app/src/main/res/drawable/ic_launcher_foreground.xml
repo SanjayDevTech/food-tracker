@@ -15,38 +15,51 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Bowl body: a clean wide half-ellipse with a subtly recessed rim. -->
-    <path
-        android:fillColor="@color/mint_primary"
-        android:pathData="M26,58 L82,58 C82,61 80,63.5 77.5,64.5 C74,79 65,87 54,87 C43,87 34,79 30.5,64.5 C28,63.5 26,61 26,58 Z" />
+    <!--
+      Scale all marks to ~70% around (54,54). Google Play guidance: the
+      foreground should occupy roughly the inner 60–70% of the 108dp canvas
+      so masks and themed-icon crops don't clip the artwork. Adjusting via a
+      single <group> keeps the source paths legible.
+    -->
+    <group
+        android:scaleX="0.7"
+        android:scaleY="0.7"
+        android:pivotX="54"
+        android:pivotY="54">
 
-    <!-- Rim ellipse sitting on top of the bowl, hollow centre via even-odd fill. -->
-    <path
-        android:fillColor="@color/mint_primary"
-        android:fillType="evenOdd"
-        android:pathData="M22,57 C22,52.6 36.3,49 54,49 C71.7,49 86,52.6 86,57 C86,61.4 71.7,65 54,65 C36.3,65 22,61.4 22,57 Z M30,57 C30,59.2 40.7,61 54,61 C67.3,61 78,59.2 78,57 C78,54.8 67.3,53 54,53 C40.7,53 30,54.8 30,57 Z" />
+        <!-- Bowl body: a clean wide half-ellipse with a subtly recessed rim. -->
+        <path
+            android:fillColor="@color/mint_primary"
+            android:pathData="M26,58 L82,58 C82,61 80,63.5 77.5,64.5 C74,79 65,87 54,87 C43,87 34,79 30.5,64.5 C28,63.5 26,61 26,58 Z" />
 
-    <!-- Centre steam wisp. -->
-    <path
-        android:strokeColor="@color/mint_primary"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M54,44 C49,38 59,34 54,28 C50,23 57,20 54,22" />
+        <!-- Rim ellipse sitting on top of the bowl, hollow centre via even-odd fill. -->
+        <path
+            android:fillColor="@color/mint_primary"
+            android:fillType="evenOdd"
+            android:pathData="M22,57 C22,52.6 36.3,49 54,49 C71.7,49 86,52.6 86,57 C86,61.4 71.7,65 54,65 C36.3,65 22,61.4 22,57 Z M30,57 C30,59.2 40.7,61 54,61 C67.3,61 78,59.2 78,57 C78,54.8 67.3,53 54,53 C40.7,53 30,54.8 30,57 Z" />
 
-    <!-- Left steam wisp. -->
-    <path
-        android:strokeColor="@color/mint_primary"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M43,44 C39,39 47,35 43,30 C40,26 45,24 43,25" />
+        <!-- Centre steam wisp. -->
+        <path
+            android:strokeColor="@color/mint_primary"
+            android:strokeWidth="4"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M54,44 C49,38 59,34 54,28 C50,23 57,20 54,22" />
 
-    <!-- Right steam wisp. -->
-    <path
-        android:strokeColor="@color/mint_primary"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M65,44 C61,39 69,35 65,30 C62,26 67,24 65,25" />
+        <!-- Left steam wisp. -->
+        <path
+            android:strokeColor="@color/mint_primary"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M43,44 C39,39 47,35 43,30 C40,26 45,24 43,25" />
+
+        <!-- Right steam wisp. -->
+        <path
+            android:strokeColor="@color/mint_primary"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M65,44 C61,39 69,35 65,30 C62,26 67,24 65,25" />
+    </group>
 </vector>

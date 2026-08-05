@@ -27,10 +27,10 @@ object ActivityRoute
 object ProfileRoute
 
 @Serializable
-object TrendsRoute
+object WeightRoute
 
 @Serializable
-object WeightRoute
+object ProgressRoute
 
 @Serializable
 object RemindersRoute

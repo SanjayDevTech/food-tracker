@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Initial layout shown for the brief moment between the system requesting the
+  widget and Glance's first composition rendering. A neutral rounded surface so
+  it doesn't flash a system default.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground" />

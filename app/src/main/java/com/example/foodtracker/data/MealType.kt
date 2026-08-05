@@ -68,12 +68,33 @@ enum class ActivityLevel(val displayName: String, val multiplier: Double) {
     }
 }
 
-enum class Goal(val displayName: String, val calorieAdjustment: Double) {
-    Lose("Lose weight", -500.0),
-    Maintain("Maintain weight", 0.0),
-    Gain("Gain weight", 300.0);
+enum class Goal(val displayName: String) {
+    Lose("Lose weight"),
+    Maintain("Maintain weight"),
+    Gain("Gain weight");
 
     companion object {
         fun fromName(name: String): Goal = entries.firstOrNull { it.name == name } ?: Maintain
+    }
+}
+
+/**
+ * Pace selector for Lose / Gain goals. The kcal delta per day is derived from
+ * the kg/week target using the rule of thumb ~7700 kcal per kilogram of body
+ * mass — direction (deficit vs surplus) is taken from the [Goal]. Ignored when
+ * the goal is [Goal.Maintain].
+ */
+enum class WeightChangeRate(val displayName: String, val kgPerWeek: Double) {
+    Mild("Mild · 0.25 kg/week", 0.25),
+    Standard("Standard · 0.5 kg/week", 0.5),
+    Aggressive("Aggressive · 0.75 kg/week", 0.75),
+    VeryAggressive("Very aggressive · 1 kg/week", 1.0);
+
+    /** Approximate daily kcal delta needed to hit this weekly rate (unsigned). */
+    val kcalPerDay: Double get() = kgPerWeek * 7700.0 / 7.0
+
+    companion object {
+        fun fromName(name: String?): WeightChangeRate =
+            entries.firstOrNull { it.name == name } ?: Standard
     }
 }

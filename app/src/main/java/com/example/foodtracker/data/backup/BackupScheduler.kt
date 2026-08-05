@@ -1,6 +1,7 @@
 package com.example.foodtracker.data.backup
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -24,10 +25,18 @@ class BackupScheduler(private val context: Context) {
             return
         }
         // WorkManager enforces a minimum periodic interval of 15 minutes;
-        // anything coarser is fine.
+        // anything coarser is fine. Constraints defer the run when the device
+        // is low on battery or storage — backups aren't time-critical, so a
+        // delay is cheaper than draining the user's phone.
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .setRequiresStorageNotLow(true)
+            .build()
         val request = PeriodicWorkRequestBuilder<BackupWorker>(
             intervalHours.toLong(), TimeUnit.HOURS,
-        ).build()
+        )
+            .setConstraints(constraints)
+            .build()
         workManager.enqueueUniquePeriodicWork(
             WORK_NAME,
             ExistingPeriodicWorkPolicy.UPDATE,

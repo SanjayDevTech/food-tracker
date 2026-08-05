@@ -1,6 +1,7 @@
 package com.example.foodtracker
 
 import android.app.Application
+import com.example.foodtracker.data.AiNutritionApi
 import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.OpenFoodFactsApi
 import com.example.foodtracker.data.ProfileStore
@@ -22,6 +23,7 @@ class FoodTrackerApp : Application() {
     val database: AppDatabase by lazy { AppDatabase.get(this) }
     val api: OpenFoodFactsApi by lazy { OpenFoodFactsApi() }
     val usdaApi: UsdaFoodApi by lazy { UsdaFoodApi() }
+    val aiApi: AiNutritionApi by lazy { AiNutritionApi() }
     val repository: FoodRepository by lazy {
         FoodRepository(
             foodDao = database.foodDao(),
@@ -31,9 +33,24 @@ class FoodTrackerApp : Application() {
             weightLogDao = database.weightLogDao(),
             api = api,
             usdaApi = usdaApi,
+            aiApi = aiApi,
+            // Refresh the home-screen widgets after any log/activity write so
+            // they don't drift from the in-app diary (a fresh provideGlance also
+            // recomputes "today"). See WidgetData for why this push is needed.
+            onWidgetDataChanged = {
+                com.example.foodtracker.widget.WidgetUpdater.updateAll(this)
+            },
         )
     }
-    val profileStore: ProfileStore by lazy { ProfileStore(this) }
+    val profileStore: ProfileStore by lazy {
+        ProfileStore(
+            context = this,
+            // Goal edits change the widgets' target numbers — refresh immediately.
+            onProfileChanged = {
+                com.example.foodtracker.widget.WidgetUpdater.updateAll(this)
+            },
+        )
+    }
     val reminderStore: com.example.foodtracker.reminder.ReminderStore by lazy {
         com.example.foodtracker.reminder.ReminderStore(this)
     }
@@ -59,5 +76,8 @@ class FoodTrackerApp : Application() {
             // Re-establish the periodic backup job using the user's saved cadence.
             backupScheduler.apply(profileStore.backupIntervalHours.first())
         }
+        // Daily post-midnight widget refresh so the date rollover lands even
+        // when the app is never opened (active-use refreshes go via WidgetUpdater).
+        com.example.foodtracker.widget.WidgetRefreshWorker.schedule(this)
     }
 }

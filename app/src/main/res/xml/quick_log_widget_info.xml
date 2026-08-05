@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Glance widget — quick-log meal + recents grid.
+
+  Sizing:
+   - targetCellWidth=4, targetCellHeight=2 — on Pixel Launcher's 5×4 grid
+     this is about 312×280dp, which fits the header, meal pills, and one
+     row of recent-food chips. Earlier we used cellHeight=4 (≈560dp tall);
+     that's the right size for the emulator's smaller grid but enormous on
+     Pixel devices.
+   - resizeMode="vertical" — vertical drag adds recent-food rows; we
+     don't expose horizontal resize because 4 cells already fills the
+     row and there's no benefit to making it wider.
+   - maxResizeHeight=420 covers up to 3 rows of recents.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="260dp"
+    android:minHeight="140dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="260dp"
+    android:minResizeHeight="140dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="420dp"
+    android:resizeMode="vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:description="@string/widget_quick_log_description"
+    android:initialLayout="@layout/widget_preview_quick_log"
+    android:previewLayout="@layout/widget_preview_quick_log" />

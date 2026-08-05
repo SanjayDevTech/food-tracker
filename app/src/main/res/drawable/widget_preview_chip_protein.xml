@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Protein battery-fill — coral tint at ~40% alpha. Matches WidgetColors.MacroProteinFill. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#66FF7043" />
+    <corners android:radius="18dp" />
+</shape>

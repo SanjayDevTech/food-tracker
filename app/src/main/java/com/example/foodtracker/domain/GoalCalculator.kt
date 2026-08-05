@@ -28,8 +28,19 @@ object GoalCalculator {
 
     fun tdee(profile: UserProfile): Double = bmr(profile) * profile.activityLevel.multiplier
 
+    /**
+     * Signed daily kcal delta for the chosen goal at the chosen pace. Lose
+     * subtracts, Gain adds, Maintain is always zero. Magnitude follows the
+     * ~7700 kcal-per-kg rule scaled to a weekly target.
+     */
+    fun calorieAdjustment(profile: UserProfile): Double = when (profile.goal) {
+        Goal.Maintain -> 0.0
+        Goal.Lose -> -profile.weightChangeRate.kcalPerDay
+        Goal.Gain -> profile.weightChangeRate.kcalPerDay
+    }
+
     fun targetCalories(profile: UserProfile): Double =
-        max(1200.0, tdee(profile) + profile.goal.calorieAdjustment)
+        max(1200.0, tdee(profile) + calorieAdjustment(profile))
 
     fun goalsFor(profile: UserProfile): NutrientGoals {
         val cals = targetCalories(profile)
@@ -58,6 +69,7 @@ object GoalCalculator {
             fiber = fiberG.roundTo(0),
             sugar = sugarG.roundTo(0),
             saturatedFat = satFatG.roundTo(0),
+            omega3 = 1.6,
             cholesterol = 300.0,
             sodium = 2300.0,
             calcium = 1000.0,
@@ -65,6 +77,10 @@ object GoalCalculator {
             magnesium = if (isFemale) 310.0 else 400.0,
             potassium = 3500.0,
             zinc = if (isFemale) 8.0 else 11.0,
+            phosphorus = 700.0,
+            selenium = 55.0,
+            copper = 0.9,
+            manganese = if (isFemale) 1.8 else 2.3,
             vitaminA = 900.0,
             vitaminC = if (isFemale) 75.0 else 90.0,
             vitaminD = 15.0,
@@ -72,6 +88,10 @@ object GoalCalculator {
             vitaminK = if (isFemale) 90.0 else 120.0,
             vitaminB12 = 2.4,
             folate = 400.0,
+            vitaminB1 = if (isFemale) 1.1 else 1.2,
+            vitaminB2 = if (isFemale) 1.1 else 1.3,
+            vitaminB3 = if (isFemale) 14.0 else 16.0,
+            vitaminB6 = 1.3,
             waterMl = (profile.weightKg * 35.0).roundToInt().coerceAtLeast(1500),
         )
     }

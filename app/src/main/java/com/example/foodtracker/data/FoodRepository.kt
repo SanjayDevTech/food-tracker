@@ -59,6 +59,14 @@ class FoodRepository(
     private val weightLogDao: WeightLogDao,
     private val api: OpenFoodFactsApi,
     private val usdaApi: UsdaFoodApi,
+    private val aiApi: AiNutritionApi = AiNutritionApi(),
+    /**
+     * Called after any write that changes what the home-screen widgets show
+     * (today's food log / activity). Wired in [com.example.foodtracker.FoodTrackerApp]
+     * to push a [com.example.foodtracker.widget.WidgetUpdater] refresh. Kept as a
+     * plain lambda so the data layer stays decoupled from the widget/UI layer.
+     */
+    private val onWidgetDataChanged: suspend () -> Unit = {},
 ) {
 
     // ----- Foods -----
@@ -67,8 +75,66 @@ class FoodRepository(
     fun observeFavouriteFoods(): Flow<List<FoodEntity>> = foodDao.observeFavourites()
     suspend fun foodById(id: Long): FoodEntity? = foodDao.getById(id)
     suspend fun upsertFood(food: FoodEntity): Long = foodDao.upsert(food)
+
+    /**
+     * Opt-in AI nutrition lookup for the add-food form. Delegates to
+     * [AiNutritionApi]; returns per-100 g [Nutrients] or null on any failure.
+     * Only called when the user has enabled AI and supplied their own key.
+     */
+    suspend fun fetchAiNutrition(
+        name: String,
+        provider: AiProvider,
+        model: String,
+        apiKey: String,
+    ): AiNutrition? = aiApi.fetchNutrition(name, provider, model, apiKey)
+
+    /** Reason for the most recent AI failure, or null. See [AiNutritionApi.lastError]. */
+    fun lastAiError(): String? = aiApi.lastError
+
+    /** Second-pass verification of a prior AI result. See [AiNutritionApi.verifyNutrition]. */
+    suspend fun verifyAiNutrition(
+        name: String,
+        candidate: AiNutrition,
+        provider: AiProvider,
+        model: String,
+        apiKey: String,
+    ): AiNutrition? = aiApi.verifyNutrition(name, candidate, provider, model, apiKey)
     suspend fun setFoodFavourite(id: Long, favourite: Boolean) = foodDao.setFavourite(id, favourite)
     suspend fun deleteFood(id: Long) = foodDao.delete(id)
+
+    /**
+     * Delete a single custom food the user added. Two modes:
+     *  - [cascadeLogs] = true → hard-delete the food row. FK CASCADE on
+     *    `food_log.food_id` wipes every historical log that referenced it.
+     *  - [cascadeLogs] = false → soft-delete (set is_hidden = 1). The food no
+     *    longer surfaces in pick lists, but historical logs still resolve to it
+     *    so the diary keeps rendering correctly.
+     */
+    suspend fun deleteCustomFood(id: Long, cascadeLogs: Boolean) {
+        if (cascadeLogs) {
+            foodDao.delete(id)
+        } else {
+            foodDao.hide(id)
+        }
+    }
+
+    /** Bulk version of [deleteCustomFood] — affects every `is_custom = 1` row. */
+    suspend fun deleteAllCustomFoods(cascadeLogs: Boolean) {
+        if (cascadeLogs) {
+            foodDao.deleteAllCustom()
+        } else {
+            foodDao.hideAllCustom()
+        }
+    }
+
+    /** Custom foods still in the picker. */
+    fun observeCustomVisibleFoods(): Flow<List<FoodEntity>> = foodDao.observeCustomVisible()
+
+    /** Custom foods the user soft-deleted (kept only so old logs render). */
+    fun observeCustomHiddenFoods(): Flow<List<FoodEntity>> = foodDao.observeCustomHidden()
+
+    /** Bring a soft-deleted custom food back into the picker. */
+    suspend fun restoreCustomFood(id: Long) = foodDao.unhide(id)
 
     /**
      * Online search for foods missing from the local database. Fans out in
@@ -153,23 +219,34 @@ class FoodRepository(
      * (per-100g vs per-serving) on the resolved panel, and we normalize to per-100g
      * here for uniform downstream logging math.
      *
-     * Upserts by barcode so future offline browses still find it, and so the freshest
-     * values overwrite any earlier cached row.
+     * Marked `is_custom = 1` so barcode-scanned foods live alongside hand-entered
+     * customs (visible in the Custom Foods list, deletable in bulk). Upserts by
+     * barcode so future offline browses still find it, and so the freshest values
+     * overwrite any earlier cached row.
+     *
+     * [servingGrams] / [servingLabel] override the source-reported serving so the
+     * user can edit it on the resolve panel before saving; pass null to keep the
+     * scan defaults.
      */
     suspend fun commitBarcodeProduct(
         product: BarcodeProduct,
         basis: NutritionBasis,
+        servingGrams: Double? = null,
+        servingLabel: String? = null,
     ): FoodEntity {
         val per100g = product.toPerHundredG(basis)
         val existing = foodDao.findByBarcode(product.barcode)
+        val finalServingGrams = servingGrams ?: product.servingGrams
+        val finalServingLabel = servingLabel ?: product.servingLabel
         val row = FoodEntity.fromNutrientsPer100g(
             name = product.name,
             brand = product.brand,
             barcode = product.barcode,
             category = product.category,
             n = per100g,
-            servingGrams = product.servingGrams,
-            servingLabel = product.servingLabel,
+            servingGrams = finalServingGrams,
+            servingLabel = finalServingLabel,
+            isCustom = true,
             isFavourite = existing?.isFavourite ?: false,
         ).copy(id = existing?.id ?: 0)
         val id = foodDao.upsert(row)
@@ -201,10 +278,31 @@ class FoodRepository(
                 foodDao.upsert(
                     fresh.copy(
                         id = existing.id,
+                        // Preserve the stable cross-install uuid; a fresh seed list
+                        // generates a new random one, which would otherwise break
+                        // backup/restore merge keyed on client_uuid.
+                        clientUuid = existing.clientUuid,
                         isFavourite = existing.isFavourite,
                         // Keep the user's custom variants if they edited them; otherwise
-                        // adopt the fresh defaults so renamed labels / new gram refs propagate.
-                        servingVariants = existing.servingVariants.ifEmpty { fresh.servingVariants },
+                        // adopt the fresh seed's variants so renamed labels, new gram
+                        // refs, and new size options (e.g. banana Small/Medium/Large)
+                        // propagate to already-installed apps. We treat the row as
+                        // "not customized" when its variants are still exactly the
+                        // auto-generated defaults for its serving.
+                        servingVariants = when {
+                            existing.servingVariants.isEmpty() -> fresh.servingVariants
+                            existing.servingVariants == ServingVariant.defaultVariantsFor(
+                                existing.servingGrams, existing.servingLabel,
+                            ) -> fresh.servingVariants
+                            // Also adopt fresh variants when the existing ones are still
+                            // exactly the auto-derived Small/Medium/Large presets — those
+                            // aren't user customization either, so a corrected seed (e.g.
+                            // real egg sizes replacing the ×0.7/×1.4 scale) must propagate.
+                            existing.servingVariants == IndianFoodSeed.sizeVariantsFor(
+                                existing.servingGrams, existing.servingLabel,
+                            ) -> fresh.servingVariants
+                            else -> existing.servingVariants
+                        },
                     )
                 )
             }
@@ -222,25 +320,25 @@ class FoodRepository(
     fun observeRecentFoods(limit: Int = 12): Flow<List<FoodEntity>> =
         foodLogDao.observeRecentFoods(limit)
 
+    /** Direct (non-Flow) reads — used by widget rendering so we get the
+     *  latest state immediately after a write, dodging the Room
+     *  InvalidationTracker propagation lag. */
+    suspend fun getLogForDay(epochDay: Long): List<FoodLogWithFood> =
+        foodLogDao.getForDay(epochDay)
+    suspend fun getRecentFoods(limit: Int): List<FoodEntity> =
+        foodLogDao.getRecentFoods(limit)
+    suspend fun getCaloriesBurnedForDay(epochDay: Long): Double =
+        activityLogDao.getCaloriesBurnedForDay(epochDay)
+
     fun observeFrequentFoods(days: Int = 30, limit: Int = 12): Flow<List<FoodEntity>> =
         foodLogDao.observeFrequentFoods(DateUtil.todayEpochDay() - days, limit)
 
-    suspend fun addFoodLog(entry: FoodLogEntity): Long = foodLogDao.insert(entry)
-    suspend fun copyLogsToToday(rows: List<FoodLogWithFood>) {
-        if (rows.isEmpty()) return
-        val today = DateUtil.todayEpochDay()
-        val now = System.currentTimeMillis()
-        foodLogDao.insertAll(
-            rows.map {
-                it.log.copy(
-                    id = 0,
-                    dateEpochDay = today,
-                    loggedAtMillis = now,
-                )
-            }
-        )
+    suspend fun addFoodLog(entry: FoodLogEntity): Long =
+        foodLogDao.insert(entry).also { onWidgetDataChanged() }
+    suspend fun deleteFoodLog(id: Long) {
+        foodLogDao.delete(id)
+        onWidgetDataChanged()
     }
-    suspend fun deleteFoodLog(id: Long) = foodLogDao.delete(id)
 
     // ----- Water -----
     fun observeWaterForDay(epochDay: Long): Flow<List<WaterLogEntity>> =
@@ -259,8 +357,12 @@ class FoodRepository(
         activityLogDao.observeCaloriesBurnedForDay(epochDay)
     fun observeCaloriesBurnedForRange(start: Long, end: Long): Flow<List<DailyCaloriesTotal>> =
         activityLogDao.observeCaloriesForRange(start, end)
-    suspend fun addActivity(entry: ActivityLogEntity): Long = activityLogDao.insert(entry)
-    suspend fun deleteActivity(id: Long) = activityLogDao.delete(id)
+    suspend fun addActivity(entry: ActivityLogEntity): Long =
+        activityLogDao.insert(entry).also { onWidgetDataChanged() }
+    suspend fun deleteActivity(id: Long) {
+        activityLogDao.delete(id)
+        onWidgetDataChanged()
+    }
 
     // ----- Weight -----
     fun observeRecentWeights(limit: Int = 60): Flow<List<WeightLogEntity>> =

@@ -19,7 +19,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class LogTab { Search, Favourites, Recent, Frequent }
+enum class LogTab { Search, Favourites, Recent, Frequent, Custom }
+
+/** Sub-filter inside the Custom tab — choose between active and soft-deleted rows. */
+enum class CustomFilter { Visible, Hidden }
 
 enum class OnlineSearchPhase { Idle, Loading, Empty, Error }
 
@@ -30,6 +33,9 @@ data class LogUiState(
     val favourites: List<FoodEntity> = emptyList(),
     val recent: List<FoodEntity> = emptyList(),
     val frequent: List<FoodEntity> = emptyList(),
+    val customVisible: List<FoodEntity> = emptyList(),
+    val customHidden: List<FoodEntity> = emptyList(),
+    val customFilter: CustomFilter = CustomFilter.Visible,
     val mealType: MealType = MealType.Breakfast,
     val selected: FoodEntity? = null,
     val selectedVariant: ServingVariant = ServingVariant.Default,
@@ -41,11 +47,13 @@ data class LogUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class LogFoodViewModel(
     private val repository: FoodRepository,
+    initialMeal: MealType = MealType.Breakfast,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
     private val _tab = MutableStateFlow(LogTab.Search)
-    private val _mealType = MutableStateFlow(MealType.Breakfast)
+    private val _customFilter = MutableStateFlow(CustomFilter.Visible)
+    private val _mealType = MutableStateFlow(initialMeal)
     private val _selected = MutableStateFlow<FoodEntity?>(null)
     private val _variant = MutableStateFlow(ServingVariant.Default)
     private val _servings = MutableStateFlow(1.0)
@@ -58,15 +66,21 @@ class LogFoodViewModel(
     private val favouritesFlow = repository.observeFavouriteFoods()
     private val recentFlow = repository.observeRecentFoods()
     private val frequentFlow = repository.observeFrequentFoods()
+    private val customVisibleFlow = repository.observeCustomVisibleFoods()
+    private val customHiddenFlow = repository.observeCustomHiddenFoods()
 
     private data class Quick(
         val favourites: List<FoodEntity>,
         val recent: List<FoodEntity>,
         val frequent: List<FoodEntity>,
+        val customVisible: List<FoodEntity>,
+        val customHidden: List<FoodEntity>,
     )
 
-    private val quickFlow = combine(favouritesFlow, recentFlow, frequentFlow) { f, r, fq ->
-        Quick(f, r, fq)
+    private val quickFlow = combine(
+        favouritesFlow, recentFlow, frequentFlow, customVisibleFlow, customHiddenFlow,
+    ) { f, r, fq, cv, ch ->
+        Quick(f, r, fq, cv, ch)
     }
 
     private data class Selection(
@@ -86,22 +100,35 @@ class LogFoodViewModel(
 
     private val onlineFlow = combine(_onlineResults, _onlinePhase) { r, p -> Online(r, p) }
 
+    private data class Head(
+        val query: String,
+        val tab: LogTab,
+        val meal: MealType,
+        val customFilter: CustomFilter,
+    )
+
+    private val headFlow = combine(_query, _tab, _mealType, _customFilter) { q, t, m, cf ->
+        Head(q, t, m, cf)
+    }
+
     val state: StateFlow<LogUiState> = combine(
-        combine(_query, _tab, _mealType) { q, t, m -> Triple(q, t, m) },
+        headFlow,
         resultsFlow,
         quickFlow,
         selectionFlow,
         onlineFlow,
-    ) { headTriple, results, quick, sel, online ->
-        val (q, t, m) = headTriple
+    ) { head, results, quick, sel, online ->
         LogUiState(
-            query = q,
-            tab = t,
+            query = head.query,
+            tab = head.tab,
             results = results,
             favourites = quick.favourites,
             recent = quick.recent,
             frequent = quick.frequent,
-            mealType = m,
+            customVisible = quick.customVisible,
+            customHidden = quick.customHidden,
+            customFilter = head.customFilter,
+            mealType = head.meal,
             selected = sel.food,
             selectedVariant = sel.variant,
             selectedServings = sel.servings,
@@ -111,7 +138,11 @@ class LogFoodViewModel(
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        LogUiState(),
+        // First frame uses the constructor's initial meal — otherwise the
+        // picker briefly shows Breakfast (the data-class default) before the
+        // combine flow's first emission lands, producing a visible "morph"
+        // when the user opened Log Food from a non-Breakfast meal row.
+        LogUiState(mealType = initialMeal),
     )
 
     fun setQuery(q: String) {
@@ -159,6 +190,7 @@ class LogFoodViewModel(
         }
     }
     fun setTab(tab: LogTab) = _tab.update { tab }
+    fun setCustomFilter(filter: CustomFilter) = _customFilter.update { filter }
     fun setMealType(type: MealType) = _mealType.update { type }
     fun select(food: FoodEntity?) {
         _selected.update { food }
@@ -171,6 +203,26 @@ class LogFoodViewModel(
     fun toggleFavourite(food: FoodEntity) {
         viewModelScope.launch {
             repository.setFoodFavourite(food.id, !food.isFavourite)
+        }
+    }
+
+    /**
+     * Remove a custom food from the user's catalog. [cascadeLogs] = true also
+     * wipes every historical food-log entry that referenced it; false soft-hides
+     * the row so the diary keeps rendering past entries.
+     */
+    fun deleteCustomFood(food: FoodEntity, cascadeLogs: Boolean) {
+        if (!food.isCustom) return
+        viewModelScope.launch {
+            repository.deleteCustomFood(food.id, cascadeLogs)
+        }
+    }
+
+    /** Bring a soft-deleted custom food back into the picker. */
+    fun restoreCustomFood(food: FoodEntity) {
+        if (!food.isCustom || !food.isHidden) return
+        viewModelScope.launch {
+            repository.restoreCustomFood(food.id)
         }
     }
 

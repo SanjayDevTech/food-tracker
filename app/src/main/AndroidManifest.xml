@@ -27,6 +27,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.FoodTracker.SplashScreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,6 +35,42 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Glance-backed home-screen widgets. Each receiver wraps a GlanceAppWidget
+             via GlanceAppWidgetReceiver; updates are driven by app code (after
+             food log writes) rather than the system updatePeriodMillis. -->
+        <receiver
+            android:name=".widget.GoalLeftWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/goal_left_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MacrosWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/macros_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.QuickLogWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_log_widget_info" />
+        </receiver>
 
         <receiver
             android:name=".reminder.ReminderReceiver"

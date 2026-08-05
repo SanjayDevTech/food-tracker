@@ -9,10 +9,22 @@ import com.example.foodtracker.data.ServingVariant
 
 @Entity(
     tableName = "foods",
-    indices = [Index(value = ["barcode"], unique = false), Index(value = ["name"])],
+    indices = [
+        Index(value = ["barcode"], unique = false),
+        Index(value = ["name"]),
+        Index(value = ["client_uuid"], unique = true),
+    ],
 )
 data class FoodEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /**
+     * Stable identity for backup/restore. The Room `id` is local to this DB
+     * and re-numbers on a fresh install; `clientUuid` is generated once at
+     * insert time and travels with the row through any export/import. The
+     * restore code uses it to merge custom foods without disturbing existing
+     * local customs.
+     */
+    @ColumnInfo(name = "client_uuid") val clientUuid: String = java.util.UUID.randomUUID().toString(),
     val name: String,
     val brand: String? = null,
     val category: String,
@@ -22,6 +34,12 @@ data class FoodEntity(
     val barcode: String? = null,
     @ColumnInfo(name = "is_custom") val isCustom: Boolean = false,
     @ColumnInfo(name = "is_favourite", defaultValue = "0") val isFavourite: Boolean = false,
+    /**
+     * Soft-delete flag. A hidden food is kept in the DB only so historical
+     * food-log rows can still resolve to a name + nutrients; it must not appear
+     * in any pick list (search, favourites, recent/frequent, barcode lookup).
+     */
+    @ColumnInfo(name = "is_hidden", defaultValue = "0") val isHidden: Boolean = false,
 
     val calories: Double = 0.0,
     val carbs: Double = 0.0,
@@ -30,6 +48,7 @@ data class FoodEntity(
     val protein: Double = 0.0,
     val fat: Double = 0.0,
     @ColumnInfo(name = "saturated_fat") val saturatedFat: Double = 0.0,
+    val omega3: Double = 0.0,
     val cholesterol: Double = 0.0,
     val sodium: Double = 0.0,
     val calcium: Double = 0.0,
@@ -37,6 +56,10 @@ data class FoodEntity(
     val magnesium: Double = 0.0,
     val potassium: Double = 0.0,
     val zinc: Double = 0.0,
+    val phosphorus: Double = 0.0,
+    val selenium: Double = 0.0,
+    val copper: Double = 0.0,
+    val manganese: Double = 0.0,
     @ColumnInfo(name = "vitamin_a") val vitaminA: Double = 0.0,
     @ColumnInfo(name = "vitamin_c") val vitaminC: Double = 0.0,
     @ColumnInfo(name = "vitamin_d") val vitaminD: Double = 0.0,
@@ -44,6 +67,10 @@ data class FoodEntity(
     @ColumnInfo(name = "vitamin_k") val vitaminK: Double = 0.0,
     @ColumnInfo(name = "vitamin_b12") val vitaminB12: Double = 0.0,
     val folate: Double = 0.0,
+    @ColumnInfo(name = "vitamin_b1") val vitaminB1: Double = 0.0,
+    @ColumnInfo(name = "vitamin_b2") val vitaminB2: Double = 0.0,
+    @ColumnInfo(name = "vitamin_b3") val vitaminB3: Double = 0.0,
+    @ColumnInfo(name = "vitamin_b6") val vitaminB6: Double = 0.0,
 ) {
     /** Variants to show in pickers. Always non-empty — falls back to the canonical serving. */
     fun variantsOrDefault(): List<ServingVariant> = servingVariants.ifEmpty {
@@ -58,6 +85,7 @@ data class FoodEntity(
         protein = protein,
         fat = fat,
         saturatedFat = saturatedFat,
+        omega3 = omega3,
         cholesterol = cholesterol,
         sodium = sodium,
         calcium = calcium,
@@ -65,6 +93,10 @@ data class FoodEntity(
         magnesium = magnesium,
         potassium = potassium,
         zinc = zinc,
+        phosphorus = phosphorus,
+        selenium = selenium,
+        copper = copper,
+        manganese = manganese,
         vitaminA = vitaminA,
         vitaminC = vitaminC,
         vitaminD = vitaminD,
@@ -72,6 +104,10 @@ data class FoodEntity(
         vitaminK = vitaminK,
         vitaminB12 = vitaminB12,
         folate = folate,
+        vitaminB1 = vitaminB1,
+        vitaminB2 = vitaminB2,
+        vitaminB3 = vitaminB3,
+        vitaminB6 = vitaminB6,
     )
 
     companion object {
@@ -105,6 +141,7 @@ data class FoodEntity(
             protein = n.protein,
             fat = n.fat,
             saturatedFat = n.saturatedFat,
+            omega3 = n.omega3,
             cholesterol = n.cholesterol,
             sodium = n.sodium,
             calcium = n.calcium,
@@ -112,6 +149,10 @@ data class FoodEntity(
             magnesium = n.magnesium,
             potassium = n.potassium,
             zinc = n.zinc,
+            phosphorus = n.phosphorus,
+            selenium = n.selenium,
+            copper = n.copper,
+            manganese = n.manganese,
             vitaminA = n.vitaminA,
             vitaminC = n.vitaminC,
             vitaminD = n.vitaminD,
@@ -119,6 +160,10 @@ data class FoodEntity(
             vitaminK = n.vitaminK,
             vitaminB12 = n.vitaminB12,
             folate = n.folate,
+            vitaminB1 = n.vitaminB1,
+            vitaminB2 = n.vitaminB2,
+            vitaminB3 = n.vitaminB3,
+            vitaminB6 = n.vitaminB6,
         )
     }
 }

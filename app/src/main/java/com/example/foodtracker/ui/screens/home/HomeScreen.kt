@@ -1,6 +1,8 @@
 package com.example.foodtracker.ui.screens.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,31 +17,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MonitorWeight
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,15 +59,14 @@ import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.rememberAppHaptics
-import com.example.foodtracker.ui.components.CalorieRing
+import com.example.foodtracker.ui.components.CalorieHero
 import com.example.foodtracker.ui.components.DonutSlice
-import com.example.foodtracker.ui.components.MacroDonut
 import com.example.foodtracker.ui.components.NutrientBar
-import com.example.foodtracker.ui.components.SectionCard
 import com.example.foodtracker.ui.components.smartRound
 import com.example.foodtracker.ui.theme.Dimens
 import com.example.foodtracker.ui.theme.MacroBurned
@@ -70,26 +75,75 @@ import com.example.foodtracker.ui.theme.MacroFat
 import com.example.foodtracker.ui.theme.MacroFiber
 import com.example.foodtracker.ui.theme.MacroProtein
 import com.example.foodtracker.ui.theme.MacroWater
+import com.example.foodtracker.ui.theme.MacroWeight
 import com.example.foodtracker.util.DateUtil
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onAddFoodToMeal: (MealType) -> Unit,
     onOpenWater: () -> Unit,
     onOpenActivity: () -> Unit,
+    onOpenWeight: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenProgress: () -> Unit,
 ) {
     val vm: HomeViewModel = appViewModel { HomeViewModel(it.repository, it.profileStore) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val haptics = rememberAppHaptics()
+    val hour = java.time.LocalTime.now().hour
+    val salutation = when {
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        else -> "Good evening"
+    }
+    // First token only — full names look heavy in the greeting and get
+    // truncated on narrow screens. Fall back to "there" if name is blank.
+    val displayName = state.profile.name
+        .trim()
+        .substringBefore(' ')
+        .ifBlank { "there" }
 
-    // Scaffold here consumes the status-bar inset via default contentWindowInsets,
-    // so we don't double-pad with the outer Scaffold (which sets contentWindowInsets
-    // to zero). FAB lives in the Scaffold so it sits above the bottom NavigationBar.
+    // Quick-log → serving sheet flow. Tapping a Quick log row opens the same
+    // ServingSheet the picker uses, so users confirm grams/servings/meal
+    // before the row is written. Widget taps are deliberately one-tap and
+    // don't go through this flow.
+    var quickLogFood by remember { mutableStateOf<FoodEntity?>(null) }
+    var quickLogVariant by remember { mutableStateOf<ServingVariant?>(null) }
+    var quickLogServings by remember { mutableStateOf(1.0) }
+    var quickLogMeal by remember { mutableStateOf(currentMeal()) }
+
+    // No topBar — the greeting is rendered as the first scrollable item so it
+    // scrolls off with the rest of the content (no sticky chrome, no elevation
+    // tint when the user scrolls).
     Scaffold(
         floatingActionButton = {
+            // Expressive FAB: medium size + the new larger corner shape and a
+            // pronounced container color. The shape morphs to a tighter pill
+            // on press under MaterialExpressiveTheme.
             ExtendedFloatingActionButton(
-                text = { Text("Log food") },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = {
+                    Text(
+                        "Log food",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                icon = {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
                 onClick = { onAddFoodToMeal(currentMeal()) },
+                shape = RoundedCornerShape(28.dp),
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 12.dp,
+                ),
             )
         },
     ) { innerPadding ->
@@ -104,45 +158,70 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(Dimens.ScreenItemSpacing),
         ) {
-            item("greeting") { Greeting(state.profile.name) }
-            item("dateSelector") {
-                DateSelector(
+            item("greeting") {
+                GreetingHeader(
+                    salutation = salutation,
+                    displayName = displayName,
                     epochDay = state.epochDay,
-                    onPrev = { vm.shiftDay(-1) },
-                    onNext = { vm.shiftDay(1) },
+                    onPrevDay = { vm.shiftDay(-1) },
+                    onNextDay = { vm.shiftDay(1) },
                     onToday = { vm.goToToday() },
+                    onOpenProfile = onOpenProfile,
+                    onOpenProgress = onOpenProgress,
                 )
             }
-            item("calorieRing") {
-                // The hero ring sits directly on the AMOLED black background —
-                // no card around it, so almost the whole row is pure #000000.
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    CalorieRing(
-                        consumed = state.totalNutrients.calories,
-                        burned = state.caloriesBurned,
-                        goal = state.goals.calories,
+            com.example.foodtracker.domain.goalProgress(state.profile)?.let { progress ->
+                item("goalBanner") {
+                    GoalProgressBanner(
+                        profile = state.profile,
+                        progress = progress,
                     )
                 }
             }
-            item("macroDonut") {
-                SectionCard(title = "Macros") {
-                    val n = state.totalNutrients
-                    MacroDonut(
-                        slices = listOf(
+            item("calorieHero") {
+                // Single hero block — ring + macro legend together, with the
+                // Goal/Food/Exercise stat strip below. Replaces what used to
+                // be two stacked items (calorie ring + Macros section card).
+                val n = state.totalNutrients
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    CalorieHero(
+                        consumed = n.calories,
+                        burned = state.caloriesBurned,
+                        goal = state.goals.calories,
+                        macroSlices = listOf(
                             DonutSlice("Carbs", n.carbs, MacroCarbs),
                             DonutSlice("Protein", n.protein, MacroProtein),
                             DonutSlice("Fat", n.fat, MacroFat),
                             DonutSlice("Fiber", n.fiber, MacroFiber),
                         ),
-                        centerCaption = "kcal from food",
-                        centerValue = "${n.calories.toInt()}",
+                    )
+                }
+            }
+            // Action-first ordering: after the hero, the "log something" cluster
+            // (Quick log shortcuts → Meals history) comes BEFORE passive viz
+            // (stat tiles, nutrient breakdown). Most users open Home to log a
+            // food they eat often, so the next-action paths sit at the fold.
+            val quickList = (state.favourites + state.recent.filterNot { r -> state.favourites.any { it.id == r.id } }).take(10)
+            if (quickList.isNotEmpty()) {
+                item("quickLog") {
+                    QuickLogSection(
+                        items = quickList,
+                        onLog = { food ->
+                            // Seed the sheet with the food's first variant at
+                            // 1 serving, and the meal that matches the wall
+                            // clock — same defaults as the picker flow.
+                            quickLogFood = food
+                            quickLogVariant = food.variantsOrDefault().first()
+                            quickLogServings = 1.0
+                            quickLogMeal = currentMeal()
+                        },
                     )
                 }
             }
             item("quickStats") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     StatTile(
                         modifier = Modifier.weight(1f),
@@ -162,33 +241,60 @@ fun HomeScreen(
                         tint = MacroBurned,
                         onClick = onOpenActivity,
                     )
-                }
-            }
-            val quickList = (state.favourites + state.recent.filterNot { r -> state.favourites.any { it.id == r.id } }).take(8)
-            if (quickList.isNotEmpty() || state.canCopyYesterday) {
-                item("quickLog") {
-                    QuickLogSection(
-                        items = quickList,
-                        canCopyYesterday = state.canCopyYesterday,
-                        onLog = { vm.quickLog(it) },
-                        onCopyYesterday = { vm.copyYesterday() },
+                    val latest = state.latestWeight
+                    StatTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.MonitorWeight,
+                        title = "Weight",
+                        value = latest?.let { "%.1f kg".format(it.weightKg) } ?: "—",
+                        sub = if (latest != null) "tap to log today" else "log your first weigh-in",
+                        tint = MacroWeight,
+                        onClick = onOpenWeight,
                     )
                 }
+            }
+            item("mealsCombined") {
+                MealsSection(
+                    groups = state.mealGroups,
+                    activeMeal = currentMeal(),
+                    onAdd = onAddFoodToMeal,
+                    onRemove = { vm.removeLog(it) },
+                )
             }
             item("nutrientBreakdown") {
                 NutrientBreakdown(state.totalNutrients, state.goals, state.logs)
             }
-            MealType.entries.forEach { meal ->
-                val items = state.mealGroups[meal].orEmpty()
-                item("meal_${meal.name}") {
-                    MealSection(
-                        meal = meal,
-                        rows = items,
-                        onAdd = { onAddFoodToMeal(meal) },
-                        onRemove = { vm.removeLog(it) },
-                    )
-                }
-            }
+        }
+    }
+
+    val pendingFood = quickLogFood
+    val pendingVariant = quickLogVariant
+    if (pendingFood != null && pendingVariant != null) {
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+        )
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { quickLogFood = null },
+            sheetState = sheetState,
+        ) {
+            com.example.foodtracker.ui.components.ServingSheet(
+                food = pendingFood,
+                meal = quickLogMeal,
+                variant = pendingVariant,
+                servings = quickLogServings,
+                onVariantChange = { quickLogVariant = it },
+                onServingsChange = { quickLogServings = it },
+                onMealChange = { quickLogMeal = it },
+                onConfirm = {
+                    haptics.confirm()
+                    // Read the latest sheet state through the delegates so any
+                    // last-moment variant / servings / meal change is included.
+                    val food = quickLogFood ?: return@ServingSheet
+                    val variant = quickLogVariant ?: return@ServingSheet
+                    vm.quickLog(food, variant, quickLogServings, quickLogMeal)
+                    quickLogFood = null
+                },
+            )
         }
     }
 }
@@ -203,55 +309,163 @@ private fun currentMeal(): MealType {
     }
 }
 
+/**
+ * Top-of-list row that merges the greeting, day selector, and chrome icons
+ * into a single line. Scrolls with the list (not sticky, no elevation tint).
+ *
+ * Layout: greeting on the left, compact day-picker pill in the middle, and
+ * Trends + Profile icons on the right. The pill is the same control the old
+ * standalone DateSelector card surfaced — chevrons step the day, tapping the
+ * label snaps back to today.
+ */
 @Composable
-private fun Greeting(name: String) {
-    val displayName = name.ifBlank { "there" }
-    val hour = java.time.LocalTime.now().hour
-    val salutation = when {
-        hour < 12 -> "Good morning"
-        hour < 17 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    Column {
-        Text("$salutation, $displayName 👋", style = MaterialTheme.typography.titleLarge)
+private fun GreetingHeader(
+    salutation: String,
+    displayName: String,
+    epochDay: Long,
+    onPrevDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onToday: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenProgress: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         Text(
-            "Here's how today is shaping up.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            "$salutation, $displayName 👋",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
         )
+        InlineDayPicker(
+            epochDay = epochDay,
+            onPrev = onPrevDay,
+            onNext = onNextDay,
+            onToday = onToday,
+        )
+        IconButton(onClick = onOpenProgress) {
+            Icon(Icons.Default.Insights, contentDescription = "Progress")
+        }
+        IconButton(onClick = onOpenProfile) {
+            Icon(Icons.Default.Person, contentDescription = "Profile")
+        }
+    }
+}
+
+/**
+ * Compact rounded pill — `[◀ Today ▶]` — used inline in the greeting row.
+ * The label is a tap target that resets to today; the chevrons step ±1 day.
+ * Selected (today) state uses primary tint so the user can tell at a glance
+ * which day the rest of the screen is showing.
+ */
+@Composable
+private fun InlineDayPicker(
+    epochDay: Long,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onToday: () -> Unit,
+) {
+    val haptics = rememberAppHaptics()
+    val isToday = epochDay == DateUtil.todayEpochDay()
+    val labelColor =
+        if (isToday) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSurface
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (isToday) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
+    ) {
+        IconButton(
+            onClick = { haptics.light(); onPrev() },
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                Icons.Default.ChevronLeft,
+                contentDescription = "Previous day",
+                tint = labelColor,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Text(
+            DateUtil.formatHeader(epochDay),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = labelColor,
+            maxLines = 1,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { haptics.light(); onToday() }
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+        )
+        IconButton(
+            onClick = { haptics.light(); onNext() },
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Next day",
+                tint = labelColor,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun DateSelector(epochDay: Long, onPrev: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
-    val haptics = rememberAppHaptics()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun GoalProgressBanner(
+    profile: com.example.foodtracker.data.UserProfile,
+    progress: com.example.foodtracker.domain.GoalProgress,
+) {
+    val verb = if (profile.goal == com.example.foodtracker.data.Goal.Lose) "lose" else "gain"
+    val isComplete = progress.deltaKg <= 0.01
+    androidx.compose.material3.Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+        shape = RoundedCornerShape(20.dp),
     ) {
-        IconButton(onClick = { haptics.light(); onPrev() }) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Previous day")
-        }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            FilterChip(
-                selected = epochDay == DateUtil.todayEpochDay(),
-                onClick = { haptics.light(); onToday() },
-                label = { Text(DateUtil.formatHeader(epochDay)) },
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
+            Text(
+                if (isComplete) "You hit your target"
+                else "${"%.1f".format(progress.deltaKg)} kg to $verb",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
-        }
-        IconButton(onClick = { haptics.light(); onNext() }) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Next day")
+            if (!isComplete) {
+                Text(
+                    "${"%.1f".format(profile.weightKg)} → ${"%.1f".format(profile.goalWeightKg ?: profile.weightKg)} kg",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                val rate = profile.weightChangeRate.kgPerWeek
+                if (rate > 0.0 && progress.weeksRemaining > 0.0) {
+                    Text(
+                        "~${weeksLabel(progress.weeksRemaining)} at ${"%.2f".format(rate)} kg/week",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+            }
         }
     }
+}
+
+private fun weeksLabel(weeks: Double): String {
+    val rounded = kotlin.math.round(weeks * 10) / 10.0
+    if (rounded < 1.0) return "less than a week"
+    if (rounded < 6.0) return "${"%.0f".format(rounded)} week${if (rounded < 1.5) "" else "s"}"
+    val months = rounded / 4.345
+    return "${"%.0f".format(kotlin.math.round(months))} month${if (months < 1.5) "" else "s"}"
 }
 
 @Composable
@@ -264,27 +478,45 @@ private fun StatTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(
-        modifier = modifier,
-        onClick = onClick,
-        colors = CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    // Minimal text-forward tile with a 1dp outline (no fill) — same shape
+    // language as the section containers below. The outline signals
+    // tappability without the heaviness of a filled card.
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(18.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = tint)
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            sub,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -301,19 +533,17 @@ private fun NutrientBreakdown(
         androidx.compose.runtime.mutableStateOf<com.example.foodtracker.data.NutrientField?>(null)
     }
     val haptics = rememberAppHaptics()
-    SectionCard(title = "Nutrient breakdown") {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            NutrientCategory.entries.forEach { cat ->
-                FilterChip(
-                    selected = selectedCategory == cat,
-                    onClick = {
-                        haptics.light()
-                        selectedCategory = cat
-                    },
-                    label = { Text(cat.name) },
-                )
-            }
-        }
+    HomeSection(title = "Nutrient breakdown") {
+        com.example.foodtracker.ui.components.ExclusiveButtonGroup(
+            options = NutrientCategory.entries,
+            selected = selectedCategory,
+            onSelect = {
+                haptics.light()
+                selectedCategory = it
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { it.name },
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             "Tap any nutrient to see which foods contributed it today.",
@@ -392,32 +622,46 @@ private fun NutrientContributionSheet(
         onDismissRequest = onDismiss,
         sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(
+        // LazyColumn so long contribution lists scroll within the sheet
+        // instead of overflowing off-screen. ModalBottomSheet provides the
+        // nested-scroll connection so dragging the list past its top also
+        // drags the sheet down.
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(field.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            val goalSuffix = if (goal > 0) " · ${((total / goal) * 100).toInt()}% of ${goal.smartRound()} ${field.unit.symbol} goal" else ""
-            Text(
-                "${total.smartRound()} ${field.unit.symbol} today$goalSuffix",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
+            item("header") {
+                Column {
+                    Text(
+                        field.label,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val goalSuffix = if (goal > 0) " · ${((total / goal) * 100).toInt()}% of ${goal.smartRound()} ${field.unit.symbol} goal" else ""
+                    Text(
+                        "${total.smartRound()} ${field.unit.symbol} today$goalSuffix",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
 
             if (contributions.isEmpty()) {
-                Text(
-                    "Nothing logged today contributes ${field.label.lowercase()}. " +
-                        "Log foods rich in it to close the gap.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                item("empty") {
+                    Text(
+                        "Nothing logged today contributes ${field.label.lowercase()}. " +
+                            "Log foods rich in it to close the gap.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
                 val barColor = field.color()
-                contributions.forEach { c ->
+                items(contributions, key = { it.name }) { c ->
                     ContributionRow(c, field.unit.symbol, barColor)
                 }
             }
@@ -484,38 +728,170 @@ private fun com.example.foodtracker.data.NutrientField.color(): androidx.compose
     }
 }
 
+/**
+ * Shared section wrapper used by Quick log and Meals on Home. Same shape +
+ * 1dp outline as [StatTile] so the three blocks share one container
+ * language. Transparent fill keeps AMOLED-friendly black pixels everywhere
+ * except the outline.
+ */
 @Composable
-private fun MealSection(
+private fun HomeSection(
+    title: String,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(18.dp),
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (trailing != null) trailing()
+        }
+        content()
+    }
+}
+
+/**
+ * Combined meals section — replaces four mostly-empty per-meal cards with a
+ * single dense card where each meal is one row. The current meal (by time of
+ * day) gets a tonal background so the user's eye lands on the row they're
+ * most likely to add to next.
+ */
+@Composable
+private fun MealsSection(
+    groups: Map<MealType, List<FoodLogWithFood>>,
+    activeMeal: MealType,
+    onAdd: (MealType) -> Unit,
+    onRemove: (Long) -> Unit,
+) {
+    HomeSection(title = "Meals") {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            MealType.entries.forEachIndexed { i, meal ->
+                if (i > 0) {
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    )
+                }
+                MealRow(
+                    meal = meal,
+                    rows = groups[meal].orEmpty(),
+                    isActive = meal == activeMeal,
+                    onAdd = { onAdd(meal) },
+                    onRemove = onRemove,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MealRow(
     meal: MealType,
     rows: List<FoodLogWithFood>,
+    isActive: Boolean,
     onAdd: () -> Unit,
     onRemove: (Long) -> Unit,
 ) {
-    val mealCalories = rows.sumOf { it.food.calories * (it.log.grams / 100.0) }
-    SectionCard(
-        title = "${meal.emoji} ${meal.displayName}",
-        trailing = {
+    val haptics = rememberAppHaptics()
+    val hasItems = rows.isNotEmpty()
+    // The active meal is always expanded (the user wants their next add target
+    // to read fully without a tap). Other meals start collapsed; user can open
+    // them via the chevron when they want to inspect or edit history.
+    var userExpanded by rememberSaveable(meal) { mutableStateOf(false) }
+    val expanded = isActive || userExpanded
+    val kcal = rows.sumOf { it.food.calories * (it.log.grams / 100.0) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isActive) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                else MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .padding(vertical = 6.dp),
+        ) {
+            Text(
+                meal.emoji,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        meal.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (isActive) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Now",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = if (hasItems) {
+                        "${kcal.toInt()} kcal · ${rows.size} item${if (rows.size == 1) "" else "s"}"
+                    } else "Nothing logged yet",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (hasItems && !isActive) {
+                IconButton(onClick = {
+                    haptics.light()
+                    userExpanded = !userExpanded
+                }) {
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                    )
+                }
+            }
             IconButton(onClick = onAdd) {
                 Icon(Icons.Default.Add, contentDescription = "Add to ${meal.displayName}")
             }
-        },
-    ) {
-        if (rows.isEmpty()) {
-            Text(
-                "Nothing logged yet — tap + to add.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            rows.forEach { row ->
-                MealEntryRow(row, onRemove = { onRemove(row.log.id) })
+        }
+        if (hasItems && expanded) {
+            Column(
+                modifier = Modifier.padding(start = 36.dp, end = 4.dp, bottom = 4.dp),
+            ) {
+                rows.forEach { row ->
+                    MealEntryRow(row, onRemove = { onRemove(row.log.id) })
+                }
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "${mealCalories.toInt()} kcal · ${rows.size} item${if (rows.size == 1) "" else "s"}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -523,78 +899,69 @@ private fun MealSection(
 @Composable
 private fun QuickLogSection(
     items: List<FoodEntity>,
-    canCopyYesterday: Boolean,
     onLog: (FoodEntity) -> Unit,
-    onCopyYesterday: () -> Unit,
 ) {
     val haptics = rememberAppHaptics()
-    SectionCard(
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val visibleItems = if (expanded) items else items.take(2)
+
+    HomeSection(
         title = "Quick log",
-        trailing = if (canCopyYesterday) {
+        trailing = if (items.size > 1) {
             {
-                AssistChip(
-                    onClick = {
-                        haptics.confirm()
-                        onCopyYesterday()
-                    },
-                    label = { Text("Copy yesterday") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = null,
-                            modifier = Modifier.size(AssistChipDefaults.IconSize),
-                        )
-                    },
-                )
+                TextButton(onClick = {
+                    haptics.light()
+                    expanded = !expanded
+                }) {
+                    Text(if (expanded) "Show less" else "Show all (${items.size})")
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         } else null,
     ) {
-        if (items.isEmpty()) {
-            Text(
-                "Star foods or log a few meals — they'll appear here for one-tap logging.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                items.forEach { food ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (food.isFavourite) {
-                                    Icon(
-                                        Icons.Default.Star,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                }
-                                Text(
-                                    food.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            visibleItems.forEach { food ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (food.isFavourite) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp),
                                 )
+                                Spacer(Modifier.width(4.dp))
                             }
                             Text(
-                                "${food.calories.toInt()} kcal · ${food.servingLabel}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                food.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                             )
                         }
-                        IconButton(onClick = {
-                            haptics.confirm()
-                            onLog(food)
-                        }) {
-                            Icon(Icons.Default.Add, contentDescription = "Log ${food.name}")
-                        }
+                        Text(
+                            "${food.calories.toInt()} kcal · ${food.servingLabel}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                    IconButton(onClick = {
+                        haptics.confirm()
+                        onLog(food)
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Log ${food.name}")
                     }
                 }
             }

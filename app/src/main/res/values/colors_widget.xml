@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget color tokens — DAY variant. Each entry maps to a system_accent1 /
+  system_neutral{1,2} reference so the values track Material You wallpaper
+  extraction on Android 12+. Live widgets read these same tokens via
+  GlanceTheme.colors.*, so the static preview drawables and the live render
+  use identical hues.
+
+  Naming mirrors the Material 3 role tokens — surface / primaryContainer /
+  onPrimary etc. — for easy cross-reference with the Glance code.
+-->
+<resources>
+    <!-- Background surface — neutral container the widget sits on. -->
+    <color name="widget_surface">@android:color/system_neutral2_100</color>
+    <color name="widget_on_surface">@android:color/system_neutral1_900</color>
+    <color name="widget_on_surface_muted">@android:color/system_neutral2_700</color>
+
+    <!-- Filled tonal surfaces — meal pills, the unfilled portion of GoalLeft. -->
+    <color name="widget_primary_container">@android:color/system_accent1_100</color>
+    <color name="widget_on_primary_container">@android:color/system_accent1_900</color>
+
+    <!-- Strong call-to-action — the FAB, fully-saturated accents. -->
+    <color name="widget_primary">@android:color/system_accent1_600</color>
+    <color name="widget_on_primary">@android:color/system_accent1_0</color>
+
+    <!-- Battery fill — slightly stronger than primaryContainer so it reads as
+         a level indicator rather than blending in. -->
+    <color name="widget_primary_subtle">@android:color/system_accent1_200</color>
+
+    <!-- Meal pill — needs to clearly lift off surfaceVariant. In light mode
+         the standard `system_accent1_100` is fine; the night variant is
+         where we deviate (see values-night/colors_widget.xml). -->
+    <color name="widget_pill">@android:color/system_accent1_100</color>
+    <color name="widget_on_pill">@android:color/system_accent1_900</color>
+
+    <!-- Recent food chip — tonal lift from the widget surface, neutral so it
+         doesn't fight with the meal pills for attention. -->
+    <color name="widget_chip">@android:color/system_neutral1_50</color>
+    <color name="widget_on_chip">@android:color/system_neutral1_900</color>
+
+    <!-- Success / "just logged" tap feedback — Material You tertiary
+         (`system_accent3`) is the wallpaper-extracted complementary accent,
+         so it always contrasts visibly against the surface/primary even if
+         the user's primary is green. -->
+    <color name="widget_success">@android:color/system_accent3_600</color>
+    <color name="widget_on_success">@android:color/system_accent3_0</color>
+</resources>

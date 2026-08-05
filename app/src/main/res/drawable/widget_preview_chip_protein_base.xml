@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Protein always-on subtle tint — orange at ~20% alpha. Matches WidgetColors.MacroProteinBase. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#33FF7043" />
+    <corners android:radius="18dp" />
+</shape>

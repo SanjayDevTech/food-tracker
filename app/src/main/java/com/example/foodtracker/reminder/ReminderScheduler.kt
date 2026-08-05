@@ -33,21 +33,26 @@ class ReminderScheduler(private val context: Context) {
         configs.filter { it.enabled }.forEach { schedule(it) }
     }
 
+    /**
+     * Re-arm the next firing for [config].
+     *
+     * `setAndAllowWhileIdle` is the documented Doze-respecting primitive for
+     * "should fire close to a specific time, even when the device is idle":
+     * the system batches it into the next Doze maintenance window rather than
+     * deferring it indefinitely (which is what `setInexactRepeating` does).
+     * That gives reminders the best reliability profile available without any
+     * special permissions or Play-policy-restricted alarm-clock APIs. The
+     * one-shot semantics mean we self-rearm in the receiver after each fire.
+     *
+     * Reliability hint: on aggressive OEM battery savers the user may still
+     * need to mark the app exempt from battery optimisation — surfaced in the
+     * Reminders screen via `BatteryOptHelper`.
+     */
     @SuppressLint("MissingPermission")
     private fun schedule(config: ReminderConfig) {
         val triggerAt = nextTriggerMillis(config.hour, config.minute)
         val pi = pendingIntent(config.kind, mutable = false, create = true)!!
-
-        // setInexactRepeating: meal/water reminders don't need second-level precision;
-        // it's friendlier to battery and works on all API levels without requiring the
-        // SCHEDULE_EXACT_ALARM permission. The system will fire ~daily at the chosen
-        // wall-clock time and we don't mind a few minutes of slack.
-        alarmManager.setInexactRepeating(
-            AlarmManager.RTC_WAKEUP,
-            triggerAt,
-            AlarmManager.INTERVAL_DAY,
-            pi,
-        )
+        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
     }
 
     private fun pendingIntent(kind: ReminderKind, mutable: Boolean, create: Boolean): PendingIntent? {

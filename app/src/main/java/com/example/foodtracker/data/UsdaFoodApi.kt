@@ -223,6 +223,9 @@ class UsdaFoodApi {
         protein = byId[1003] ?: 0.0,
         fat = byId[1004] ?: 0.0,
         saturatedFat = byId[1258] ?: 0.0,
+        // No single "total omega-3" id in USDA — sum ALA (1404), EPA (1278),
+        // DHA (1272) where present. All reported per 100 g in grams.
+        omega3 = (byId[1404] ?: 0.0) + (byId[1278] ?: 0.0) + (byId[1272] ?: 0.0),
         cholesterol = byId[1253] ?: 0.0,
         sodium = byId[1093] ?: 0.0,
         calcium = byId[1087] ?: 0.0,
@@ -230,6 +233,10 @@ class UsdaFoodApi {
         magnesium = byId[1090] ?: 0.0,
         potassium = byId[1092] ?: 0.0,
         zinc = byId[1095] ?: 0.0,
+        phosphorus = byId[1091] ?: 0.0,
+        selenium = byId[1103] ?: 0.0,
+        copper = byId[1098] ?: 0.0,
+        manganese = byId[1101] ?: 0.0,
         // Prefer RAE for Vit A; fall back to IU-based legacy id where needed.
         vitaminA = byId[1106] ?: 0.0,
         vitaminC = byId[1162] ?: 0.0,
@@ -238,6 +245,10 @@ class UsdaFoodApi {
         vitaminK = byId[1185] ?: 0.0,
         vitaminB12 = byId[1178] ?: 0.0,
         folate = byId[1177] ?: 0.0,
+        vitaminB1 = byId[1165] ?: 0.0,
+        vitaminB2 = byId[1166] ?: 0.0,
+        vitaminB3 = byId[1167] ?: 0.0,
+        vitaminB6 = byId[1175] ?: 0.0,
     )
 
     private fun JsonObject.str(key: String): String? =

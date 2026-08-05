@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31): track the OS-supplied widget radii so our widgets
+  match the curvature of Drive / Calendar / Pixel Tips sitting next to
+  them. The OS picks values that the active launcher considers correct
+  for the device (e.g. Pixel Launcher); pinning to a hardcoded dp would
+  drift away from that target whenever Google updates the launcher.
+-->
+<resources>
+    <dimen name="widget_corner_radius">@android:dimen/system_app_widget_background_radius</dimen>
+    <dimen name="widget_inner_radius">@android:dimen/system_app_widget_inner_radius</dimen>
+</resources>

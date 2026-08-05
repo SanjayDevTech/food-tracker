@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,16 +21,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +55,6 @@ import com.example.foodtracker.data.BarcodeProduct
 import com.example.foodtracker.data.BarcodeSource
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutritionBasis
-import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.rememberAppHaptics
 
@@ -120,6 +124,8 @@ fun BarcodeScreen(
                     product = state.product!!,
                     basis = state.basis,
                     onBasisChange = { vm.setBasis(it); haptics.light() },
+                    servingGrams = state.servingGrams.takeIf { it > 0.0 } ?: state.product!!.servingGrams,
+                    onServingChange = vm::setServingGrams,
                     source = state.resolvedSource,
                     selectedMeal = selectedMeal,
                     onMealChange = { selectedMeal = it },
@@ -132,6 +138,8 @@ fun BarcodeScreen(
 
                 state.cached != null -> CachedPanel(
                     food = state.cached!!,
+                    servingGrams = state.servingGrams.takeIf { it > 0.0 } ?: state.cached!!.servingGrams,
+                    onServingChange = vm::setServingGrams,
                     source = state.resolvedSource,
                     selectedMeal = selectedMeal,
                     onMealChange = { selectedMeal = it },
@@ -211,22 +219,26 @@ private fun PermissionPrompt(onGrant: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CenterLoading(text: String) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
+            LoadingIndicator()
             Spacer(Modifier.height(12.dp))
             Text(text, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ResolvedPanel(
     product: BarcodeProduct,
     basis: NutritionBasis,
     onBasisChange: (NutritionBasis) -> Unit,
+    servingGrams: Double,
+    onServingChange: (Double) -> Unit,
     source: BarcodeSource?,
     selectedMeal: MealType,
     onMealChange: (MealType) -> Unit,
@@ -235,14 +247,21 @@ private fun ResolvedPanel(
 ) {
     val per100g = product.perHundredG
     val perServing = product.perServing
-    val nutrients = product.nutrientsAs(basis)
-    val basisLabel = when (basis) {
+    // Per-100g side is the canonical reference once the user has picked the basis.
+    // We scale that to the user's chosen serving for the "will log" preview.
+    val per100gFromBasis = product.toPerHundredG(basis)
+    val gramsForLog = servingGrams.coerceAtLeast(1.0)
+    val nutrientsForLog = per100gFromBasis * (gramsForLog / 100.0)
+    val packLabel = when (basis) {
         NutritionBasis.Per100g -> "per 100 g"
         NutritionBasis.PerServing -> "per serving (${product.servingGrams.toInt()} g)"
     }
+    val packNutrients = product.nutrientsAs(basis)
+    val scroll = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scroll)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -256,71 +275,97 @@ private fun ResolvedPanel(
             )
         }
         Text(
-            "${nutrients.calories.toInt()} kcal $basisLabel",
+            "${packNutrients.calories.toInt()} kcal $packLabel",
             style = MaterialTheme.typography.bodyLarge,
         )
         source?.let {
             Text(
-                "Source: ${it.display} · serving: ${product.servingLabel}",
+                "Source: ${it.display} · ${product.servingLabel}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        // Basis picker — only meaningful if the source exposes both, but we always
-        // show it so the user can switch in case the auto-detected basis is wrong.
-        Spacer(Modifier.height(4.dp))
-        Text("Values shown are:", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            BasisChip(
-                selected = basis == NutritionBasis.Per100g,
-                enabled = per100g != null || perServing != null,
-                label = "Per 100 g",
-                onClick = { onBasisChange(NutritionBasis.Per100g) },
-            )
-            BasisChip(
-                selected = basis == NutritionBasis.PerServing,
-                enabled = perServing != null || per100g != null,
-                label = "Per ${product.servingGrams.toInt()} g serving",
-                onClick = { onBasisChange(NutritionBasis.PerServing) },
-            )
-        }
-        if (per100g == null && perServing != null) {
-            Text(
-                "Only per-serving values were published — we'll scale to 100 g for storage.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else if (per100g != null && perServing != null) {
-            val ratio = if (per100g.calories > 0 && perServing.calories > 0 && product.servingGrams > 0)
-                (perServing.calories * 100.0 / product.servingGrams) / per100g.calories
-            else 1.0
-            if (ratio !in 0.90..1.10) {
+        // Basis picker — promoted to a labeled card so the user can override the
+        // auto-detected basis without hunting for it. OFF and USDA frequently
+        // disagree with the printed pack; the user has the pack in hand.
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
-                    "Note: this product's per-100 g and per-serving values disagree. The label on the pack is usually correct — pick per-serving if the values above match the pack.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    "Match what's on the package",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
                 )
+                Text(
+                    "If the package shows nutrients per serving, tap Per ${product.servingGrams.toInt()} g serving — otherwise tap Per 100 g.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ButtonGroup(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    ToggleButton(
+                        checked = basis == NutritionBasis.Per100g,
+                        onCheckedChange = { if (it) onBasisChange(NutritionBasis.Per100g) },
+                        enabled = per100g != null,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Per 100 g", maxLines = 1) }
+                    ToggleButton(
+                        checked = basis == NutritionBasis.PerServing,
+                        onCheckedChange = { if (it) onBasisChange(NutritionBasis.PerServing) },
+                        enabled = perServing != null,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Per ${product.servingGrams.toInt()} g serving", maxLines = 1) }
+                }
+                if (per100g == null && perServing != null) {
+                    Text(
+                        "Only per-serving values were published — we'll scale to 100 g for storage.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (per100g != null && perServing != null) {
+                    val ratio = if (per100g.calories > 0 && perServing.calories > 0 && product.servingGrams > 0)
+                        (perServing.calories * 100.0 / product.servingGrams) / per100g.calories
+                    else 1.0
+                    if (ratio !in 0.90..1.10) {
+                        Text(
+                            "Heads-up: per-100 g and per-serving values disagree on this product. Trust the printed pack and pick the basis whose calorie number matches it.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        MacroPreview(nutrients)
+        // Serving editor — defaulted from the scanned pack but freely editable so
+        // the user can log a partial / larger portion without doing the math by hand.
+        ServingEditor(
+            grams = gramsForLog,
+            defaultGrams = product.servingGrams,
+            onChange = onServingChange,
+            calories = nutrientsForLog.calories,
+            carbs = nutrientsForLog.carbs,
+            protein = nutrientsForLog.protein,
+            fat = nutrientsForLog.fat,
+        )
 
         Spacer(Modifier.height(8.dp))
         Text("Add to:", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            MealType.entries.forEach { meal ->
-                FilterChip(
-                    selected = selectedMeal == meal,
-                    onClick = { onMealChange(meal) },
-                    label = { Text(meal.displayName) },
-                )
-            }
-        }
+        com.example.foodtracker.ui.components.ExclusiveButtonGroup(
+            options = MealType.entries,
+            selected = selectedMeal,
+            onSelect = onMealChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { it.displayName },
+        )
         Spacer(Modifier.height(12.dp))
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Add to ${selectedMeal.displayName}")
+            Text("Add ${gramsForLog.toInt()} g to ${selectedMeal.displayName}")
         }
         OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
             Text("Scan another")
@@ -329,34 +374,59 @@ private fun ResolvedPanel(
 }
 
 @Composable
-private fun BasisChip(
-    selected: Boolean,
-    enabled: Boolean,
-    label: String,
-    onClick: () -> Unit,
+private fun ServingEditor(
+    grams: Double,
+    defaultGrams: Double,
+    onChange: (Double) -> Unit,
+    calories: Double,
+    carbs: Double,
+    protein: Double,
+    fat: Double,
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        enabled = enabled,
-        label = { Text(label) },
-    )
-}
-
-@Composable
-private fun MacroPreview(n: Nutrients) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        MacroPill("Carbs", n.carbs)
-        MacroPill("Protein", n.protein)
-        MacroPill("Fat", n.fat)
-    }
-}
-
-@Composable
-private fun MacroPill(label: String, grams: Double) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("${"%.1f".format(grams)} g", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Serving size",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        "Default ${defaultGrams.toInt()} g · edit if your portion differs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                com.example.foodtracker.ui.components.NumberStepper(
+                    value = "${grams.toInt()} g",
+                    onDecrement = { onChange(grams - 5.0) },
+                    onIncrement = { onChange(grams + 5.0) },
+                    decrementEnabled = grams > 1.0,
+                    incrementEnabled = grams < 2000.0,
+                )
+            }
+            com.example.foodtracker.ui.components.HapticSlider(
+                value = grams.toFloat().coerceIn(5f, 500f),
+                onValueChange = { onChange(it.toDouble()) },
+                valueRange = 5f..500f,
+                granularity = 5f,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "Will log: ${grams.toInt()} g → ${calories.toInt()} kcal · " +
+                    "${"%.1f".format(carbs)} C / ${"%.1f".format(protein)} P / ${"%.1f".format(fat)} F",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 
@@ -364,15 +434,21 @@ private fun MacroPill(label: String, grams: Double) {
 @Composable
 private fun CachedPanel(
     food: com.example.foodtracker.data.db.FoodEntity,
+    servingGrams: Double,
+    onServingChange: (Double) -> Unit,
     source: BarcodeSource?,
     selectedMeal: MealType,
     onMealChange: (MealType) -> Unit,
     onAdd: () -> Unit,
     onRetry: () -> Unit,
 ) {
+    val gramsForLog = servingGrams.coerceAtLeast(1.0)
+    val scale = gramsForLog / 100.0
+    val scroll = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scroll)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -396,20 +472,29 @@ private fun CachedPanel(
                 color = MaterialTheme.colorScheme.error,
             )
         }
+
+        ServingEditor(
+            grams = gramsForLog,
+            defaultGrams = food.servingGrams,
+            onChange = onServingChange,
+            calories = food.calories * scale,
+            carbs = food.carbs * scale,
+            protein = food.protein * scale,
+            fat = food.fat * scale,
+        )
+
         Spacer(Modifier.height(8.dp))
         Text("Add to:", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            MealType.entries.forEach { meal ->
-                FilterChip(
-                    selected = selectedMeal == meal,
-                    onClick = { onMealChange(meal) },
-                    label = { Text(meal.displayName) },
-                )
-            }
-        }
+        com.example.foodtracker.ui.components.ExclusiveButtonGroup(
+            options = MealType.entries,
+            selected = selectedMeal,
+            onSelect = onMealChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { it.displayName },
+        )
         Spacer(Modifier.height(12.dp))
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Add to ${selectedMeal.displayName}")
+            Text("Add ${gramsForLog.toInt()} g to ${selectedMeal.displayName}")
         }
         OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
             Text("Scan another")

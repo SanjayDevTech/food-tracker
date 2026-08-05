@@ -3,7 +3,8 @@ package com.example.foodtracker.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -108,25 +109,35 @@ private fun ColorScheme.withAmoledSurfaces(): ColorScheme = copy(
     surfaceDim = AmoledBlack,
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FoodTrackerTheme(
-    themeMode: ThemeMode = ThemeMode.Amoled,
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.System,
+    palette: ColorPalette = ColorPalette.Normal,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val supportsDynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val systemDark = isSystemInDarkTheme()
+
+    val darkTheme = when (themeMode) {
+        ThemeMode.System -> systemDark
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+    }
+    val useDynamic = palette == ColorPalette.Dynamic && supportsDynamic
 
     val colorScheme = when {
-        darkTheme && themeMode == ThemeMode.AmoledDynamic && supportsDynamic ->
-            dynamicDarkColorScheme(context).withAmoledSurfaces()
+        darkTheme && useDynamic -> dynamicDarkColorScheme(context).withAmoledSurfaces()
         darkTheme -> AmoledColors
-        themeMode == ThemeMode.AmoledDynamic && supportsDynamic ->
-            dynamicLightColorScheme(context)
+        useDynamic -> dynamicLightColorScheme(context)
         else -> LightColors
     }
 
-    MaterialTheme(
+    // M3 Expressive: installs the expressive MotionScheme + shape/typography
+    // tokens. Components throughout the app pick these up via composition
+    // locals — chip groups, sliders, motion specs feel snappier and rounder.
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
         typography = Typography,
         content = content,

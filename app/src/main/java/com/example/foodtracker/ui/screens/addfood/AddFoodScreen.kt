@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.ui.appViewModel
+import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.rememberAppHaptics
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +45,7 @@ fun AddFoodScreen(
     onBack: () -> Unit,
     prefillBarcode: String? = null,
 ) {
-    val vm: AddFoodViewModel = appViewModel { AddFoodViewModel(it.repository) }
+    val vm: AddFoodViewModel = appViewModel { AddFoodViewModel(it.repository, it.profileStore) }
     val state by vm.state.collectAsStateWithLifecycle()
     val haptics = rememberAppHaptics()
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
@@ -52,6 +54,8 @@ fun AddFoodScreen(
             vm.seedBarcode(prefillBarcode)
         }
     }
+
+    AiProgressDialog(state.aiStep, verifies = state.aiVerifies)
 
     Scaffold(
         topBar = {
@@ -100,6 +104,26 @@ fun AddFoodScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (state.aiEnabled) {
+                OutlinedButton(
+                    onClick = {
+                        haptics.light()
+                        vm.autofillFromAi()
+                    },
+                    enabled = state.name.isNotBlank() && state.aiStep == AiStep.Idle,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("✨ Ask AI to fill nutrition")
+                }
+                state.aiError?.let { err ->
+                    Text(
+                        err,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = state.brand,
                 onValueChange = { v -> vm.update { it.copy(brand = v) } },
@@ -147,6 +171,7 @@ fun AddFoodScreen(
             NumberField("Protein (g)", state.protein) { v -> vm.update { it.copy(protein = v) } }
             NumberField("Fat (g)", state.fat) { v -> vm.update { it.copy(fat = v) } }
             NumberField("Saturated fat (g)", state.saturatedFat) { v -> vm.update { it.copy(saturatedFat = v) } }
+            NumberField("Omega-3 (g)", state.omega3) { v -> vm.update { it.copy(omega3 = v) } }
             NumberField("Cholesterol (mg)", state.cholesterol) { v -> vm.update { it.copy(cholesterol = v) } }
             NumberField("Sodium (mg)", state.sodium) { v -> vm.update { it.copy(sodium = v) } }
 
@@ -156,6 +181,10 @@ fun AddFoodScreen(
             NumberField("Magnesium (mg)", state.magnesium) { v -> vm.update { it.copy(magnesium = v) } }
             NumberField("Potassium (mg)", state.potassium) { v -> vm.update { it.copy(potassium = v) } }
             NumberField("Zinc (mg)", state.zinc) { v -> vm.update { it.copy(zinc = v) } }
+            NumberField("Phosphorus (mg)", state.phosphorus) { v -> vm.update { it.copy(phosphorus = v) } }
+            NumberField("Selenium (µg)", state.selenium) { v -> vm.update { it.copy(selenium = v) } }
+            NumberField("Copper (mg)", state.copper) { v -> vm.update { it.copy(copper = v) } }
+            NumberField("Manganese (mg)", state.manganese) { v -> vm.update { it.copy(manganese = v) } }
 
             SectionHeader("Vitamins ($basisSuffix)")
             NumberField("Vitamin A (µg)", state.vitaminA) { v -> vm.update { it.copy(vitaminA = v) } }
@@ -163,6 +192,10 @@ fun AddFoodScreen(
             NumberField("Vitamin D (µg)", state.vitaminD) { v -> vm.update { it.copy(vitaminD = v) } }
             NumberField("Vitamin E (mg)", state.vitaminE) { v -> vm.update { it.copy(vitaminE = v) } }
             NumberField("Vitamin K (µg)", state.vitaminK) { v -> vm.update { it.copy(vitaminK = v) } }
+            NumberField("Vitamin B1 / Thiamin (mg)", state.vitaminB1) { v -> vm.update { it.copy(vitaminB1 = v) } }
+            NumberField("Vitamin B2 / Riboflavin (mg)", state.vitaminB2) { v -> vm.update { it.copy(vitaminB2 = v) } }
+            NumberField("Vitamin B3 / Niacin (mg)", state.vitaminB3) { v -> vm.update { it.copy(vitaminB3 = v) } }
+            NumberField("Vitamin B6 (mg)", state.vitaminB6) { v -> vm.update { it.copy(vitaminB6 = v) } }
             NumberField("Vitamin B12 (µg)", state.vitaminB12) { v -> vm.update { it.copy(vitaminB12 = v) } }
             NumberField("Folate (µg)", state.folate) { v -> vm.update { it.copy(folate = v) } }
 
@@ -204,34 +237,32 @@ private fun BasisRow(
     servingGramsInt: Int,
     onChange: (NutritionBasis) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-        FilterChip(
-            selected = basis == NutritionBasis.Per100g,
-            onClick = { onChange(NutritionBasis.Per100g) },
-            label = { Text("Per 100 g") },
-        )
-        FilterChip(
-            selected = basis == NutritionBasis.PerServing,
-            onClick = { onChange(NutritionBasis.PerServing) },
-            label = { Text("Per ${servingGramsInt} g serving") },
-        )
-    }
+    ExclusiveButtonGroup(
+        options = listOf(NutritionBasis.Per100g, NutritionBasis.PerServing),
+        selected = basis,
+        onSelect = onChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = {
+            if (it == NutritionBasis.Per100g) "Per 100 g" else "Per $servingGramsInt g serving"
+        },
+    )
 }
 
 @Composable
 private fun CategoryChips(selected: FoodCategory, onSelect: (FoodCategory) -> Unit) {
+    // One expressive ButtonGroup per row of 3 — the connected shape applies
+    // inside each row; multi-line text is allowed so long category names stay
+    // legible instead of ellipsing.
     val rows = FoodCategory.entries.chunked(3)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { cat ->
-                    FilterChip(
-                        selected = selected == cat,
-                        onClick = { onSelect(cat) },
-                        label = { Text(cat.displayName) },
-                    )
-                }
-            }
+            ExclusiveButtonGroup(
+                options = row,
+                selected = selected,
+                onSelect = onSelect,
+                modifier = Modifier.fillMaxWidth(),
+                label = { it.displayName },
+            )
         }
     }
 }

@@ -25,6 +25,12 @@ data class BarcodeUiState(
     val cached: FoodEntity? = null,
     val resolvedSource: BarcodeSource? = null,
     val basis: NutritionBasis = NutritionBasis.Per100g,
+    /**
+     * Serving size the user is about to log (grams). Initialised from the scanned
+     * product but editable on the resolve panel — overrides the source default
+     * when the printed pack disagrees with the contributor data.
+     */
+    val servingGrams: Double = 0.0,
     val notFound: Boolean = false,
     val error: String? = null,
     val isLoading: Boolean = false,
@@ -57,6 +63,7 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
                             cached = null,
                             resolvedSource = lookup.source,
                             basis = lookup.product.defaultBasis,
+                            servingGrams = lookup.product.servingGrams,
                         )
                     }
                     lookup.cached != null -> _state.update {
@@ -65,6 +72,7 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
                             product = null,
                             cached = lookup.cached,
                             resolvedSource = lookup.source,
+                            servingGrams = lookup.cached.servingGrams,
                         )
                     }
                     else -> _state.update { it.copy(isLoading = false, notFound = true) }
@@ -79,6 +87,12 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
         _state.update { it.copy(basis = basis) }
     }
 
+    /** Override the source's serving size before commit. Clamped to [1, 2000] g. */
+    fun setServingGrams(grams: Double) {
+        val clamped = grams.coerceIn(1.0, 2000.0)
+        _state.update { it.copy(servingGrams = clamped) }
+    }
+
     fun retry() {
         _state.update { BarcodeUiState() }
     }
@@ -86,18 +100,32 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
     fun quickLog(meal: MealType, onDone: () -> Unit) {
         val s = _state.value
         viewModelScope.launch {
+            val edited = s.servingGrams.takeIf { it > 0.0 }
             val food = when {
-                s.product != null -> repository.commitBarcodeProduct(s.product, s.basis)
+                s.product != null -> {
+                    // If the user edited the serving, persist it on the food row
+                    // and rebuild the label so future scans/logs show the override.
+                    val labelOverride = edited?.let { g ->
+                        if (g != s.product.servingGrams) "1 serving (${g.toInt()} g)" else null
+                    }
+                    repository.commitBarcodeProduct(
+                        product = s.product,
+                        basis = s.basis,
+                        servingGrams = edited,
+                        servingLabel = labelOverride,
+                    )
+                }
                 s.cached != null -> s.cached
                 else -> return@launch
             }
+            val gramsForLog = edited ?: food.servingGrams
             repository.addFoodLog(
                 FoodLogEntity(
                     foodId = food.id,
                     dateEpochDay = DateUtil.todayEpochDay(),
                     mealType = meal.name,
                     servings = 1.0,
-                    grams = food.servingGrams,
+                    grams = gramsForLog,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )

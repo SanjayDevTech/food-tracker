@@ -21,5 +21,9 @@ object DateUtil {
     fun shortDay(epochDay: Long): String =
         epochDayToDate(epochDay).format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
 
+    /** Compact calendar label like "5 Aug" — used for multi-week chart axes. */
+    fun shortDate(epochDay: Long): String =
+        epochDayToDate(epochDay).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+
     fun zoneId(): ZoneId = ZoneId.systemDefault()
 }

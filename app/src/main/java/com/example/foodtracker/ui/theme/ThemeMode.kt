@@ -1,19 +1,41 @@
 package com.example.foodtracker.ui.theme
 
 /**
- * How the dark color scheme is built.
+ * Light / dark routing for the app.
  *
- *  - [Amoled]        : Static mint-teal palette, pitch-black AMOLED surfaces.
- *  - [AmoledDynamic] : Wallpaper-based Material You accents (Android 12+),
- *                      still rendered on pitch-black AMOLED surfaces. Falls
- *                      back to [Amoled] on older devices.
+ *  - [System] : Follow the OS dark-mode setting. Default for new installs.
+ *  - [Light]  : Force the light scheme regardless of OS.
+ *  - [Dark]   : Force the AMOLED dark scheme regardless of OS.
+ *
+ * The dark side is always AMOLED pitch-black; there is no separate "dark
+ * (non-AMOLED)" option by design.
  */
 enum class ThemeMode(val displayName: String) {
-    Amoled("AMOLED"),
-    AmoledDynamic("AMOLED dynamic");
+    System("System"),
+    Light("Light"),
+    Dark("Dark");
 
     companion object {
         fun fromName(name: String?): ThemeMode =
-            entries.firstOrNull { it.name == name } ?: Amoled
+            entries.firstOrNull { it.name == name } ?: System
+    }
+}
+
+/**
+ * Whether to derive accent colors from the brand palette or the user's
+ * wallpaper (Material You).
+ *
+ *  - [Normal]  : Hand-curated mint + gold brand colors.
+ *  - [Dynamic] : Wallpaper-tinted colors via `dynamicLightColorScheme` /
+ *                `dynamicDarkColorScheme` (Android 12+). Falls back to
+ *                [Normal] on older devices.
+ */
+enum class ColorPalette(val displayName: String) {
+    Normal("Normal"),
+    Dynamic("Dynamic");
+
+    companion object {
+        fun fromName(name: String?): ColorPalette =
+            entries.firstOrNull { it.name == name } ?: Normal
     }
 }

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Glance widget — three macro chips with battery fills.
+
+  Sizing:
+   - targetCellWidth=4 — on Pixel Launcher this is roughly the full home-row
+     width (~312dp); the three chips look most balanced when they have room
+     to breathe.
+   - targetCellHeight=1 — short by default (just the chip row). Growing
+     taller flips on the "of N" goal footer + Fiber row.
+   - minResize 200×70 keeps the three chips legible even at the smallest
+     drag.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="200dp"
+    android:minHeight="70dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:minResizeWidth="200dp"
+    android:minResizeHeight="70dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="220dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:description="@string/widget_macros_description"
+    android:initialLayout="@layout/widget_preview_macros"
+    android:previewLayout="@layout/widget_preview_macros" />

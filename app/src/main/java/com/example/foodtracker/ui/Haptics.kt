@@ -1,61 +1,47 @@
 package com.example.foodtracker.ui
 
-import android.content.Context
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
- * Two haptic tones used across the app — anything more granular is overkill.
+ * App-facing facade over Compose's [LocalHapticFeedback]. Keeping the call sites
+ * on `haptics.confirm() / light() / reject()` (rather than raw
+ * `LocalHapticFeedback.current.performHapticFeedback(...)`) gives us:
  *
- *  - [confirm] : something happened (food logged, weight saved, reminder set).
- *    Use on primary action buttons and one-tap quick-log.
- *  - [light]   : a quiet toggle (favourite star, reminder switch). Skip on
- *    chips, sliders, FAB navigation — those already have visual feedback.
+ *  - **One vocabulary** for the whole app — call sites stay short and semantic.
+ *  - **One gating point** at the app root. `MainActivity` swaps the
+ *    `LocalHapticFeedback` provider to a no-op `HapticFeedback` when the user
+ *    disables haptics in Profile. That single override silences:
+ *      • everything routed through this facade,
+ *      • Material 3 components that use `LocalHapticFeedback` internally
+ *        (e.g. `Slider`'s tick haptics, drag-and-drop, text-handle moves).
  *
- * We use the platform [Vibrator] directly rather than Compose's [androidx.compose.ui.hapticfeedback.HapticFeedback].
- * Compose's HapticFeedbackType.LongPress / TextHandleMove maps to HapticFeedbackConstants that many devices
- * (and especially privacy-hardened ROMs like GrapheneOS) treat as no-ops if the haptic-feedback-enabled
- * system flag is off. Predefined VibrationEffects bypass that flag and play reliably.
- *
- * Gating: every dispatch respects the user-controlled `hapticsEnabled` flag stored in
- * ProfileStore — see [rememberAppHaptics].
+ * Mapping rationale (Compose 1.7+ `HapticFeedbackType`):
+ *  - [confirm] → `Confirm` — primary action landed (food logged, weight saved).
+ *  - [light]   → `ContextClick` — discrete tap on a tap target (chip toggle,
+ *    tab switch, stepper button, slider crossing, favourite star).
+ *  - [reject]  → `Reject` — validation failure / no-op tap.
  */
-class AppHaptics(
-    private val vibrator: Vibrator?,
-    private val enabled: Boolean,
-) {
-    fun confirm() {
-        if (!enabled) return
-        vibrator?.takeIf { it.hasVibrator() }
-            ?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-    }
-
-    fun light() {
-        if (!enabled) return
-        vibrator?.takeIf { it.hasVibrator() }
-            ?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-    }
+class AppHaptics(private val delegate: HapticFeedback) {
+    fun confirm() = delegate.performHapticFeedback(HapticFeedbackType.Confirm)
+    fun light() = delegate.performHapticFeedback(HapticFeedbackType.ContextClick)
+    fun reject() = delegate.performHapticFeedback(HapticFeedbackType.Reject)
 }
 
 @Composable
 fun rememberAppHaptics(): AppHaptics {
-    val context = LocalContext.current
-    val container = LocalAppContainer.current
-    val enabled by container.profileStore.hapticsEnabled.collectAsStateWithLifecycle(initialValue = true)
-    return remember(context, enabled) {
-        AppHaptics(vibrator = context.systemVibrator(), enabled = enabled)
-    }
+    val delegate = LocalHapticFeedback.current
+    return remember(delegate) { AppHaptics(delegate) }
 }
 
-private fun Context.systemVibrator(): Vibrator? {
-    // VibratorManager is the API 31+ way; the legacy Context.VIBRATOR_SERVICE
-    // still works as a fallback but is deprecated. minSdk = 33 here.
-    val manager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-    return manager?.defaultVibrator
+/**
+ * Shared no-op [HapticFeedback] used by `MainActivity` to silence the whole
+ * subtree when the user has haptics off. Exposing it as a top-level singleton
+ * keeps recomposition cheap (same instance every frame the flag is `false`).
+ */
+val NoOpHapticFeedback: HapticFeedback = object : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {}
 }

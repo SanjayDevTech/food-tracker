@@ -9,9 +9,10 @@ import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.example.foodtracker.DeepLink
 import com.example.foodtracker.FoodTrackerApp
-import com.example.foodtracker.MainActivity
 import com.example.foodtracker.R
+import com.example.foodtracker.data.MealType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,32 +47,65 @@ class ReminderReceiver : BroadcastReceiver() {
         val kindName = intent.getStringExtra(EXTRA_KIND) ?: return
         val kind = runCatching { ReminderKind.valueOf(kindName) }.getOrNull() ?: return
 
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED
-        ) return
-
         ReminderScheduler.ensureChannel(context)
 
-        val launchIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        // Post the notification only if we have permission. We still re-arm for
+        // tomorrow regardless — the user may grant the permission later, and we
+        // don't want a permission denial to silently kill the daily schedule.
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            val launchIntent = launchIntentFor(context, kind)
+            val contentPI = PendingIntent.getActivity(
+                context,
+                kind.ordinal,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+            val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(kind.title)
+                .setContentText(kind.body)
+                .setContentIntent(contentPI)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build()
+
+            NotificationManagerCompat.from(context).notify(kind.ordinal, notification)
         }
-        val contentPI = PendingIntent.getActivity(
-            context,
-            kind.ordinal,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
 
-        val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(kind.title)
-            .setContentText(kind.body)
-            .setContentIntent(contentPI)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+        // Re-arm for tomorrow. We schedule one-shot alarms (setAndAllowWhileIdle)
+        // so they survive Doze; the trade-off is we must reschedule after each
+        // fire, otherwise the reminder fires once and never again.
+        val app = context.applicationContext as? FoodTrackerApp ?: return
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val config = app.reminderStore.snapshot().firstOrNull { it.kind == kind }
+                if (config != null && config.enabled) {
+                    app.reminderScheduler.apply(config)
+                }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
 
-        NotificationManagerCompat.from(context).notify(kind.ordinal, notification)
+    /**
+     * Build the deep-link intent for a tapped reminder notification.
+     *
+     * Meal reminders open LogFoodScreen with the meal preselected; Water and
+     * Weigh-in reminders jump straight to their respective screens so the user
+     * lands on the page they need to act on.
+     */
+    private fun launchIntentFor(context: Context, kind: ReminderKind): Intent = when (kind) {
+        ReminderKind.Breakfast -> DeepLink.logMealIntent(context, MealType.Breakfast.name)
+        ReminderKind.Lunch -> DeepLink.logMealIntent(context, MealType.Lunch.name)
+        ReminderKind.Snack -> DeepLink.logMealIntent(context, MealType.Snack.name)
+        ReminderKind.Dinner -> DeepLink.logMealIntent(context, MealType.Dinner.name)
+        ReminderKind.Water -> DeepLink.openWaterIntent(context)
+        ReminderKind.WeighIn -> DeepLink.openWeightIntent(context)
     }
 
     companion object {

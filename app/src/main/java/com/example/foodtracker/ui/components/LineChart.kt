@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -30,10 +31,15 @@ fun LineChart(
     modifier: Modifier = Modifier,
     minOverride: Double? = null,
     maxOverride: Double? = null,
+    /** Optional horizontal dashed reference line — e.g. goal weight. */
+    referenceLine: Double? = null,
+    /** Caption painted near the reference line (only when [referenceLine] is set). */
+    referenceLabel: String? = null,
 ) {
     val measurer = rememberTextMeasurer()
     val outline = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val referenceColor = MaterialTheme.colorScheme.tertiary
 
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
@@ -46,10 +52,14 @@ fun LineChart(
             val values = points.map { it.value }
             val dataMin = values.min()
             val dataMax = values.max()
+            // Expand bounds so the reference line stays in view even when the
+            // user is far from their goal.
+            val refExpandedMin = referenceLine?.let { minOf(dataMin, it) } ?: dataMin
+            val refExpandedMax = referenceLine?.let { maxOf(dataMax, it) } ?: dataMax
             // Add 10% headroom so the line never grazes the top/bottom.
-            val padding = ((dataMax - dataMin) * 0.1).coerceAtLeast(0.5)
-            val minV = (minOverride ?: (dataMin - padding))
-            val maxV = (maxOverride ?: (dataMax + padding)).coerceAtLeast(minV + 0.5)
+            val padding = ((refExpandedMax - refExpandedMin) * 0.1).coerceAtLeast(0.5)
+            val minV = (minOverride ?: (refExpandedMin - padding))
+            val maxV = (maxOverride ?: (refExpandedMax + padding)).coerceAtLeast(minV + 0.5)
             val w = size.width
             val h = size.height
 
@@ -68,6 +78,32 @@ fun LineChart(
             fun toPx(value: Double): Float {
                 val ratio = ((value - minV) / (maxV - minV)).toFloat().coerceIn(0f, 1f)
                 return h - h * ratio
+            }
+
+            // Goal-line overlay drawn under the data path so the line crosses
+            // it visually — gives an "are we close?" read at a glance.
+            if (referenceLine != null) {
+                val refY = toPx(referenceLine)
+                drawLine(
+                    color = referenceColor,
+                    start = Offset(0f, refY),
+                    end = Offset(w, refY),
+                    strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)),
+                )
+                if (referenceLabel != null) {
+                    val layout = measurer.measure(
+                        AnnotatedString(referenceLabel),
+                        style = TextStyle(fontSize = 10.sp, color = referenceColor),
+                    )
+                    // Right-align so it doesn't collide with the leftmost data point.
+                    val labelX = (w - layout.size.width - 4.dp.toPx()).coerceAtLeast(0f)
+                    val labelY = (refY - layout.size.height - 2.dp.toPx()).coerceAtLeast(0f)
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(labelX, labelY),
+                    )
+                }
             }
 
             val path = Path()

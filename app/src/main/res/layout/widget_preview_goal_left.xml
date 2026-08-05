@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Preview shown in the widget picker AND used as initialLayout for the brief
+  moment before Glance binds. Must use only RemoteViews-compatible view types
+  (FrameLayout/LinearLayout/TextView/ImageView/etc.) — bare <View> and <Space>
+  are NOT in the @RemoteView allowlist, so using them here makes the initial
+  layout render blank.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg_primary">
+
+    <!-- Battery-style fill — left ~55%. FrameLayout (not View) so RemoteViews
+         is happy with the inflation. -->
+    <FrameLayout
+        android:layout_width="140dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_preview_bg_primary_fill" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LEFT"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_on_primary_container" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="bottom"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1,200"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_on_primary_container" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="kcal"
+                android:textSize="12sp"
+                android:textColor="@color/widget_on_primary_container"
+                android:layout_marginStart="4dp"
+                android:paddingBottom="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

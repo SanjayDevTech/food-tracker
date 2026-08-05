@@ -7,10 +7,12 @@ import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
+import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
+import com.example.foodtracker.data.db.WeightLogEntity
 import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.util.DateUtil
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,10 +21,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalTime
 
 data class HomeUiState(
     val epochDay: Long,
@@ -33,7 +33,7 @@ data class HomeUiState(
     val caloriesBurned: Double,
     val favourites: List<FoodEntity> = emptyList(),
     val recent: List<FoodEntity> = emptyList(),
-    val canCopyYesterday: Boolean = false,
+    val latestWeight: WeightLogEntity? = null,
 ) {
     val totalNutrients: Nutrients = logs.fold(Nutrients.Zero) { acc, row ->
         acc + (row.food.nutrientsPer100g() * (row.log.grams / 100.0))
@@ -59,7 +59,7 @@ class HomeViewModel(
     private data class QuickState(
         val favourites: List<FoodEntity>,
         val recent: List<FoodEntity>,
-        val canCopyYesterday: Boolean,
+        val latestWeight: WeightLogEntity?,
     )
 
     val state: StateFlow<HomeUiState> = selectedDay
@@ -73,14 +73,10 @@ class HomeViewModel(
 
             val quickFlow = combine(
                 repository.observeFavouriteFoods(),
-                repository.observeRecentFoods(limit = 8),
-                repository.observeLogForDay(day - 1),
-            ) { favs, recent, yLogs ->
-                QuickState(
-                    favourites = favs,
-                    recent = recent,
-                    canCopyYesterday = yLogs.isNotEmpty(),
-                )
+                repository.observeRecentFoods(limit = 10),
+                repository.observeLatestWeight(),
+            ) { favs, recent, weight ->
+                QuickState(favourites = favs, recent = recent, latestWeight = weight)
             }
 
             combine(coreFlow, quickFlow) { core, quick ->
@@ -93,7 +89,7 @@ class HomeViewModel(
                     caloriesBurned = core.burned,
                     favourites = quick.favourites,
                     recent = quick.recent,
-                    canCopyYesterday = quick.canCopyYesterday,
+                    latestWeight = quick.latestWeight,
                 )
             }
         }
@@ -122,37 +118,32 @@ class HomeViewModel(
         viewModelScope.launch { repository.deleteFoodLog(id) }
     }
 
-    /** Re-log a favourite/recent food using its first serving variant at 1 serving. */
-    fun quickLog(food: FoodEntity) {
-        val variant = food.variantsOrDefault().first()
+    /**
+     * Commit a quick-log entry after the user has confirmed the variant /
+     * grams / servings / meal via the shared [ServingSheet]. Math mirrors
+     * `LogFoodViewModel.confirmLog` so a Home shortcut and the picker flow
+     * produce identical rows.
+     */
+    fun quickLog(
+        food: FoodEntity,
+        variant: ServingVariant,
+        servings: Double,
+        meal: MealType,
+    ) {
+        if (servings <= 0.0) return
         viewModelScope.launch {
             repository.addFoodLog(
                 FoodLogEntity(
                     foodId = food.id,
                     dateEpochDay = DateUtil.todayEpochDay(),
-                    mealType = currentMealAt(LocalTime.now()).name,
-                    servings = 1.0,
-                    grams = variant.grams,
+                    mealType = meal.name,
+                    servings = servings,
+                    grams = servings * variant.grams,
                     servingLabel = variant.label,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )
         }
     }
-
-    /** Copy every food entry from yesterday into today, preserving meal types. */
-    fun copyYesterday() {
-        viewModelScope.launch {
-            val yesterday = DateUtil.todayEpochDay() - 1
-            val rows = repository.observeLogForDay(yesterday).first()
-            repository.copyLogsToToday(rows)
-        }
-    }
 }
 
-private fun currentMealAt(time: LocalTime): MealType = when {
-    time.hour < 11 -> MealType.Breakfast
-    time.hour < 15 -> MealType.Lunch
-    time.hour < 19 -> MealType.Snack
-    else -> MealType.Dinner
-}

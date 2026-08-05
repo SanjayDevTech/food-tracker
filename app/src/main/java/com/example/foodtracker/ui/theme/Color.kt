@@ -76,3 +76,4 @@ val MacroFat = Color(0xFFE8B870)       // warm tan (lifted, separated from fiber
 val MacroFiber = Color(0xFFB0AE5A)     // olive-green (shifted away from tan)
 val MacroWater = Color(0xFF72B3D1)     // dusty blue (lifted)
 val MacroBurned = Color(0xFFD687A6)    // dusty rose (lifted)
+val MacroWeight = Color(0xFF8FBC97)    // sage green (calm, neutral)

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget corner radii — fallback values for Android 11 and below. The v31
+  variant overrides these to reference the framework's
+  `system_app_widget_background_radius` / `system_app_widget_inner_radius`,
+  which the OS keeps in lockstep with whatever the launcher (Pixel Launcher
+  on Pixel devices) uses for its own widget chrome. Without that override
+  our widgets look slightly more (or less) rounded than the ones sitting
+  next to them on the home screen.
+-->
+<resources>
+    <dimen name="widget_corner_radius">16dp</dimen>
+    <dimen name="widget_inner_radius">12dp</dimen>
+</resources>

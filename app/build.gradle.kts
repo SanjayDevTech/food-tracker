@@ -23,15 +23,13 @@ val usdaApiKey: String = creds("USDA_API_KEY", "DEMO_KEY")
 android {
     namespace = "com.example.foodtracker"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "com.example.foodtracker"
-        minSdk = 33
-        targetSdk = 36
+        minSdk = 31
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -42,7 +40,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -95,7 +94,17 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.guava)
+    // Play-Services-hosted ML Kit — the scan engine + model live in Google Play
+    // Services, so our APK doesn't ship them (~19 MB saved across 4 ABIs).
+    // Tradeoff: requires GMS installed on the device. Acceptable since the
+    // target audience is mainstream Play Store users.
     implementation(libs.play.services.mlkit.barcode.scanning)
+
+    // Jetpack Glance — Compose-style API for AppWidgets. We read directly from
+    // the existing Room DAOs inside provideGlance (suspend context, no extra
+    // serialization layer) and ping widgets to update after food log writes.
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

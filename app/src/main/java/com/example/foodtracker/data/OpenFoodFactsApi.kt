@@ -227,6 +227,8 @@ class OpenFoodFactsApi {
         protein = nutriments.num("proteins$suffix") ?: 0.0,
         fat = nutriments.num("fat$suffix") ?: 0.0,
         saturatedFat = nutriments.num("saturated-fat$suffix") ?: 0.0,
+        // OFF reports omega-3 in grams — no scaling, matches our grams field.
+        omega3 = nutriments.num("omega-3-fat$suffix") ?: 0.0,
         cholesterol = nutriments.num("cholesterol$suffix")?.times(1000.0) ?: 0.0,
         sodium = nutriments.num("sodium$suffix")?.times(1000.0)
             ?: nutriments.num("salt$suffix")?.times(400.0) ?: 0.0,
@@ -235,6 +237,11 @@ class OpenFoodFactsApi {
         magnesium = nutriments.num("magnesium$suffix")?.times(1000.0) ?: 0.0,
         potassium = nutriments.num("potassium$suffix")?.times(1000.0) ?: 0.0,
         zinc = nutriments.num("zinc$suffix")?.times(1000.0) ?: 0.0,
+        // OFF reports minerals in grams (base SI); ×1000 → mg, ×1_000_000 → µg.
+        phosphorus = nutriments.num("phosphorus$suffix")?.times(1000.0) ?: 0.0,
+        selenium = nutriments.num("selenium$suffix")?.times(1_000_000.0) ?: 0.0,
+        copper = nutriments.num("copper$suffix")?.times(1000.0) ?: 0.0,
+        manganese = nutriments.num("manganese$suffix")?.times(1000.0) ?: 0.0,
         vitaminA = nutriments.num("vitamin-a$suffix")?.times(1_000_000.0) ?: 0.0,
         vitaminC = nutriments.num("vitamin-c$suffix")?.times(1000.0) ?: 0.0,
         vitaminD = nutriments.num("vitamin-d$suffix")?.times(1_000_000.0) ?: 0.0,
@@ -243,6 +250,13 @@ class OpenFoodFactsApi {
         vitaminB12 = nutriments.num("vitamin-b12$suffix")?.times(1_000_000.0) ?: 0.0,
         folate = nutriments.num("folates$suffix")?.times(1_000_000.0)
             ?: nutriments.num("folic-acid$suffix")?.times(1_000_000.0) ?: 0.0,
+        // B-complex reported in grams → ×1000 for mg. OFF labels niacin as
+        // "vitamin-pp" (pellagra-preventing); accept "vitamin-b3" as a fallback.
+        vitaminB1 = nutriments.num("vitamin-b1$suffix")?.times(1000.0) ?: 0.0,
+        vitaminB2 = nutriments.num("vitamin-b2$suffix")?.times(1000.0) ?: 0.0,
+        vitaminB3 = nutriments.num("vitamin-pp$suffix")?.times(1000.0)
+            ?: nutriments.num("vitamin-b3$suffix")?.times(1000.0) ?: 0.0,
+        vitaminB6 = nutriments.num("vitamin-b6$suffix")?.times(1000.0) ?: 0.0,
     )
 
     private fun Nutrients.takeIfNonEmpty(): Nutrients? =

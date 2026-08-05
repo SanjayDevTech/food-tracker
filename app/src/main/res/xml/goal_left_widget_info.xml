@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Glance widget — calories-left battery display.
+
+  Sizing:
+   - targetCellWidth=2, targetCellHeight=1 — on Pixel Launcher's 5×4 grid
+     that lands at roughly 156×140dp, which fits the "compact" tier
+     (single big number, no detail line). User can drag wider/taller for
+     the detail line.
+   - minResize 110×80 lets the user shrink it down to a tile-sized widget.
+   - maxResize 400×260 gives plenty of room on tablets / large phones.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="80dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="80dp"
+    android:maxResizeWidth="400dp"
+    android:maxResizeHeight="260dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:description="@string/widget_goal_left_description"
+    android:initialLayout="@layout/widget_preview_goal_left"
+    android:previewLayout="@layout/widget_preview_goal_left" />

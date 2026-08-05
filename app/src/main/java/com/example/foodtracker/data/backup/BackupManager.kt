@@ -8,8 +8,12 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import com.example.foodtracker.BuildConfig
+import com.example.foodtracker.data.AllNutrientFields
+import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.db.AppDatabase
+import com.example.foodtracker.domain.GoalCalculator
+import com.example.foodtracker.util.DateUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -44,11 +48,27 @@ class BackupManager(
         encodeDefaults = true
     }
 
+    /**
+     * Compact serializer for the AI-analysis export: no pretty-printing and
+     * `encodeDefaults = false` so `null` brands, `custom = false`, and other
+     * defaults drop out — keeps the file small (its whole point).
+     */
+    private val analysisJson = Json {
+        prettyPrint = false
+        ignoreUnknownKeys = true
+        encodeDefaults = false
+    }
+
     private val backupCollection: Uri
         get() = MediaStore.Downloads.EXTERNAL_CONTENT_URI
 
     /** `Downloads/FoodTracker/` — where local backups land. */
     private val relativeDir = "${Environment.DIRECTORY_DOWNLOADS}/FoodTracker/"
+
+    companion object {
+        /** Most recent N backups to retain; older snapshots are deleted automatically. */
+        const val MAX_LOCAL_BACKUPS = 5
+    }
 
     // ─── Snapshot construction ────────────────────────────────────────────
 
@@ -56,17 +76,136 @@ class BackupManager(
         val profile = profileStore.profile.first()
         val haptics = profileStore.hapticsEnabled.first()
         val theme = profileStore.themeMode.first()
+        val foodDao = database.foodDao()
+        val foodLogDao = database.foodLogDao()
+
+        // Build the food log first so we know which foods to include. We attach
+        // each log's source food (when still resolvable) so the snapshot carries
+        // the portable `foodClientUuid` + `foodName` for cross-install lookup.
+        val foodsById = foodDao.getAll().associateBy { it.id }
+        val foodLogs = foodLogDao.getAll()
+        val foodLogSnaps = foodLogs.map { FoodLogSnapshot.from(it, foodsById[it.foodId]) }
+
+        // Custom foods to include = only those referenced by at least one log
+        // entry. Seeded foods are reproduced from `IndianFoodSeed` on the target
+        // install, so we don't ship them inside the backup payload.
+        val referencedFoodIds = foodLogs.mapTo(mutableSetOf()) { it.foodId }
+        val customs = foodDao.getAllCustom().filter { it.id in referencedFoodIds }
+
         BackupPayload(
             createdAtMillis = System.currentTimeMillis(),
             appVersion = BuildConfig.VERSION_NAME,
             profile = ProfileSnapshot.from(profile, haptics, theme),
-            foods = database.foodDao().getAll().map(FoodSnapshot::from),
-            foodLog = database.foodLogDao().getAll().map(FoodLogSnapshot::from),
+            customFoods = customs.map(FoodSnapshot::from),
+            foodLog = foodLogSnaps,
             waterLog = database.waterLogDao().getAll().map(WaterLogSnapshot::from),
             activityLog = database.activityLogDao().getAll().map(ActivityLogSnapshot::from),
             weightLog = database.weightLogDao().getAll().map(WeightLogSnapshot::from),
         )
     }
+
+    // ─── AI-analysis log export ───────────────────────────────────────────
+
+    /**
+     * Build a compact, self-describing snapshot of the user's food logs over the
+     * last [range] days — foods de-duplicated into a reference map, zero
+     * nutrients dropped, numbers rounded — for handing to an external AI. See
+     * [AnalysisExport]. Read-only; never written back to the DB.
+     */
+    suspend fun buildAnalysisExport(range: AnalysisRange): AnalysisExport = withContext(Dispatchers.IO) {
+        val today = DateUtil.todayEpochDay()
+        val start = today - range.days + 1
+        val end = today
+
+        val profile = profileStore.profile.first()
+        val goals = GoalCalculator.goalsFor(profile)
+        val rows = database.foodLogDao().getForRange(start, end)
+
+        // Distinct foods referenced in-range, keyed by local id (as a string).
+        val foods = rows.associate { it.food.id.toString() to it.food }
+            .mapValues { (_, f) ->
+                AnalysisFood(
+                    name = f.name,
+                    category = f.category,
+                    brand = f.brand,
+                    custom = f.isCustom,
+                    per100g = compactNutrients(f.nutrientsPer100g()),
+                )
+            }
+
+        val logs = rows.map { row ->
+            AnalysisLog(
+                d = DateUtil.epochDayToDate(row.log.dateEpochDay).toString(),
+                meal = row.log.mealType,
+                food = row.food.id.toString(),
+                g = round2(row.log.grams),
+            )
+        }
+
+        AnalysisExport(
+            app = "FoodTracker",
+            schema = "food-log-analysis/1",
+            exportedOn = DateUtil.epochDayToDate(today).toString(),
+            readme = "Food-log export for nutrition analysis. `foods` lists each " +
+                "distinct food once, keyed by an id; nutrient values in `per100g` are " +
+                "PER 100 GRAMS (units are in `units`). Each entry in `logs` is one logged " +
+                "food: d=date, meal=meal, food=id into `foods`, g=grams eaten. To get " +
+                "nutrients actually consumed for an entry, multiply that food's per100g " +
+                "values by g/100. `dailyGoals` are the user's daily targets (same " +
+                "keys/units) for gauging whether intake is on track. " +
+                "Conventions: a nutrient absent from a food's `per100g` (or from " +
+                "`dailyGoals`) means that value is ~0, NOT unknown. `brand` is present " +
+                "only when the food carries one.",
+            range = AnalysisRangeInfo(
+                label = range.label,
+                startDate = DateUtil.epochDayToDate(start).toString(),
+                endDate = DateUtil.epochDayToDate(end).toString(),
+                days = range.days,
+                entries = logs.size,
+                distinctFoods = foods.size,
+            ),
+            units = AllNutrientFields.associate { it.key to it.unit.symbol },
+            profile = AnalysisProfile(
+                sex = profile.sex.name,
+                ageYears = profile.ageYears,
+                heightCm = profile.heightCm,
+                weightKg = round2(profile.weightKg),
+                goal = profile.goal.name,
+                activityLevel = profile.activityLevel.name,
+                goalWeightKg = profile.goalWeightKg?.let(::round2),
+            ),
+            dailyGoals = AllNutrientFields
+                .associate { it.key to round2(it.goal(goals)) }
+                .filterValues { it != 0.0 },
+            foods = foods,
+            logs = logs,
+        )
+    }
+
+    /**
+     * Serialise a [buildAnalysisExport] to the user-picked [target] URI.
+     * Returns the number of log entries written so the caller can confirm it.
+     */
+    suspend fun exportAnalysisTo(target: Uri, range: AnalysisRange): Result<Int> = runCatching {
+        val payload = buildAnalysisExport(range)
+        withContext(Dispatchers.IO) {
+            context.contentResolver.openOutputStream(target, "w").use { stream ->
+                requireNotNull(stream) { "Cannot open output stream for $target" }
+                stream.writer(Charsets.UTF_8).use { writer ->
+                    writer.write(analysisJson.encodeToString(AnalysisExport.serializer(), payload))
+                    writer.flush()
+                }
+            }
+        }
+        payload.logs.size
+    }
+
+    /** Per-100 g nutrients as a compact map, rounded, with zero values dropped. */
+    private fun compactNutrients(n: Nutrients): Map<String, Double> =
+        AllNutrientFields.mapNotNull { field ->
+            val v = round2(field.read(n))
+            if (v == 0.0) null else field.key to v
+        }.toMap()
 
     // ─── External export / import (Storage Access Framework) ──────────────
 
@@ -116,11 +255,24 @@ class BackupManager(
     suspend fun saveLocalBackup(): Result<LocalBackup> = runCatching {
         val payload = buildSnapshot()
         val customUri = profileStore.backupFolderUri.first()?.let(Uri::parse)
-        withContext(Dispatchers.IO) {
+        val saved = withContext(Dispatchers.IO) {
             val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
             val name = "foodtracker-backup-$timestamp.json"
             if (customUri != null) writeToCustomFolder(customUri, name, payload)
             else writeToDownloads(name, payload)
+        }
+        // Auto-prune: keep only the newest MAX_LOCAL_BACKUPS files. Any older
+        // snapshots get deleted so the backup folder doesn't grow forever.
+        // Failures here are non-fatal — we already wrote the new backup.
+        runCatching { pruneOldBackups() }
+        saved
+    }
+
+    private suspend fun pruneOldBackups() {
+        val all = listBackups()
+        if (all.size <= MAX_LOCAL_BACKUPS) return
+        all.drop(MAX_LOCAL_BACKUPS).forEach { stale ->
+            runCatching { deleteLocalBackup(stale) }
         }
     }
 
@@ -320,9 +472,22 @@ class BackupManager(
     }
 
     /**
-     * Nuke-and-replace restore. We delete in FK-safe order (foods last, so
-     * the CASCADE doesn't trip), then re-insert in dependency order so
-     * food_log's foreign keys resolve.
+     * Merge-style restore.
+     *
+     * Foods (customs):
+     *  - Existing local customs are NEVER overwritten. We match by
+     *    `clientUuid` first; if a row with that UUID already exists locally,
+     *    we reuse it and skip the insert.
+     *  - Customs in the backup that have no local match are inserted with a
+     *    fresh local id but the original `clientUuid` preserved.
+     *  - Seeded foods are not in the payload (or are skipped if they are):
+     *    they're reproduced from `IndianFoodSeed` on install and matched by
+     *    name when resolving log entries.
+     *
+     * Logs (food/water/activity/weight) and profile are replaced wholesale.
+     * Each log entry's `foodId` is rewritten to the resolved local id before
+     * insert; entries that can't be resolved (e.g. seeded name no longer in
+     * the DB) are dropped.
      */
     private suspend fun restoreFromPayload(payload: BackupPayload) = withContext(Dispatchers.IO) {
         val foodDao = database.foodDao()
@@ -331,20 +496,68 @@ class BackupManager(
         val activityDao = database.activityLogDao()
         val weightDao = database.weightLogDao()
 
-        // Wipe everything. Deleting foods CASCADEs food_log; we still clear
-        // food_log explicitly so the order is obvious from the code.
+        // Custom-food merge — never touch an existing local custom; only add
+        // missing ones. Matching priority: clientUuid → barcode → (name, brand).
+        val backupCustoms = if (payload.customFoods.isNotEmpty()) {
+            payload.customFoods
+        } else {
+            // Schema-1 fallback: the legacy `foods` list mixed seeded + customs.
+            payload.foods.filter { it.isCustom }
+        }
+
+        // Index every food by old-snapshot-id so we can resolve schema-1 logs
+        // whose `foodId` is the only pointer back to the source food.
+        val byOldId: Map<Long, FoodSnapshot> =
+            (payload.customFoods + payload.foods).associateBy { it.id }
+
+        // oldFoodId → local FoodEntity.id (for log resolution).
+        val oldIdToLocalId = mutableMapOf<Long, Long>()
+
+        for (food in backupCustoms) {
+            val existing = food.clientUuid?.let { foodDao.findByClientUuid(it) }
+                ?: food.barcode?.let { foodDao.findByBarcode(it) }
+                ?: existingCustomByNameBrand(foodDao, food)
+            val localId = if (existing != null) {
+                existing.id // reuse — do NOT overwrite
+            } else {
+                foodDao.upsert(food.toInsertableEntity())
+            }
+            oldIdToLocalId[food.id] = localId
+        }
+
+        // Seeded foods present in a schema-1 payload — resolve by name only,
+        // never insert (the local install already seeded them).
+        val seededByName: Map<String, Long> =
+            foodDao.getAllSeeded().associate { it.name.lowercase() to it.id }
+        for (food in payload.foods) {
+            if (food.isCustom) continue
+            val localId = seededByName[food.name.lowercase()] ?: continue
+            oldIdToLocalId[food.id] = localId
+        }
+
+        // Replace foodLog wholesale (it's user-owned data and a backup is a
+        // point-in-time copy — we don't try to dedupe entries).
         foodLogDao.deleteAll()
+        val resolvedLogs = payload.foodLog.mapNotNull { log ->
+            val localFoodId = resolveLocalFoodId(
+                log = log,
+                foodDao = foodDao,
+                byOldId = byOldId,
+                oldIdToLocalId = oldIdToLocalId,
+                seededByName = seededByName,
+                backupCustoms = backupCustoms,
+            ) ?: return@mapNotNull null
+            log.toEntity(localFoodId)
+        }
+        foodLogDao.insertAll(resolvedLogs)
+
+        // The rest of the logs don't reference foods — wipe and re-insert.
         waterDao.deleteAll()
         activityDao.deleteAll()
         weightDao.deleteAll()
-        foodDao.deleteAll()
-
-        // Re-insert. Foods first so food_log foreign keys can resolve.
-        foodDao.upsertAll(payload.foods.map { it.toEntity() })
-        foodLogDao.insertAll(payload.foodLog.map { it.toEntity() })
-        waterDao.insertAll(payload.waterLog.map { it.toEntity() })
-        activityDao.insertAll(payload.activityLog.map { it.toEntity() })
-        weightDao.upsertAll(payload.weightLog.map { it.toEntity() })
+        waterDao.insertAll(payload.waterLog.map { it.toEntity().copy(id = 0) })
+        activityDao.insertAll(payload.activityLog.map { it.toEntity().copy(id = 0) })
+        weightDao.upsertAll(payload.weightLog.map { it.toEntity().copy(id = 0) })
 
         // Restore profile + settings. We mark onboarded so the user lands
         // on Home directly after a restore.
@@ -353,8 +566,55 @@ class BackupManager(
         profileStore.setThemeMode(
             com.example.foodtracker.ui.theme.ThemeMode.fromName(payload.profile.themeMode)
         )
+        // No explicit widget refresh needed here: the profileStore.save() above
+        // runs after all log/activity rows are restored and fires its
+        // onProfileChanged hook → WidgetUpdater.updateAll with the final data.
+    }
+
+    private suspend fun existingCustomByNameBrand(
+        foodDao: com.example.foodtracker.data.db.FoodDao,
+        food: FoodSnapshot,
+    ): com.example.foodtracker.data.db.FoodEntity? {
+        // Last-resort match for backups that predate clientUuid. Conservative:
+        // only matches when both name and brand line up exactly (case-insensitive).
+        return foodDao.getAllCustom().firstOrNull {
+            it.name.equals(food.name, ignoreCase = true) &&
+                (it.brand ?: "").equals(food.brand ?: "", ignoreCase = true)
+        }
+    }
+
+    private suspend fun resolveLocalFoodId(
+        log: FoodLogSnapshot,
+        foodDao: com.example.foodtracker.data.db.FoodDao,
+        byOldId: Map<Long, FoodSnapshot>,
+        oldIdToLocalId: Map<Long, Long>,
+        seededByName: Map<String, Long>,
+        backupCustoms: List<FoodSnapshot>,
+    ): Long? {
+        // Preferred: the log carries a clientUuid for the referenced custom.
+        log.foodClientUuid?.let { uuid ->
+            foodDao.findByClientUuid(uuid)?.let { return it.id }
+            // UUID not local yet — maybe the custom was just inserted.
+            backupCustoms.firstOrNull { it.clientUuid == uuid }
+                ?.let { return oldIdToLocalId[it.id] }
+        }
+        // Fallback: the log's name resolves to a seeded row.
+        if (log.foodName.isNotBlank()) {
+            seededByName[log.foodName.lowercase()]?.let { return it }
+        }
+        // Last resort (schema-1 logs): map via old foodId.
+        oldIdToLocalId[log.foodId]?.let { return it }
+        // Schema-1 + seeded: look the source food up by id and resolve its name.
+        val sourceFood = byOldId[log.foodId] ?: return null
+        if (!sourceFood.isCustom) {
+            seededByName[sourceFood.name.lowercase()]?.let { return it }
+        }
+        return null
     }
 }
+
+/** Round to 2 decimals — trims export size without losing meaningful precision. */
+private fun round2(v: Double): Double = Math.round(v * 100.0) / 100.0
 
 /**
  * Lightweight view of a backup file the app can read/delete. `uri` works
