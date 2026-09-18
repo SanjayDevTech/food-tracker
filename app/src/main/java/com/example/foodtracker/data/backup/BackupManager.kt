@@ -7,6 +7,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
+import androidx.room.withTransaction
 import com.example.foodtracker.BuildConfig
 import com.example.foodtracker.data.AllNutrientFields
 import com.example.foodtracker.data.Nutrients
@@ -490,6 +491,28 @@ class BackupManager(
      * the DB) are dropped.
      */
     private suspend fun restoreFromPayload(payload: BackupPayload) = withContext(Dispatchers.IO) {
+        // One transaction around every Room write. A restore deletes the user's
+        // whole log before re-inserting it, so without this a failure partway -
+        // a malformed row in a hand-edited JSON, a full disk, process death -
+        // commits the deletes and loses the data the user was trying to get
+        // back. runCatching in restoreFrom/importFrom reports the failure but
+        // cannot undo it. The profileStore writes stay outside: DataStore is
+        // not part of the transaction and could not roll back anyway.
+        database.withTransaction { restoreRoomTables(payload) }
+
+        // Restore profile + settings. We mark onboarded so the user lands
+        // on Home directly after a restore.
+        profileStore.save(payload.profile.toUserProfile(), markOnboarded = true)
+        profileStore.setHapticsEnabled(payload.profile.hapticsEnabled)
+        profileStore.setThemeMode(
+            com.example.foodtracker.ui.theme.ThemeMode.fromName(payload.profile.themeMode)
+        )
+        // No explicit widget refresh needed here: the profileStore.save() above
+        // runs after all log/activity rows are restored and fires its
+        // onProfileChanged hook → WidgetUpdater.updateAll with the final data.
+    }
+
+    private suspend fun restoreRoomTables(payload: BackupPayload) {
         val foodDao = database.foodDao()
         val foodLogDao = database.foodLogDao()
         val waterDao = database.waterLogDao()
@@ -558,17 +581,6 @@ class BackupManager(
         waterDao.insertAll(payload.waterLog.map { it.toEntity().copy(id = 0) })
         activityDao.insertAll(payload.activityLog.map { it.toEntity().copy(id = 0) })
         weightDao.upsertAll(payload.weightLog.map { it.toEntity().copy(id = 0) })
-
-        // Restore profile + settings. We mark onboarded so the user lands
-        // on Home directly after a restore.
-        profileStore.save(payload.profile.toUserProfile(), markOnboarded = true)
-        profileStore.setHapticsEnabled(payload.profile.hapticsEnabled)
-        profileStore.setThemeMode(
-            com.example.foodtracker.ui.theme.ThemeMode.fromName(payload.profile.themeMode)
-        )
-        // No explicit widget refresh needed here: the profileStore.save() above
-        // runs after all log/activity rows are restored and fires its
-        // onProfileChanged hook → WidgetUpdater.updateAll with the final data.
     }
 
     private suspend fun existingCustomByNameBrand(
