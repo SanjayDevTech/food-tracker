@@ -1,6 +1,9 @@
 package com.example.foodtracker.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -83,21 +87,12 @@ fun AppNav(
             navController = navController,
             startDestination = OnboardingRoute,
             modifier = Modifier.fillMaxSize(),
-            // Standard Android push/pop: new screen slides in from the right
-            // and pushes the previous screen ~30% to the left (parallax).
-            // Back reverses the motion. 300ms matches the Material spec.
-            enterTransition = {
-                slideIntoContainer(SlideDirection.Start, tween(300))
-            },
-            exitTransition = {
-                slideOutOfContainer(SlideDirection.Start, tween(300)) { it / 3 }
-            },
-            popEnterTransition = {
-                slideIntoContainer(SlideDirection.End, tween(300)) { it / 3 }
-            },
-            popExitTransition = {
-                slideOutOfContainer(SlideDirection.End, tween(300))
-            },
+            enterTransition = navEnter,
+            exitTransition = navExit,
+            popEnterTransition = navPopEnter,
+            popExitTransition = navPopExit,
+            predictivePopEnterTransition = navPredictivePopEnter,
+            predictivePopExitTransition = navPredictivePopExit,
         ) {
             graph(navController)
         }
@@ -105,22 +100,58 @@ fun AppNav(
             navController = navController,
             startDestination = HomeRoute,
             modifier = Modifier.fillMaxSize(),
-            enterTransition = {
-                slideIntoContainer(SlideDirection.Start, tween(300))
-            },
-            exitTransition = {
-                slideOutOfContainer(SlideDirection.Start, tween(300)) { it / 3 }
-            },
-            popEnterTransition = {
-                slideIntoContainer(SlideDirection.End, tween(300)) { it / 3 }
-            },
-            popExitTransition = {
-                slideOutOfContainer(SlideDirection.End, tween(300))
-            },
+            enterTransition = navEnter,
+            exitTransition = navExit,
+            popEnterTransition = navPopEnter,
+            popExitTransition = navPopExit,
+            predictivePopEnterTransition = navPredictivePopEnter,
+            predictivePopExitTransition = navPredictivePopExit,
         ) {
             graph(navController)
         }
     }
+}
+
+/**
+ * Standard Android push/pop: the new screen slides in from the right and pushes
+ * the previous one ~30% to the left (parallax); back reverses the motion. 300ms
+ * matches the Material spec.
+ *
+ * The `predictivePop*` pair matters as much as the `pop*` pair. Since
+ * navigation-compose 2.10, a pop driven by the predictive-back *gesture* uses
+ * its own transitions rather than popEnter/popExit, and
+ * `DefaultNavTransitions` defines those as fadeIn + scaleOut(0.7f) - which is
+ * the zoom-out you get if you only override popEnter/popExit. Pointing them at
+ * the same slide keeps the gesture and the back button producing one motion.
+ * The unused Int the predictive lambdas receive is the swipe edge; the screen
+ * slides off to the right either way, matching the non-gesture pop.
+ */
+private const val NAV_ANIM_MS = 300
+
+private val navEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+    slideIntoContainer(SlideDirection.Start, tween(NAV_ANIM_MS))
+}
+
+private val navExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+    slideOutOfContainer(SlideDirection.Start, tween(NAV_ANIM_MS)) { it / 3 }
+}
+
+private val navPopEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+    slideIntoContainer(SlideDirection.End, tween(NAV_ANIM_MS)) { it / 3 }
+}
+
+private val navPopExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+    slideOutOfContainer(SlideDirection.End, tween(NAV_ANIM_MS))
+}
+
+private val navPredictivePopEnter:
+    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> EnterTransition = {
+    slideIntoContainer(SlideDirection.End, tween(NAV_ANIM_MS)) { it / 3 }
+}
+
+private val navPredictivePopExit:
+    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> ExitTransition = {
+    slideOutOfContainer(SlideDirection.End, tween(NAV_ANIM_MS))
 }
 
 private fun androidx.navigation.NavGraphBuilder.graph(navController: androidx.navigation.NavHostController) {
