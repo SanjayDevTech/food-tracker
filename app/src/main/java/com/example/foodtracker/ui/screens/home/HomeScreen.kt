@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.AllNutrientFields
+import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientGoals
@@ -706,18 +707,44 @@ private fun NutrientContributionSheet(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             item("header") {
+                // A capped nutrient says so; a target says nothing, since
+                // "work towards this number" is the reader's default reading
+                // and only the exceptions need calling out.
+                val isLimit = field.target == NutrientTarget.Limit
                 Column {
-                    Text(
-                        field.label,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    val goalSuffix = if (goal > 0) " · ${((total / goal) * 100).toInt()}% of ${goal.smartRound()} ${field.unit.symbol} goal" else ""
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            field.label,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (isLimit) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Limit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                    val targetWord = if (isLimit) "limit" else "goal"
+                    val goalSuffix = if (goal > 0) " · ${((total / goal) * 100).toInt()}% of ${goal.smartRound()} ${field.unit.symbol} $targetWord" else ""
                     Text(
                         "${total.smartRound()} ${field.unit.symbol} today$goalSuffix",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (isLimit) {
+                        Text(
+                            "Staying under this is the win — there is no shortfall to make up.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                 }
             }
@@ -725,8 +752,13 @@ private fun NutrientContributionSheet(
             if (contributions.isEmpty()) {
                 item("empty") {
                     Text(
-                        "Nothing logged today contributes ${field.label.lowercase()}. " +
-                            "Log foods rich in it to close the gap.",
+                        if (field.target == NutrientTarget.Limit) {
+                            "Nothing logged today contributes ${field.label.lowercase()}. " +
+                                "That is exactly where you want to be."
+                        } else {
+                            "Nothing logged today contributes ${field.label.lowercase()}. " +
+                                "Log foods rich in it to close the gap."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

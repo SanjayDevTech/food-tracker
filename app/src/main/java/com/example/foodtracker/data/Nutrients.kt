@@ -112,6 +112,15 @@ enum class NutrientUnit(val symbol: String) {
     Kcal("kcal"), Gram("g"), Milligram("mg"), Microgram("µg")
 }
 
+/**
+ * Whether a field's number is something to reach or something to stay under.
+ *
+ * [Limit] fields are capped by dietary guidance rather than targeted: sitting at
+ * 40% of the number is a good day, not a shortfall. The UI must not present them
+ * the same way it presents an RDA, or a low reading reads as a failure.
+ */
+enum class NutrientTarget { Goal, Limit }
+
 data class NutrientField(
     val key: String,
     val label: String,
@@ -119,19 +128,21 @@ data class NutrientField(
     val category: NutrientCategory,
     val read: (Nutrients) -> Double,
     val goal: (NutrientGoals) -> Double,
+    /** Defaults to [NutrientTarget.Goal] - only the four capped fields opt out. */
+    val target: NutrientTarget = NutrientTarget.Goal,
 )
 
 val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("calories", "Calories", NutrientUnit.Kcal, NutrientCategory.Macros, { it.calories }, { it.calories }),
     NutrientField("carbs", "Carbs", NutrientUnit.Gram, NutrientCategory.Macros, { it.carbs }, { it.carbs }),
-    NutrientField("sugar", "Sugar", NutrientUnit.Gram, NutrientCategory.Macros, { it.sugar }, { it.sugar }),
+    NutrientField("sugar", "Sugar", NutrientUnit.Gram, NutrientCategory.Macros, { it.sugar }, { it.sugar }, NutrientTarget.Limit),
     NutrientField("fiber", "Fiber", NutrientUnit.Gram, NutrientCategory.Macros, { it.fiber }, { it.fiber }),
     NutrientField("protein", "Protein", NutrientUnit.Gram, NutrientCategory.Macros, { it.protein }, { it.protein }),
     NutrientField("fat", "Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.fat }, { it.fat }),
-    NutrientField("saturatedFat", "Saturated Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.saturatedFat }, { it.saturatedFat }),
+    NutrientField("saturatedFat", "Saturated Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.saturatedFat }, { it.saturatedFat }, NutrientTarget.Limit),
     NutrientField("omega3", "Omega-3", NutrientUnit.Gram, NutrientCategory.Macros, { it.omega3 }, { it.omega3 }),
-    NutrientField("cholesterol", "Cholesterol", NutrientUnit.Milligram, NutrientCategory.Macros, { it.cholesterol }, { it.cholesterol }),
-    NutrientField("sodium", "Sodium", NutrientUnit.Milligram, NutrientCategory.Macros, { it.sodium }, { it.sodium }),
+    NutrientField("cholesterol", "Cholesterol", NutrientUnit.Milligram, NutrientCategory.Macros, { it.cholesterol }, { it.cholesterol }, NutrientTarget.Limit),
+    NutrientField("sodium", "Sodium", NutrientUnit.Milligram, NutrientCategory.Macros, { it.sodium }, { it.sodium }, NutrientTarget.Limit),
 
     NutrientField("calcium", "Calcium", NutrientUnit.Milligram, NutrientCategory.Minerals, { it.calcium }, { it.calcium }),
     NutrientField("iron", "Iron", NutrientUnit.Milligram, NutrientCategory.Minerals, { it.iron }, { it.iron }),
