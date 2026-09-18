@@ -4,6 +4,11 @@
     upload to cloud backups and what gets moved during device-to-device transfer.
 -->
 <data-extraction-rules>
+    <!--
+        datastore/ai_prefs.preferences_pb is intentionally absent from both
+        sections: it holds the user's own AI provider API key, which must not
+        leave the device via cloud backup or device transfer. Do not add it.
+    -->
     <cloud-backup>
         <include domain="database" path="food_tracker.db" />
         <include domain="file" path="datastore/user_prefs.preferences_pb" />

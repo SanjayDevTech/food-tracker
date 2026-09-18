@@ -10,7 +10,11 @@
     <include domain="database" path="food_tracker.db" />
 
     <!-- DataStore Preferences files. user_prefs holds profile, haptics,
-         theme mode, seed version; reminder_prefs holds reminder config. -->
+         theme mode, seed version; reminder_prefs holds reminder config.
+
+         datastore/ai_prefs.preferences_pb is intentionally NOT listed: it holds
+         the user's own AI provider API key, which must not be uploaded to cloud
+         backup. Do not add it. -->
     <include domain="file" path="datastore/user_prefs.preferences_pb" />
     <include domain="file" path="datastore/reminder_prefs.preferences_pb" />
 </full-backup-content>
