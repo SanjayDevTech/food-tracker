@@ -80,9 +80,14 @@ abstract class AppDatabase : RoomDatabase() {
                 "food_tracker.db",
             )
                 .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-                // Fallback only for paths we haven't written a migration for
-                // (pre-release schema churn). Real migrations above always win.
-                .fallbackToDestructiveMigration(dropAllTables = true)
+                // Scoped to the pre-release versions that never had migrations
+                // written. Deliberately NOT the blanket
+                // fallbackToDestructiveMigration: a *future* forgotten
+                // migration must fail loudly rather than silently dropping
+                // every food, water, activity and weight log the user has ever
+                // recorded. A crash is recoverable by shipping the migration;
+                // the data is not.
+                .fallbackToDestructiveMigrationFrom(dropAllTables = true, 1, 2, 3)
                 .build()
                 .also { instance = it }
         }
