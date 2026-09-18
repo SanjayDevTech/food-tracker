@@ -132,6 +132,15 @@ data class NutrientField(
     val target: NutrientTarget = NutrientTarget.Goal,
 )
 
+/**
+ * [AllNutrientFields] keyed by category. Precomputed because the input is a
+ * constant — the screens that render a category used to call groupBy on every
+ * recomposition, rebuilding the same three lists each time.
+ */
+val NutrientFieldsByCategory: Map<NutrientCategory, List<NutrientField>> by lazy {
+    AllNutrientFields.groupBy { it.category }
+}
+
 val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("calories", "Calories", NutrientUnit.Kcal, NutrientCategory.Macros, { it.calories }, { it.calories }),
     NutrientField("carbs", "Carbs", NutrientUnit.Gram, NutrientCategory.Macros, { it.carbs }, { it.carbs }),

@@ -59,7 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.AllNutrientFields
+import com.example.foodtracker.data.NutrientFieldsByCategory
 import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
@@ -588,7 +588,7 @@ private fun NutrientBreakdown(
     goals: NutrientGoals,
     logs: List<FoodLogWithFood>,
 ) {
-    val grouped = AllNutrientFields.groupBy { it.category }
+    val grouped = NutrientFieldsByCategory
     var selectedCategory by rememberSaveable { mutableStateOf(NutrientCategory.Macros) }
     var detailField by androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf<com.example.foodtracker.data.NutrientField?>(null)
@@ -661,23 +661,28 @@ private fun NutrientContributionSheet(
     val total = field.read(consumed)
     val goal = field.goal(goals)
 
-    // Combine repeat logs of the same food into one row, then rank by contribution.
-    val contributions = logs
-        .groupBy { it.food.id }
-        .mapNotNull { (_, rows) ->
-            val food = rows.first().food
-            val grams = rows.sumOf { it.log.grams }
-            val amount = field.read(food.nutrientsPer100g() * (grams / 100.0))
-            if (amount <= 0.0) return@mapNotNull null
-            val entryNote = if (rows.size > 1) " · ${rows.size} entries" else ""
-            NutrientContribution(
-                name = food.name,
-                detail = "${grams.toInt()} g$entryNote",
-                amount = amount,
-                shareOfTotal = if (total > 0) (amount / total).toFloat() else 0f,
-            )
-        }
-        .sortedByDescending { it.amount }
+    // Combine repeat logs of the same food into one row, then rank by
+    // contribution. Remembered because it walks every log row and does nutrient
+    // maths per food — it depends on the logs and the field, not on how many
+    // times the sheet recomposes while it animates in.
+    val contributions = remember(field, logs, total) {
+        logs
+            .groupBy { it.food.id }
+            .mapNotNull { (_, rows) ->
+                val food = rows.first().food
+                val grams = rows.sumOf { it.log.grams }
+                val amount = field.read(food.nutrientsPer100g() * (grams / 100.0))
+                if (amount <= 0.0) return@mapNotNull null
+                val entryNote = if (rows.size > 1) " · ${rows.size} entries" else ""
+                NutrientContribution(
+                    name = food.name,
+                    detail = "${grams.toInt()} g$entryNote",
+                    amount = amount,
+                    shareOfTotal = if (total > 0) (amount / total).toFloat() else 0f,
+                )
+            }
+            .sortedByDescending { it.amount }
+    }
 
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.ActivityLevel
-import com.example.foodtracker.data.AllNutrientFields
+import com.example.foodtracker.data.NutrientFieldsByCategory
 import com.example.foodtracker.data.Goal
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.Sex
@@ -245,7 +245,7 @@ fun ProfileScreen(
 
             item {
                 FormSection(title = "Daily targets") {
-                    val grouped = AllNutrientFields.groupBy { it.category }
+                    val grouped = NutrientFieldsByCategory
                     NutrientCategory.entries.forEachIndexed { index, cat ->
                         if (index > 0) Spacer(Modifier.height(10.dp))
                         CategorySubheader(label = cat.displayLabel())
