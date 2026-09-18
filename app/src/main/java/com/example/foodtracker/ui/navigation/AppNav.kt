@@ -62,13 +62,16 @@ fun AppNav(
         snapshotFlow { onboarded }.first { it == true }
         navController.currentBackStackEntryFlow.first()
         pendingDeepLink.filterNotNull().collect { link ->
+            // launchSingleTop so a second tap on the same reminder - or
+            // tomorrow's firing while the app is still open on that screen -
+            // reuses the destination instead of stacking another copy of it.
             when (link) {
                 is DeepLink.LogMeal -> {
                     val meal = link.mealName?.let { MealType.fromName(it) } ?: currentMealForTime()
-                    navController.navigate(LogFoodRoute(meal.name))
+                    navController.navigate(LogFoodRoute(meal.name)) { launchSingleTop = true }
                 }
-                DeepLink.OpenWater -> navController.navigate(WaterRoute)
-                DeepLink.OpenWeight -> navController.navigate(WeightRoute)
+                DeepLink.OpenWater -> navController.navigate(WaterRoute) { launchSingleTop = true }
+                DeepLink.OpenWeight -> navController.navigate(WeightRoute) { launchSingleTop = true }
             }
             pendingDeepLink.value = null
         }
