@@ -33,4 +33,7 @@ object WeightRoute
 object ProgressRoute
 
 @Serializable
+object PrivacyRoute
+
+@Serializable
 object RemindersRoute

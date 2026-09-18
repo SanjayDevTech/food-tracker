@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -85,6 +86,7 @@ import java.util.Date
 fun SettingsScreen(
     onBack: () -> Unit = {},
     onOpenReminders: () -> Unit = {},
+    onOpenPrivacy: () -> Unit = {},
 ) {
     val vm: SettingsViewModel = appViewModel {
         SettingsViewModel(it.profileStore, it.backupManager, it.backupScheduler, it.repository)
@@ -186,6 +188,16 @@ fun SettingsScreen(
                     title = "Reminders",
                     subtitle = "Meals, water, weigh-in",
                     onClick = onOpenReminders,
+                )
+            }
+
+            item {
+                NavTile(
+                    modifier = Modifier.fillMaxWidth(),
+                    icon = Icons.Default.Shield,
+                    title = "Privacy",
+                    subtitle = "What stays on this phone, and what doesn't",
+                    onClick = onOpenPrivacy,
                 )
             }
 
