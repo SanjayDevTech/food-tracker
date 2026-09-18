@@ -75,7 +75,7 @@ import com.example.foodtracker.ui.components.HapticSlider
 import com.example.foodtracker.ui.components.NumberStepper
 import com.example.foodtracker.ui.components.TimePickerDialog
 import com.example.foodtracker.ui.rememberAppHaptics
-import com.example.foodtracker.ui.screens.profile.BackupCadence
+import com.example.foodtracker.ui.screens.settings.BackupCadence
 import kotlinx.coroutines.launch
 
 private const val PageCount = 4

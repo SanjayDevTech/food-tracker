@@ -17,7 +17,7 @@ import com.example.foodtracker.reminder.ReminderConfig
 import com.example.foodtracker.reminder.ReminderKind
 import com.example.foodtracker.reminder.ReminderScheduler
 import com.example.foodtracker.reminder.ReminderStore
-import com.example.foodtracker.ui.screens.profile.BackupCadence
+import com.example.foodtracker.ui.screens.settings.BackupCadence
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

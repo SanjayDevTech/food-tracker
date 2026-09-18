@@ -27,6 +27,9 @@ object ActivityRoute
 object ProfileRoute
 
 @Serializable
+object SettingsRoute
+
+@Serializable
 object WeightRoute
 
 @Serializable

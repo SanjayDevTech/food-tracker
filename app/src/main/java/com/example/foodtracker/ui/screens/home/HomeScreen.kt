@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -30,13 +31,17 @@ import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonitorWeight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -50,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,6 +92,7 @@ fun HomeScreen(
     onOpenActivity: () -> Unit,
     onOpenWeight: () -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenProgress: () -> Unit,
 ) {
     val vm: HomeViewModel = appViewModel { HomeViewModel(it.repository, it.profileStore) }
@@ -167,6 +174,7 @@ fun HomeScreen(
                     onNextDay = { vm.shiftDay(1) },
                     onToday = { vm.goToToday() },
                     onOpenProfile = onOpenProfile,
+                    onOpenSettings = onOpenSettings,
                     onOpenProgress = onOpenProgress,
                 )
             }
@@ -327,6 +335,7 @@ private fun GreetingHeader(
     onNextDay: () -> Unit,
     onToday: () -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenProgress: () -> Unit,
 ) {
     Row(
@@ -347,13 +356,76 @@ private fun GreetingHeader(
             onNext = onNextDay,
             onToday = onToday,
         )
-        IconButton(onClick = onOpenProgress) {
-            Icon(Icons.Default.Insights, contentDescription = "Progress")
+        OverflowMenu(
+            onOpenProgress = onOpenProgress,
+            onOpenProfile = onOpenProfile,
+            onOpenSettings = onOpenSettings,
+        )
+    }
+}
+
+/**
+ * The greeting row only has space for one action, so Stats, Profile and
+ * Settings share a single overflow. They used to be two bare icons with no
+ * labels, and Settings had nowhere to go at all - it was buried inside Profile.
+ */
+@Composable
+private fun OverflowMenu(
+    onOpenProgress: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val haptics = rememberAppHaptics()
+    Box {
+        // The icon is 24dp centred in a 48dp touch target, so on its own it
+        // reads as 12dp further from the edge than the 16dp screen padding
+        // every other element lines up with. Shift it back out by that 12dp so
+        // the dots align optically; the target then overhangs into the padding,
+        // which is what Material's own app-bar actions do.
+        IconButton(
+            onClick = {
+                haptics.light()
+                expanded = true
+            },
+            modifier = Modifier.offset(x = 12.dp),
+        ) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More")
         }
-        IconButton(onClick = onOpenProfile) {
-            Icon(Icons.Default.Person, contentDescription = "Profile")
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            MenuAction("Stats", Icons.Default.Insights) {
+                expanded = false
+                onOpenProgress()
+            }
+            MenuAction("Profile", Icons.Default.Person) {
+                expanded = false
+                onOpenProfile()
+            }
+            MenuAction("Settings", Icons.Default.Settings) {
+                expanded = false
+                onOpenSettings()
+            }
         }
     }
+}
+
+/**
+ * One overflow entry. Exists so all three share a single padding value rather
+ * than inheriting the 12dp menu default, which sat oddly against the 16dp
+ * padding the rest of the app aligns to.
+ */
+@Composable
+private fun MenuAction(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null) },
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = Dimens.ScreenPadding, vertical = 4.dp),
+    )
 }
 
 /**
