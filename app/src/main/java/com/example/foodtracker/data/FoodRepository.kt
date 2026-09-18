@@ -83,10 +83,11 @@ class FoodRepository(
      */
     suspend fun fetchAiNutrition(
         name: String,
+        instructions: String,
         provider: AiProvider,
         model: String,
         apiKey: String,
-    ): AiNutrition? = aiApi.fetchNutrition(name, provider, model, apiKey)
+    ): AiNutrition? = aiApi.fetchNutrition(name, instructions, provider, model, apiKey)
 
     /** Reason for the most recent AI failure, or null. See [AiNutritionApi.lastError]. */
     fun lastAiError(): String? = aiApi.lastError
@@ -95,10 +96,11 @@ class FoodRepository(
     suspend fun verifyAiNutrition(
         name: String,
         candidate: AiNutrition,
+        instructions: String,
         provider: AiProvider,
         model: String,
         apiKey: String,
-    ): AiNutrition? = aiApi.verifyNutrition(name, candidate, provider, model, apiKey)
+    ): AiNutrition? = aiApi.verifyNutrition(name, candidate, instructions, provider, model, apiKey)
     suspend fun setFoodFavourite(id: Long, favourite: Boolean) = foodDao.setFavourite(id, favourite)
     suspend fun deleteFood(id: Long) = foodDao.delete(id)
 

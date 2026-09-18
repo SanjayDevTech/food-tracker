@@ -2,7 +2,6 @@ package com.example.foodtracker.ui.screens.addfood
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -13,10 +12,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -31,6 +30,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,13 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,6 +90,11 @@ fun AiProgressDialog(step: AiStep, verifies: Boolean = true) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { progressFor(step, verifies) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Spacer(Modifier.height(22.dp))
                 StepTracker(step, verifies)
             }
@@ -111,12 +110,19 @@ private fun titleFor(step: AiStep): String = when (step) {
 }
 
 private fun subtitleFor(step: AiStep, verifies: Boolean): String = when (step) {
-    AiStep.Fetching -> "Finding a typical serving and its nutrients for your food…"
-    AiStep.Verifying -> "A second AI pass is re-checking every value for accuracy…"
+    AiStep.Fetching -> "Finding a typical serving and all available nutrients…"
+    AiStep.Verifying -> "Re-checking the serving size and every nutrient value…"
     AiStep.Done ->
         if (verifies) "Filled the form with the verified values."
         else "Filled the form. Verify pass skipped for this model."
     AiStep.Idle -> ""
+}
+
+private fun progressFor(step: AiStep, verifies: Boolean): Float = when (step) {
+    AiStep.Fetching -> if (verifies) 0.35f else 0.65f
+    AiStep.Verifying -> 0.75f
+    AiStep.Done -> 1f
+    AiStep.Idle -> 0f
 }
 
 private fun iconFor(step: AiStep): ImageVector = when (step) {
@@ -127,50 +133,23 @@ private fun iconFor(step: AiStep): ImageVector = when (step) {
 
 @Composable
 private fun AiStepIllustration(step: AiStep) {
-    val transition = rememberInfiniteTransition(label = "ai")
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing)),
-        label = "rot",
-    )
+    val transition = rememberInfiniteTransition(label = "ai-icon-pulse")
     val pulse by transition.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "pulse",
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "ai-icon-scale",
     )
-    val arcColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
     val discColor = MaterialTheme.colorScheme.primaryContainer
     val iconTint = MaterialTheme.colorScheme.onPrimaryContainer
 
-    Box(Modifier.size(112.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(112.dp)) {
-            val stroke = 6.dp.toPx()
-            drawCircle(
-                color = trackColor,
-                radius = size.minDimension / 2 - stroke / 2,
-                style = Stroke(width = stroke),
-            )
-        }
-        // Done freezes the ring so the success state feels settled.
-        Canvas(Modifier.size(112.dp).rotate(if (step == AiStep.Done) 0f else rotation)) {
-            val stroke = 6.dp.toPx()
-            val inset = stroke / 2
-            drawArc(
-                brush = Brush.sweepGradient(listOf(arcColor.copy(alpha = 0f), arcColor)),
-                startAngle = 0f,
-                sweepAngle = if (step == AiStep.Done) 360f else 300f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = Size(size.width - stroke, size.height - stroke),
-                style = Stroke(width = stroke, cap = StrokeCap.Round),
-            )
-        }
+    Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(70.dp)
+                .size(64.dp)
                 .scale(if (step == AiStep.Done) 1f else pulse)
                 .clip(CircleShape)
                 .background(discColor),

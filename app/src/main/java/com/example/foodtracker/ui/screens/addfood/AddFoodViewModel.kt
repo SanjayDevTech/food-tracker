@@ -99,7 +99,7 @@ class AddFoodViewModel(
      * Progress is surfaced via [AddFoodFormState.aiStep]. The form stays fully
      * editable throughout. No-op unless the user typed a name / AI is enabled.
      */
-    fun autofillFromAi() {
+    fun autofillFromAi(instructions: String = "") {
         val name = _state.value.name.trim()
         if (name.isBlank() || _state.value.aiStep != AiStep.Idle) return
         _state.update { it.copy(aiStep = AiStep.Fetching, aiError = null) }
@@ -122,7 +122,7 @@ class AddFoodViewModel(
             }
             _state.update { it.copy(aiVerifies = verifies) }
 
-            val first = repository.fetchAiNutrition(name, provider, model, key)
+            val first = repository.fetchAiNutrition(name, instructions, provider, model, key)
             if (first == null) {
                 _state.update {
                     it.copy(
@@ -138,7 +138,7 @@ class AddFoodViewModel(
 
             if (verifies) {
                 _state.update { it.copy(aiStep = AiStep.Verifying) }
-                val verified = repository.verifyAiNutrition(name, first, provider, model, key)
+                val verified = repository.verifyAiNutrition(name, first, instructions, provider, model, key)
                 if (verified != null) applyResult(verified)
             }
 

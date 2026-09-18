@@ -306,21 +306,25 @@ private fun ResolvedPanel(
                 )
                 ButtonGroup(
                     modifier = Modifier.fillMaxWidth(),
+                    overflowIndicator = {},
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    ToggleButton(
-                        checked = basis == NutritionBasis.Per100g,
-                        onCheckedChange = { if (it) onBasisChange(NutritionBasis.Per100g) },
-                        enabled = per100g != null,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Per 100 g", maxLines = 1) }
-                    ToggleButton(
-                        checked = basis == NutritionBasis.PerServing,
-                        onCheckedChange = { if (it) onBasisChange(NutritionBasis.PerServing) },
-                        enabled = perServing != null,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Per ${product.servingGrams.toInt()} g serving", maxLines = 1) }
-                }
+                    content = {
+                        toggleableItem(
+                            checked = basis == NutritionBasis.Per100g,
+                            onCheckedChange = { if (it) onBasisChange(NutritionBasis.Per100g) },
+                            label = "Per 100 g",
+                            enabled = per100g != null,
+                            weight = 1f,
+                        )
+                        toggleableItem(
+                            checked = basis == NutritionBasis.PerServing,
+                            onCheckedChange = { if (it) onBasisChange(NutritionBasis.PerServing) },
+                            label = "Per ${product.servingGrams.toInt()} g serving",
+                            enabled = perServing != null,
+                            weight = 1f,
+                        )
+                    },
+                )
                 if (per100g == null && perServing != null) {
                     Text(
                         "Only per-serving values were published — we'll scale to 100 g for storage.",

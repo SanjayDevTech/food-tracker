@@ -25,13 +25,14 @@ android {
     compileSdk {
         version = release(37)
     }
+    compileSdkMinor = 2
 
     defaultConfig {
         applicationId = "com.example.foodtracker"
         minSdk = 31
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

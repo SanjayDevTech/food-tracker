@@ -41,21 +41,22 @@ fun <T> ExclusiveButtonGroup(
         if (fillWidth) modifier else modifier.horizontalScroll(rememberScrollState())
     ButtonGroup(
         modifier = groupModifier,
+        overflowIndicator = {},
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        options.forEach { option ->
-            ToggleButton(
+        content = {
+            options.forEach { option ->
+                toggleableItem(
                 checked = option == selected,
-                onCheckedChange = { wasChecked ->
-                    if (wasChecked) {
-                        haptics.light()
-                        onSelect(option)
-                    }
-                },
-                modifier = if (fillWidth) Modifier.weight(1f) else Modifier,
-            ) {
-                Text(label(option), maxLines = 1, softWrap = false)
+                    onCheckedChange = { wasChecked ->
+                        if (wasChecked) {
+                            haptics.light()
+                            onSelect(option)
+                        }
+                    },
+                    label = label(option),
+                    weight = if (fillWidth) 1f else Float.NaN,
+                )
             }
-        }
-    }
+        },
+    )
 }

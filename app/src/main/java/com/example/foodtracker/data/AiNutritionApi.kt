@@ -55,6 +55,7 @@ class AiNutritionApi {
 
     suspend fun fetchNutrition(
         foodName: String,
+        instructions: String = "",
         provider: AiProvider,
         model: String,
         apiKey: String,
@@ -64,7 +65,7 @@ class AiNutritionApi {
         // Resolve against the provider's model list; a stale/blank id falls back
         // to the provider's default.
         val modelId = provider.modelFromId(model).id
-        val prompt = buildPrompt(foodName.trim())
+        val prompt = buildPrompt(foodName.trim(), instructions.trim())
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
@@ -85,13 +86,14 @@ class AiNutritionApi {
     suspend fun verifyNutrition(
         foodName: String,
         candidate: AiNutrition,
+        instructions: String = "",
         provider: AiProvider,
         model: String,
         apiKey: String,
     ): AiNutrition? = withContext(Dispatchers.IO) {
         if (foodName.isBlank() || apiKey.isBlank()) return@withContext null
         val modelId = provider.modelFromId(model).id
-        val prompt = buildVerifyPrompt(foodName.trim(), candidate)
+        val prompt = buildVerifyPrompt(foodName.trim(), candidate, instructions.trim())
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
@@ -102,9 +104,18 @@ class AiNutritionApi {
 
     // ─── Prompt ───────────────────────────────────────────────────────────
 
-    private fun buildPrompt(foodName: String): String = """
+    private fun buildPrompt(foodName: String, instructions: String): String = """
         You are a nutrition database. Return ONLY a compact JSON object (no markdown,
         no explanation) for the food below.
+        The user is in India. Prefer Indian food-composition references and Indian
+        household portions. For regional dishes, assume a common South Indian
+        preparation first, especially Tamil Nadu, Kerala, or Karnataka style.
+        Account for typical regional ingredients and proportions such as rice,
+        lentils, coconut, curry leaves, mustard seeds, spices, oil, ghee, and
+        tempering. Do not substitute a generic Western recipe when an Indian
+        interpretation is reasonable. For an ambiguous dish, choose the most
+        common South Indian household version and make the assumed style clear
+        in the servingLabel when useful.
         First pick a TYPICAL SINGLE SERVING of this specific food (e.g. 1 medium
         banana, 1 cup cooked rice, 2 slices bread, 1 katori dal). Then set:
         - "servingGrams": the weight of that one serving in grams (number).
@@ -114,7 +125,12 @@ class AiNutritionApi {
           SouthIndian, NorthIndian, Snack, Beverage, Dairy, Fruit, Vegetable,
           Grain, Protein, Packaged, Other. Use Other if none clearly fits.
         Give every nutrient value FOR THAT ONE SERVING (not per 100 g).
-        Use 0 when a value is unknown or not applicable.
+        Return every key listed below. Use 0 only when the nutrient is genuinely
+        absent or nutritionally negligible for this serving. Do not invent a
+        trace amount: when a reliable value is unavailable, use 0 and treat it
+        as unavailable rather than guessing. Keep meaningful values even when
+        they are small, especially zinc, iron, copper, potassium, calcium,
+        vitamin C, and vitamin K.
         Units — kcal: calories. grams: carbs, sugar, fiber, protein, fat,
         saturatedFat, omega3. milligrams: cholesterol, sodium, calcium, iron,
         magnesium, potassium, zinc, phosphorus, copper, manganese, vitaminC,
@@ -126,22 +142,35 @@ class AiNutritionApi {
         vitaminC, vitaminD, vitaminE, vitaminK, vitaminB12, folate, vitaminB1,
         vitaminB2, vitaminB3, vitaminB6.
         Food: "$foodName"
+        ${instructionsPrompt(instructions)}
     """.trimIndent()
 
-    private fun buildVerifyPrompt(foodName: String, candidate: AiNutrition): String = """
-        You are a meticulous nutrition fact-checker. Below is a proposed nutrition
-        profile for a food, for ONE SERVING, as a JSON object. Check every field
+    private fun buildVerifyPrompt(foodName: String, candidate: AiNutrition, instructions: String): String = """
+                You are a meticulous nutrition fact-checker. Below is a proposed nutrition
+                profile for a food, for ONE SERVING, as a JSON object. Check every field
         against reliable food-composition data:
+                - Treat the user as being in India. Validate regional dishes against a
+                    plausible South Indian preparation first, especially Tamil Nadu,
+                    Kerala, or Karnataka style, including its usual coconut, lentil, oil,
+                    ghee, spice, and tempering proportions. Do not silently replace it
+                    with a generic Western preparation.
         - Confirm servingGrams is a realistic serving weight and servingLabel matches it.
         - Confirm category is the best fit from: SouthIndian, NorthIndian, Snack,
           Beverage, Dairy, Fruit, Vegetable, Grain, Protein, Packaged, Other.
-        - Correct any nutrient that is wrong or implausible for that serving; keep
-          the ones that are already right. Same units as given.
+                - Correct every nutrient that is wrong or implausible for that serving;
+                    do not silently copy a per-100 g value into a per-serving field.
+                - Keep meaningful small values. Use 0 only for a genuinely absent or
+                    nutritionally negligible nutrient, or when no reliable value exists;
+                    do not fabricate trace amounts to fill the schema. Same units as given.
         Return ONLY the corrected JSON object using the exact SAME keys — no
         markdown, no explanation.
         Food: "$foodName"
+        ${instructionsPrompt(instructions)}
         Proposed: ${candidateJson(candidate)}
     """.trimIndent()
+
+    private fun instructionsPrompt(instructions: String): String =
+        if (instructions.isBlank()) "" else "Additional user instructions (use as context, not as a nutrient value): $instructions"
 
     private fun candidateJson(c: AiNutrition): String = buildJsonObject {
         put("servingGrams", c.servingGrams)
