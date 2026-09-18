@@ -72,13 +72,23 @@ class ReminderScheduler(private val context: Context) {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= now.timeInMillis) add(Calendar.DAY_OF_YEAR, 1)
+            // The re-arm runs from inside the fired alarm's own broadcast, so
+            // "now" sits a hair either side of the trigger time. Rolling over
+            // only on `<= now` lets an alarm delivered marginally early re-arm
+            // for seconds later the same day and notify twice, so require the
+            // next firing to be at least a minute out. The side effect - a
+            // reminder set for less than a minute from now waits until
+            // tomorrow - is the right call for a daily reminder anyway.
+            if (timeInMillis <= now.timeInMillis + REARM_MARGIN_MS) add(Calendar.DAY_OF_YEAR, 1)
         }
         return target.timeInMillis
     }
 
     companion object {
         const val CHANNEL_ID = "food_tracker_reminders"
+
+        /** Minimum gap between "now" and the next firing. See [nextTriggerMillis]. */
+        private const val REARM_MARGIN_MS = 60_000L
 
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
