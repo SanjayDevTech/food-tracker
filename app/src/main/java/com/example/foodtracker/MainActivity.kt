@@ -37,7 +37,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pendingDeepLink.value = DeepLink.fromIntent(intent)
-        val container = AppContainer.from(application as FoodTrackerApp)
+        val app = application as FoodTrackerApp
+        // Seeding, reminder re-arming and backup scheduling hang off an actual
+        // UI launch rather than Application.onCreate, which also runs for
+        // broadcast- and worker-only process starts.
+        app.initializeForUi()
+        val container = AppContainer.from(app)
         setContent {
             val themeMode by container.profileStore.themeMode
                 .collectAsStateWithLifecycle(initialValue = ThemeMode.System)

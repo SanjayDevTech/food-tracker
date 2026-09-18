@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class FoodTrackerApp : Application() {
 
@@ -60,9 +61,37 @@ class FoodTrackerApp : Application() {
     val backupManager: BackupManager by lazy { BackupManager(this, database, profileStore) }
     val backupScheduler: BackupScheduler by lazy { BackupScheduler(this) }
 
+    /** Guards [initializeForUi] so repeated Activity launches don't re-run it. */
+    private val uiInitStarted = AtomicBoolean(false)
+
     override fun onCreate() {
         super.onCreate()
+        // Only work that every entry point needs belongs here — Application
+        // .onCreate also runs when the process is spun up purely to deliver a
+        // reminder broadcast or run a widget worker. Both of these are cheap
+        // and idempotent: ensureChannel returns early once the channel exists,
+        // and the worker is enqueued with a KEEP policy.
         com.example.foodtracker.reminder.ReminderScheduler.ensureChannel(this)
+        // Daily post-midnight widget refresh so the date rollover lands even
+        // when the app is never opened (active-use refreshes go via WidgetUpdater).
+        com.example.foodtracker.widget.WidgetRefreshWorker.schedule(this)
+    }
+
+    /**
+     * Startup work that only matters when there is a UI: seeding the food
+     * table, re-arming reminders, and re-establishing the backup job. Called
+     * once from [MainActivity].
+     *
+     * Deliberately out of [onCreate], which also fires on every broadcast- or
+     * worker-driven process start — re-seeding and cancelling/re-creating six
+     * alarms on each of those wakeups is pure battery and IO cost, and it
+     * raced the receiver's own re-arm. Nothing here is load-bearing for those
+     * paths: ReminderReceiver re-arms its alarm after each fire and
+     * BOOT_COMPLETED reschedules them all, and WorkManager persists the backup
+     * job across reboots on its own.
+     */
+    fun initializeForUi() {
+        if (!uiInitStarted.compareAndSet(false, true)) return
         appScope.launch {
             val freshInstall = repository.seedIfEmpty()
             val storedSeedVersion = profileStore.getSeedVersion()
@@ -76,8 +105,5 @@ class FoodTrackerApp : Application() {
             // Re-establish the periodic backup job using the user's saved cadence.
             backupScheduler.apply(profileStore.backupIntervalHours.first())
         }
-        // Daily post-midnight widget refresh so the date rollover lands even
-        // when the app is never opened (active-use refreshes go via WidgetUpdater).
-        com.example.foodtracker.widget.WidgetRefreshWorker.schedule(this)
     }
 }
