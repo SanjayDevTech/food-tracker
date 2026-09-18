@@ -6,6 +6,7 @@ import com.example.foodtracker.data.db.DailyCaloriesTotal
 import com.example.foodtracker.data.db.DailyWaterTotal
 import com.example.foodtracker.data.db.FoodDao
 import com.example.foodtracker.data.db.FoodEntity
+import java.util.Locale
 import com.example.foodtracker.data.db.FoodLogDao
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
@@ -272,43 +273,54 @@ class FoodRepository(
      */
     suspend fun refreshSeedIfStale(storedVersion: Int): Boolean {
         if (storedVersion >= IndianFoodSeed.SEED_VERSION) return false
-        for (fresh in IndianFoodSeed.ALL) {
-            val existing = foodDao.findSeededByName(fresh.name)
-            if (existing == null) {
-                foodDao.upsert(fresh)
-            } else {
-                foodDao.upsert(
-                    fresh.copy(
-                        id = existing.id,
-                        // Preserve the stable cross-install uuid; a fresh seed list
-                        // generates a new random one, which would otherwise break
-                        // backup/restore merge keyed on client_uuid.
-                        clientUuid = existing.clientUuid,
-                        isFavourite = existing.isFavourite,
-                        // Keep the user's custom variants if they edited them; otherwise
-                        // adopt the fresh seed's variants so renamed labels, new gram
-                        // refs, and new size options (e.g. banana Small/Medium/Large)
-                        // propagate to already-installed apps. We treat the row as
-                        // "not customized" when its variants are still exactly the
-                        // auto-generated defaults for its serving.
-                        servingVariants = when {
-                            existing.servingVariants.isEmpty() -> fresh.servingVariants
-                            existing.servingVariants == ServingVariant.defaultVariantsFor(
-                                existing.servingGrams, existing.servingLabel,
-                            ) -> fresh.servingVariants
-                            // Also adopt fresh variants when the existing ones are still
-                            // exactly the auto-derived Small/Medium/Large presets — those
-                            // aren't user customization either, so a corrected seed (e.g.
-                            // real egg sizes replacing the ×0.7/×1.4 scale) must propagate.
-                            existing.servingVariants == IndianFoodSeed.sizeVariantsFor(
-                                existing.servingGrams, existing.servingLabel,
-                            ) -> fresh.servingVariants
-                            else -> existing.servingVariants
-                        },
-                    )
-                )
-            }
+        // One read and one batched write, not two queries per seeded food. This
+        // runs on the first launch after every SEED_VERSION bump, and looking
+        // ~166 foods up one at a time meant ~332 separate transactions before
+        // the user's first frame.
+        //
+        // The map is folded by hand rather than with associateBy because
+        // associateBy keeps the LAST row for a duplicate name while
+        // findSeededByName's LIMIT 1 took the first. Locale.ROOT because
+        // SQLite's COLLATE NOCASE is ASCII-only folding — under a Turkish
+        // default locale, lowercase('I') is 'ı' and the row would be missed.
+        val existingByName = HashMap<String, FoodEntity>()
+        for (row in foodDao.getVisibleSeeded()) {
+            existingByName.putIfAbsent(row.name.lowercase(Locale.ROOT), row)
         }
+
+        val updated = IndianFoodSeed.ALL.map { fresh ->
+            val existing = existingByName[fresh.name.lowercase(Locale.ROOT)]
+                ?: return@map fresh
+            fresh.copy(
+                id = existing.id,
+                // Preserve the stable cross-install uuid; a fresh seed list
+                // generates a new random one, which would otherwise break
+                // backup/restore merge keyed on client_uuid.
+                clientUuid = existing.clientUuid,
+                isFavourite = existing.isFavourite,
+                // Keep the user's custom variants if they edited them; otherwise
+                // adopt the fresh seed's variants so renamed labels, new gram
+                // refs, and new size options (e.g. banana Small/Medium/Large)
+                // propagate to already-installed apps. We treat the row as
+                // "not customized" when its variants are still exactly the
+                // auto-generated defaults for its serving.
+                servingVariants = when {
+                    existing.servingVariants.isEmpty() -> fresh.servingVariants
+                    existing.servingVariants == ServingVariant.defaultVariantsFor(
+                        existing.servingGrams, existing.servingLabel,
+                    ) -> fresh.servingVariants
+                    // Also adopt fresh variants when the existing ones are still
+                    // exactly the auto-derived Small/Medium/Large presets — those
+                    // aren't user customization either, so a corrected seed (e.g.
+                    // real egg sizes replacing the ×0.7/×1.4 scale) must propagate.
+                    existing.servingVariants == IndianFoodSeed.sizeVariantsFor(
+                        existing.servingGrams, existing.servingLabel,
+                    ) -> fresh.servingVariants
+                    else -> existing.servingVariants
+                },
+            )
+        }
+        foodDao.upsertAll(updated)
         return true
     }
 

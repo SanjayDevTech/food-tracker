@@ -56,6 +56,15 @@ interface FoodDao {
     @Query("SELECT * FROM foods WHERE name = :name COLLATE NOCASE AND is_custom = 0 AND is_hidden = 0 LIMIT 1")
     suspend fun findSeededByName(name: String): FoodEntity?
 
+    /**
+     * Every row [findSeededByName] could match, in one read. Same `is_custom`
+     * and `is_hidden` filters deliberately — [getAllSeeded] is NOT equivalent,
+     * it includes hidden rows. Used by the seed refresh so it doesn't issue one
+     * query per seeded food.
+     */
+    @Query("SELECT * FROM foods WHERE is_custom = 0 AND is_hidden = 0")
+    suspend fun getVisibleSeeded(): List<FoodEntity>
+
     /** Stable cross-install lookup for backup/restore merge logic. */
     @Query("SELECT * FROM foods WHERE client_uuid = :uuid LIMIT 1")
     suspend fun findByClientUuid(uuid: String): FoodEntity?
