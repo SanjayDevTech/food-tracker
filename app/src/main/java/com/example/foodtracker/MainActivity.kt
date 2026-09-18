@@ -94,10 +94,21 @@ sealed interface DeepLink {
         const val TARGET_OPEN_WATER = "open_water"
         const val TARGET_OPEN_WEIGHT = "open_weight"
 
+        /**
+         * Reads the deep-link target and strips the extras as it goes.
+         *
+         * The launching Intent sticks around for the life of the Activity, so
+         * without the strip a configuration change replays it through onCreate
+         * and re-navigates the user to the reminder's screen every rotation. A
+         * genuine tap always arrives as a fresh Intent, so nothing is lost.
+         */
         fun fromIntent(intent: Intent?): DeepLink? {
             val target = intent?.getStringExtra(EXTRA_DEEP_LINK) ?: return null
+            val meal = intent.getStringExtra(EXTRA_MEAL)
+            intent.removeExtra(EXTRA_DEEP_LINK)
+            intent.removeExtra(EXTRA_MEAL)
             return when (target) {
-                TARGET_LOG_MEAL -> LogMeal(mealName = intent.getStringExtra(EXTRA_MEAL))
+                TARGET_LOG_MEAL -> LogMeal(mealName = meal)
                 TARGET_OPEN_WATER -> OpenWater
                 TARGET_OPEN_WEIGHT -> OpenWeight
                 else -> null

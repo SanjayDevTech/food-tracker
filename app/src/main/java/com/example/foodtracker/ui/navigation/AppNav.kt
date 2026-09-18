@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +18,7 @@ import com.example.foodtracker.data.MealType
 import com.example.foodtracker.ui.LocalAppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import com.example.foodtracker.ui.screens.activity.ActivityScreen
 import com.example.foodtracker.ui.screens.addfood.AddFoodScreen
 import com.example.foodtracker.ui.screens.barcode.BarcodeScreen
@@ -42,8 +44,23 @@ fun AppNav(
     // Consume widget / reminder-notification deep-links once onboarding is
     // complete. Cleared after navigation so process death / back press don't
     // re-fire.
-    LaunchedEffect(onboarded, navController) {
-        if (onboarded != true) return@LaunchedEffect
+    //
+    // Both gates are awaited *inside* the coroutine rather than keyed on the
+    // effect, and the order matters:
+    //  1. onboarding done - the onboarding graph has no LogFood/Water/Weight
+    //     destination to navigate to;
+    //  2. a NavHost has actually run setGraph. currentBackStackEntryFlow only
+    //     emits once a graph is installed, so awaiting it is what keeps
+    //     navigate() from throwing "You must call setGraph before calling
+    //     getGraph".
+    // Keying the effect on `onboarded` is not enough: the body re-reads the
+    // state when it runs, so the run launched while `onboarded` was still null
+    // (when the `when` below composes nothing at all) can observe `true` and
+    // navigate a frame before the NavHost first composes. That is the cold
+    // start from a notification tap.
+    LaunchedEffect(navController) {
+        snapshotFlow { onboarded }.first { it == true }
+        navController.currentBackStackEntryFlow.first()
         pendingDeepLink.filterNotNull().collect { link ->
             when (link) {
                 is DeepLink.LogMeal -> {
