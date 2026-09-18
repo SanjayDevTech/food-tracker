@@ -38,8 +38,12 @@ data class DonutSlice(val label: String, val value: Double, val color: Color)
  * up read as redundant. The macro legend now serves as the "what's in those
  * calories" detail alongside the ring.
  *
- * Layout: ring on the left (160dp), per-macro legend column on the right,
- * and a compact Goal / Food row beneath the whole block.
+ * Layout: ring on the left (160dp), per-macro legend column on the right.
+ *
+ * There used to be a Goal / Food / Exercise strip underneath. Once exercise
+ * logging went away it was down to two numbers the ring already carries —
+ * "kcal left" IS goal minus food — so the strip restated its own inputs and
+ * has been dropped.
  */
 @Composable
 fun CalorieHero(
@@ -104,17 +108,6 @@ fun CalorieHero(
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        // Compact stat strip — Goal / Food. Lived on the right of
-        // the ring in the older two-block layout; moved down so the macro
-        // legend can take that space.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            CalorieStat("Goal", "${goal.roundToInt()} kcal")
-            CalorieStat("Food", "${consumed.roundToInt()} kcal")
-        }
     }
 }
 
@@ -144,14 +137,3 @@ private fun LegendRow(label: String, value: Double, color: Color) {
     }
 }
 
-@Composable
-private fun CalorieStat(label: String, value: String) {
-    Column {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.titleMedium)
-    }
-}
