@@ -56,6 +56,7 @@ object GoalCalculator {
         val carbCals = max(0.0, cals - proteinCals - fatCals)
         val carbsG = carbCals / 4.0
         val fiberG = max(25.0, cals / 1000.0 * 14.0)
+        val sugarG = (cals * 0.10) / 4.0
         val satFatG = (cals * 0.10) / 9.0
 
         // ICMR-leaning micro RDA defaults
@@ -66,8 +67,7 @@ object GoalCalculator {
             protein = proteinG.roundTo(0),
             fat = fatG.roundTo(0),
             fiber = fiberG.roundTo(0),
-            // No target — see NutrientTarget.None.
-            sugar = 0.0,
+            sugar = sugarG.roundTo(0),
             saturatedFat = satFatG.roundTo(0),
             omega3 = 1.6,
             cholesterol = 300.0,

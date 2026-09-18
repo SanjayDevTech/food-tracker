@@ -740,15 +740,12 @@ private fun NutrientContributionSheet(
             if (contributions.isEmpty()) {
                 item("empty") {
                     Text(
-                        when (field.target) {
-                            NutrientTarget.Limit ->
-                                "Nothing logged today contributes ${field.label.lowercase()}. " +
-                                    "That is exactly where you want to be."
-                            NutrientTarget.None ->
-                                "Nothing logged today contributes ${field.label.lowercase()}."
-                            NutrientTarget.Goal ->
-                                "Nothing logged today contributes ${field.label.lowercase()}. " +
-                                    "Log foods rich in it to close the gap."
+                        if (field.target == NutrientTarget.Limit) {
+                            "Nothing logged today contributes ${field.label.lowercase()}. " +
+                                "That is exactly where you want to be."
+                        } else {
+                            "Nothing logged today contributes ${field.label.lowercase()}. " +
+                                "Log foods rich in it to close the gap."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

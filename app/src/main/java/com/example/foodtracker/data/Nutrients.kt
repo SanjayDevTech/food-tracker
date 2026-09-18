@@ -119,26 +119,7 @@ enum class NutrientUnit(val symbol: String) {
  * 40% of the number is a good day, not a shortfall. The UI must not present them
  * the same way it presents an RDA, or a low reading reads as a failure.
  */
-enum class NutrientTarget {
-    /** Something to reach. The default, and shown without comment. */
-    Goal,
-
-    /** A ceiling to stay under. Badged, because a low reading is a good day. */
-    Limit,
-
-    /**
-     * Tracked and shown, but with no number to hit either way.
-     *
-     * Sugar is the case this exists for. The obvious ceiling is the WHO's
-     * "under 10% of energy", but that guideline is about FREE sugars, while the
-     * value here comes from OpenFoodFacts / USDA `sugars`, which is TOTAL sugar
-     * — the lactose in milk and the fructose in fruit included. Holding total
-     * sugar to a free-sugar ceiling makes a banana look like a failure, and the
-     * app has no data to separate the two, so it states the amount and leaves
-     * the judgement to the user.
-     */
-    None,
-}
+enum class NutrientTarget { Goal, Limit }
 
 data class NutrientField(
     val key: String,
@@ -154,7 +135,7 @@ data class NutrientField(
 val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("calories", "Calories", NutrientUnit.Kcal, NutrientCategory.Macros, { it.calories }, { it.calories }),
     NutrientField("carbs", "Carbs", NutrientUnit.Gram, NutrientCategory.Macros, { it.carbs }, { it.carbs }),
-    NutrientField("sugar", "Sugar", NutrientUnit.Gram, NutrientCategory.Macros, { it.sugar }, { it.sugar }, NutrientTarget.None),
+    NutrientField("sugar", "Sugar", NutrientUnit.Gram, NutrientCategory.Macros, { it.sugar }, { it.sugar }, NutrientTarget.Limit),
     NutrientField("fiber", "Fiber", NutrientUnit.Gram, NutrientCategory.Macros, { it.fiber }, { it.fiber }),
     NutrientField("protein", "Protein", NutrientUnit.Gram, NutrientCategory.Macros, { it.protein }, { it.protein }),
     NutrientField("fat", "Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.fat }, { it.fat }),

@@ -44,7 +44,6 @@ import com.example.foodtracker.data.ActivityLevel
 import com.example.foodtracker.data.AllNutrientFields
 import com.example.foodtracker.data.Goal
 import com.example.foodtracker.data.NutrientCategory
-import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.Sex
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.WeightChangeRate
@@ -250,10 +249,7 @@ fun ProfileScreen(
                     NutrientCategory.entries.forEachIndexed { index, cat ->
                         if (index > 0) Spacer(Modifier.height(10.dp))
                         CategorySubheader(label = cat.displayLabel())
-                        grouped[cat].orEmpty()
-                            // Nothing to list for a nutrient with no target.
-                            .filter { it.target != NutrientTarget.None }
-                            .forEach { field ->
+                        grouped[cat].orEmpty().forEach { field ->
                             TargetRow(
                                 label = field.label,
                                 value = "${field.goal(state.goals).toInt()} ${field.unit.symbol}",
