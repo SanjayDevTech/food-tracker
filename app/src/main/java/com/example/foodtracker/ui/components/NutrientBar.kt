@@ -70,11 +70,17 @@ fun NutrientBar(
                 }
             }
             Text(
-                "${consumed.smartRound()} / ${goal.smartRound()} $unit",
+                // A goal of 0 means the nutrient has no target (NutrientTarget
+                // .None) — print the amount alone rather than "12 / 0 g".
+                if (goal <= 0) "${consumed.smartRound()} $unit"
+                else "${consumed.smartRound()} / ${goal.smartRound()} $unit",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // No target, no progress bar — an empty track would read as 0% of
+        // something rather than as "nothing to measure against".
+        if (goal <= 0) return@Column
         Spacer(Modifier.height(6.dp))
         Box(
             modifier = Modifier
