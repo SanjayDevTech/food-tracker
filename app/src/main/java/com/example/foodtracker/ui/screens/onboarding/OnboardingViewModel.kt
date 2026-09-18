@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.ActivityLevel
+import com.example.foodtracker.data.AiModel
+import com.example.foodtracker.data.AiProvider
 import com.example.foodtracker.data.Goal
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.ProfileStore
@@ -32,6 +34,10 @@ data class OnboardingUiState(
     val backupFolderLabel: String? = null,
     val backupCadence: BackupCadence = BackupCadence.Off,
     val reminders: List<ReminderConfig> = ReminderKind.entries.map { ReminderConfig.default(it) },
+    val aiEnabled: Boolean = false,
+    val aiProvider: AiProvider = AiProvider.Gemini,
+    val aiApiKey: String = "",
+    val aiModel: AiModel = AiProvider.Gemini.defaultModel,
     val saved: Boolean = false,
 )
 
@@ -104,6 +110,19 @@ class OnboardingViewModel(
         }
     }
 
+    // ─── AI autofill page ─────────────────────────────────────────────────
+
+    fun setAiEnabled(enabled: Boolean) = _state.update { it.copy(aiEnabled = enabled) }
+
+    /** Switching provider resets the model — model ids are provider-specific. */
+    fun setAiProvider(provider: AiProvider) = _state.update {
+        it.copy(aiProvider = provider, aiModel = provider.defaultModel)
+    }
+
+    fun setAiApiKey(key: String) = _state.update { it.copy(aiApiKey = key) }
+
+    fun setAiModel(model: AiModel) = _state.update { it.copy(aiModel = model) }
+
     /**
      * Persists every page's state in one shot. Reminders and backup settings are
      * written FIRST, then the profile (with markOnboarded = true) is written last.
@@ -135,6 +154,17 @@ class OnboardingViewModel(
                     ) }
                 }
                 reminderScheduler.rescheduleAll(reminderStore.snapshot())
+            }
+
+            // Only written when the user actually switched it on, so skipping
+            // the page leaves the ai_prefs store untouched and no key on disk.
+            if (st.aiEnabled) {
+                runCatching {
+                    profileStore.setAiEnabled(true)
+                    profileStore.setAiProvider(st.aiProvider)
+                    profileStore.setAiModel(st.aiModel.id)
+                    profileStore.setAiApiKey(st.aiApiKey)
+                }
             }
 
             profileStore.save(st.profile, markOnboarded = true)

@@ -58,10 +58,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.ActivityLevel
+import com.example.foodtracker.data.AiProvider
 import com.example.foodtracker.data.Goal
 import com.example.foodtracker.data.Sex
 import com.example.foodtracker.data.WeightChangeRate
@@ -78,7 +82,7 @@ import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.screens.settings.BackupCadence
 import kotlinx.coroutines.launch
 
-private const val PageCount = 4
+private const val PageCount = 5
 
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
@@ -141,6 +145,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                         onToggle = vm::setReminderEnabled,
                         onSetTime = vm::setReminderTime,
                     )
+                    4 -> AiPage(state = state, vm = vm)
                 }
             }
 
@@ -658,6 +663,121 @@ private fun ReminderRow(
                 onToggle(it)
             },
         )
+    }
+}
+
+// ───────────────────────── Page 5: AI autofill ───────────────────
+
+/**
+ * Optional, and off unless the user turns it on. Mirrors the AI section in
+ * Settings rather than adding a second way to configure the same thing — the
+ * point of having it here is that someone who would use it finds out it exists
+ * instead of discovering it months later.
+ *
+ * Nothing is written unless the toggle is on; see OnboardingViewModel.finish.
+ */
+@Composable
+private fun AiPage(state: OnboardingUiState, vm: OnboardingViewModel) {
+    val haptics = rememberAppHaptics()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+    ) {
+        PageHeader(title = "AI nutrition autofill", optional = true)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Adding a food by hand means typing in every nutrient. An AI can fill them " +
+                "from the name instead. You bring your own API key, only the food name is " +
+                "sent, and you can set this up later in Settings.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(Modifier.height(20.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Enable AI autofill",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Needs an API key from your chosen provider.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.aiEnabled,
+                onCheckedChange = {
+                    haptics.light()
+                    vm.setAiEnabled(it)
+                },
+            )
+        }
+
+        if (state.aiEnabled) {
+            Spacer(Modifier.height(20.dp))
+            SectionLabel("Provider")
+            ExclusiveButtonGroup(
+                options = AiProvider.entries,
+                selected = state.aiProvider,
+                onSelect = vm::setAiProvider,
+                modifier = Modifier.fillMaxWidth(),
+                label = { it.displayName },
+            )
+
+            Spacer(Modifier.height(16.dp))
+            SectionLabel("Model")
+            ExclusiveButtonGroup(
+                options = state.aiProvider.models,
+                selected = state.aiModel,
+                onSelect = vm::setAiModel,
+                modifier = Modifier.fillMaxWidth(),
+                fillWidth = false,
+                label = { it.label },
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${state.aiProvider.defaultModel.label} is the cheapest and accurate enough " +
+                    "for most foods — leave it selected to save money.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = state.aiApiKey,
+                onValueChange = vm::setAiApiKey,
+                label = { Text("${state.aiProvider.displayName} API key") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Your key stays on this device and is kept out of cloud backup.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val uriHandler = LocalUriHandler.current
+            Text(
+                "Get a ${state.aiProvider.displayName} API key at ${state.aiProvider.keyHint} ↗",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .clickable { uriHandler.openUri(state.aiProvider.keyUrl) },
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 
