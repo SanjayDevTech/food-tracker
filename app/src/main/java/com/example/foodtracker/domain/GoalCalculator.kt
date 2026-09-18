@@ -102,11 +102,3 @@ object GoalCalculator {
         return Math.round(this * factor) / factor
     }
 }
-
-object CalorieBurn {
-    /**
-     * Calories burned ≈ MET × weightKg × hours
-     */
-    fun caloriesBurned(metValue: Double, minutes: Int, weightKg: Double): Double =
-        metValue * weightKg * (minutes / 60.0)
-}

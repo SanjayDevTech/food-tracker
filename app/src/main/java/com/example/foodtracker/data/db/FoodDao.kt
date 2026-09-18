@@ -245,39 +245,6 @@ interface WaterLogDao {
 data class DailyWaterTotal(val dateEpochDay: Long, val totalMl: Int)
 
 @Dao
-interface ActivityLogDao {
-    @Query("SELECT * FROM activity_log WHERE date_epoch_day = :epochDay ORDER BY logged_at_millis ASC")
-    fun observeForDay(epochDay: Long): Flow<List<ActivityLogEntity>>
-
-    @Query("SELECT COALESCE(SUM(calories_burned), 0.0) FROM activity_log WHERE date_epoch_day = :epochDay")
-    fun observeCaloriesBurnedForDay(epochDay: Long): Flow<Double>
-
-    /** Read-after-write consistent version of [observeCaloriesBurnedForDay]. */
-    @Query("SELECT COALESCE(SUM(calories_burned), 0.0) FROM activity_log WHERE date_epoch_day = :epochDay")
-    suspend fun getCaloriesBurnedForDay(epochDay: Long): Double
-
-    @Query("SELECT date_epoch_day AS dateEpochDay, COALESCE(SUM(calories_burned), 0.0) AS totalCalories FROM activity_log WHERE date_epoch_day BETWEEN :start AND :end GROUP BY date_epoch_day")
-    fun observeCaloriesForRange(start: Long, end: Long): Flow<List<DailyCaloriesTotal>>
-
-    @Insert
-    suspend fun insert(entry: ActivityLogEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(rows: List<ActivityLogEntity>)
-
-    @Query("DELETE FROM activity_log WHERE id = :id")
-    suspend fun delete(id: Long)
-
-    @Query("SELECT * FROM activity_log")
-    suspend fun getAll(): List<ActivityLogEntity>
-
-    @Query("DELETE FROM activity_log")
-    suspend fun deleteAll()
-}
-
-data class DailyCaloriesTotal(val dateEpochDay: Long, val totalCalories: Double)
-
-@Dao
 interface WeightLogDao {
     @Query("SELECT * FROM weight_log ORDER BY date_epoch_day DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<WeightLogEntity>>

@@ -41,19 +41,6 @@ data class WaterLogEntity(
 )
 
 @Entity(
-    tableName = "activity_log",
-    indices = [Index(value = ["date_epoch_day"])],
-)
-data class ActivityLogEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    @ColumnInfo(name = "date_epoch_day") val dateEpochDay: Long,
-    @ColumnInfo(name = "activity_type") val activityType: String,
-    val minutes: Int,
-    @ColumnInfo(name = "calories_burned") val caloriesBurned: Double,
-    @ColumnInfo(name = "logged_at_millis") val loggedAtMillis: Long,
-)
-
-@Entity(
     tableName = "weight_log",
     indices = [Index(value = ["date_epoch_day"], unique = true)],
 )

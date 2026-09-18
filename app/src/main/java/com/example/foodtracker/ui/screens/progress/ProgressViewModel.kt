@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.UserProfile
-import com.example.foodtracker.data.db.DailyCaloriesTotal
 import com.example.foodtracker.data.db.DailyWaterTotal
 import com.example.foodtracker.data.db.FoodLogWithFood
 import com.example.foodtracker.data.db.WeightLogEntity
@@ -37,8 +36,6 @@ data class ProgressUiState(
     val goalWeightKg: Double? = null,
     val water: List<LinePoint> = emptyList(),
     val waterAvgMl: Int = 0,
-    val burned: List<LinePoint> = emptyList(),
-    val burnedAvg: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -61,10 +58,9 @@ class ProgressViewModel(
                 repository.observeLogForRange(start, today),
                 repository.observeWeightsForRange(start, today),
                 repository.observeWaterTotalsForRange(start, today),
-                repository.observeCaloriesBurnedForRange(start, today),
                 profileStore.profile,
-            ) { logs, weights, water, burned, profile ->
-                buildState(range, start, today, logs, weights, water, burned, profile)
+            ) { logs, weights, water, profile ->
+                buildState(range, start, today, logs, weights, water, profile)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressUiState())
@@ -76,7 +72,6 @@ class ProgressViewModel(
         logs: List<FoodLogWithFood>,
         weights: List<WeightLogEntity>,
         water: List<DailyWaterTotal>,
-        burned: List<DailyCaloriesTotal>,
         profile: UserProfile,
     ): ProgressUiState {
         val days = (start..today).toList()
@@ -99,12 +94,6 @@ class ProgressViewModel(
         val waterAvgMl = if (days.isNotEmpty())
             (days.sumOf { (waterByDay[it] ?: 0).toDouble() } / days.size).roundToInt() else 0
 
-        val burnByDay = burned.associate { it.dateEpochDay to it.totalCalories }
-        val burnPts = days.map { LinePoint(labelFor(it), burnByDay[it] ?: 0.0) }
-        val loggedBurnDays = days.count { (burnByDay[it] ?: 0.0) > 0.0 }
-        val burnedAvg =
-            if (loggedBurnDays > 0) (days.sumOf { burnByDay[it] ?: 0.0 } / loggedBurnDays).roundToInt() else 0
-
         // Weight is logged sparsely, not daily — plot only real weigh-ins so the
         // line reflects actual measurements rather than zero-filled gaps.
         val weightSorted = weights.sortedBy { it.dateEpochDay }
@@ -121,8 +110,6 @@ class ProgressViewModel(
             goalWeightKg = profile.goalWeightKg,
             water = waterPts,
             waterAvgMl = waterAvgMl,
-            burned = burnPts,
-            burnedAvg = burnedAvg,
         )
     }
 }

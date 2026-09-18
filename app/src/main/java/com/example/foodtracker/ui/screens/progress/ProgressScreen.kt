@@ -32,7 +32,6 @@ import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.components.LineChart
 import com.example.foodtracker.ui.components.LinePoint
 import com.example.foodtracker.ui.theme.Dimens
-import com.example.foodtracker.ui.theme.MacroBurned
 import com.example.foodtracker.ui.theme.MacroCarbs
 import com.example.foodtracker.ui.theme.MacroWater
 import com.example.foodtracker.ui.theme.MacroWeight
@@ -112,14 +111,6 @@ fun ProgressScreen(onBack: () -> Unit) {
                 }
             }
 
-            item("burned") {
-                ProgressSection(
-                    title = "Active calories",
-                    subtitle = if (state.burnedAvg > 0) "${state.burnedAvg} kcal / active day" else null,
-                ) {
-                    ProgressChart(state.burned, MacroBurned, "kcal")
-                }
-            }
         }
     }
 }

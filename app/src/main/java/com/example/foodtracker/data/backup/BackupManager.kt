@@ -100,7 +100,6 @@ class BackupManager(
             customFoods = customs.map(FoodSnapshot::from),
             foodLog = foodLogSnaps,
             waterLog = database.waterLogDao().getAll().map(WaterLogSnapshot::from),
-            activityLog = database.activityLogDao().getAll().map(ActivityLogSnapshot::from),
             weightLog = database.weightLogDao().getAll().map(WeightLogSnapshot::from),
         )
     }
@@ -516,7 +515,6 @@ class BackupManager(
         val foodDao = database.foodDao()
         val foodLogDao = database.foodLogDao()
         val waterDao = database.waterLogDao()
-        val activityDao = database.activityLogDao()
         val weightDao = database.weightLogDao()
 
         // Custom-food merge — never touch an existing local custom; only add
@@ -576,10 +574,8 @@ class BackupManager(
 
         // The rest of the logs don't reference foods — wipe and re-insert.
         waterDao.deleteAll()
-        activityDao.deleteAll()
         weightDao.deleteAll()
         waterDao.insertAll(payload.waterLog.map { it.toEntity().copy(id = 0) })
-        activityDao.insertAll(payload.activityLog.map { it.toEntity().copy(id = 0) })
         weightDao.upsertAll(payload.weightLog.map { it.toEntity().copy(id = 0) })
     }
 

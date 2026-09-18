@@ -13,10 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FoodEntity::class,
         FoodLogEntity::class,
         WaterLogEntity::class,
-        ActivityLogEntity::class,
         WeightLogEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -24,7 +23,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun foodLogDao(): FoodLogDao
     abstract fun waterLogDao(): WaterLogDao
-    abstract fun activityLogDao(): ActivityLogDao
     abstract fun weightLogDao(): WeightLogDao
 
     companion object {
@@ -73,13 +71,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v7 → v8: drops `activity_log`. Exercise logging is gone — the
+         * activity multiplier in
+         * [com.example.foodtracker.domain.GoalCalculator.tdee] already accounts
+         * for training, so logging a workout on top credited the same calories
+         * a second time and inflated the day's allowance. Counting it in one
+         * place means the table has no reader left.
+         *
+         * Destructive by design, and the only migration here that discards
+         * anything: any exercise a user logged is deleted on update.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS activity_log")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "food_tracker.db",
             )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket
                 // fallbackToDestructiveMigration: a *future* forgotten

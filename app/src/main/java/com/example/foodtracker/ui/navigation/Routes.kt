@@ -21,9 +21,6 @@ object BarcodeRoute
 object WaterRoute
 
 @Serializable
-object ActivityRoute
-
-@Serializable
 object ProfileRoute
 
 @Serializable

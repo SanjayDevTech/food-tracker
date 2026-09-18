@@ -42,11 +42,10 @@ data class WidgetSnapshot(
     val profile: UserProfile,
     val goals: NutrientGoals,
     val consumed: Nutrients,
-    val caloriesBurned: Double,
     val recent: List<FoodEntity>,
 ) {
-    val caloriesNet: Double get() = consumed.calories - caloriesBurned
-    val caloriesLeft: Double get() = goals.calories - caloriesNet
+    val caloriesConsumed: Double get() = consumed.calories
+    val caloriesLeft: Double get() = goals.calories - caloriesConsumed
 }
 
 object WidgetData {
@@ -70,9 +69,8 @@ object WidgetData {
             app.profileStore.isOnboarded,
             app.profileStore.profile,
             app.repository.observeLogForDay(today),
-            app.repository.observeCaloriesBurnedForDay(today),
             app.repository.observeRecentFoods(limit = 12),
-        ) { onboarded, profile, logs, burned, recent ->
+        ) { onboarded, profile, logs, recent ->
             val consumed = logs.fold(Nutrients.Zero) { acc, row ->
                 acc + (row.food.nutrientsPer100g() * (row.log.grams / 100.0))
             }
@@ -81,7 +79,7 @@ object WidgetData {
             if (BuildConfig.DEBUG) Log.d(
                 "WidgetData",
                 "flow emit today=$today onboarded=$onboarded logs=${logs.size} " +
-                    "consumed.kcal=${consumed.calories.toInt()} burned=${burned.toInt()} " +
+                    "consumed.kcal=${consumed.calories.toInt()} " +
                     "recent=${recent.size}",
             )
             WidgetSnapshot(
@@ -89,7 +87,6 @@ object WidgetData {
                 profile = profile,
                 goals = GoalCalculator.goalsFor(profile),
                 consumed = consumed,
-                caloriesBurned = burned,
                 recent = recent,
             )
         }.flowOn(Dispatchers.IO)

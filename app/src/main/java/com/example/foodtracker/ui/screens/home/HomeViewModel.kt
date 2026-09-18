@@ -30,7 +30,6 @@ data class HomeUiState(
     val goals: NutrientGoals,
     val logs: List<FoodLogWithFood>,
     val waterMl: Int,
-    val caloriesBurned: Double,
     val favourites: List<FoodEntity> = emptyList(),
     val recent: List<FoodEntity> = emptyList(),
     val latestWeight: WeightLogEntity? = null,
@@ -53,7 +52,6 @@ class HomeViewModel(
         val profile: UserProfile,
         val logs: List<FoodLogWithFood>,
         val water: Int,
-        val burned: Double,
     )
 
     private data class QuickState(
@@ -68,8 +66,7 @@ class HomeViewModel(
                 profileStore.profile,
                 repository.observeLogForDay(day),
                 repository.observeWaterTotalForDay(day),
-                repository.observeCaloriesBurnedForDay(day),
-            ) { profile, logs, water, burned -> CoreState(profile, logs, water, burned) }
+            ) { profile, logs, water -> CoreState(profile, logs, water) }
 
             val quickFlow = combine(
                 repository.observeFavouriteFoods(),
@@ -86,7 +83,6 @@ class HomeViewModel(
                     goals = GoalCalculator.goalsFor(core.profile),
                     logs = core.logs,
                     waterMl = core.water,
-                    caloriesBurned = core.burned,
                     favourites = quick.favourites,
                     recent = quick.recent,
                     latestWeight = quick.latestWeight,
@@ -102,7 +98,6 @@ class HomeViewModel(
                 goals = GoalCalculator.goalsFor(UserProfile()),
                 logs = emptyList(),
                 waterMl = 0,
-                caloriesBurned = 0.0,
             ),
         )
 

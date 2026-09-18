@@ -142,7 +142,7 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
     }
     val goalKcal = max(1.0, snapshot.goals.calories)
     val left = snapshot.caloriesLeft.roundToInt()
-    val consumedPct = (snapshot.caloriesNet / goalKcal).coerceIn(0.0, 1.0).toFloat()
+    val consumedPct = (snapshot.caloriesConsumed / goalKcal).coerceIn(0.0, 1.0).toFloat()
     val isOver = left < 0
     val numberSp = when {
         size.width.value >= GoalLeftWidget.WIDTH_LARGE_DP -> 48.sp
@@ -210,7 +210,7 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
             if (size.width.value >= GoalLeftWidget.WIDTH_LARGE_DP) {
                 Spacer(GlanceModifier.height(6.dp))
                 Text(
-                    text = "${snapshot.caloriesNet.roundToInt()} of ${goalKcal.roundToInt()} · ${snapshot.caloriesBurned.roundToInt()} burned",
+                    text = "${snapshot.caloriesConsumed.roundToInt()} of ${goalKcal.roundToInt()}",
                     style = TextStyle(
                         color = onBg,
                         fontSize = 11.sp,

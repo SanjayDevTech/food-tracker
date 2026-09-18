@@ -1,8 +1,5 @@
 package com.example.foodtracker.data
 
-import com.example.foodtracker.data.db.ActivityLogDao
-import com.example.foodtracker.data.db.ActivityLogEntity
-import com.example.foodtracker.data.db.DailyCaloriesTotal
 import com.example.foodtracker.data.db.DailyWaterTotal
 import com.example.foodtracker.data.db.FoodDao
 import com.example.foodtracker.data.db.FoodEntity
@@ -56,7 +53,6 @@ class FoodRepository(
     private val foodDao: FoodDao,
     private val foodLogDao: FoodLogDao,
     private val waterLogDao: WaterLogDao,
-    private val activityLogDao: ActivityLogDao,
     private val weightLogDao: WeightLogDao,
     private val api: OpenFoodFactsApi,
     private val usdaApi: UsdaFoodApi,
@@ -341,8 +337,6 @@ class FoodRepository(
         foodLogDao.getForDay(epochDay)
     suspend fun getRecentFoods(limit: Int): List<FoodEntity> =
         foodLogDao.getRecentFoods(limit)
-    suspend fun getCaloriesBurnedForDay(epochDay: Long): Double =
-        activityLogDao.getCaloriesBurnedForDay(epochDay)
 
     fun observeFrequentFoods(days: Int = 30, limit: Int = 12): Flow<List<FoodEntity>> =
         foodLogDao.observeFrequentFoods(DateUtil.todayEpochDay() - days, limit)
@@ -363,20 +357,6 @@ class FoodRepository(
         waterLogDao.observeTotalsForRange(start, end)
     suspend fun addWater(entry: WaterLogEntity): Long = waterLogDao.insert(entry)
     suspend fun deleteWater(id: Long) = waterLogDao.delete(id)
-
-    // ----- Activity -----
-    fun observeActivityForDay(epochDay: Long): Flow<List<ActivityLogEntity>> =
-        activityLogDao.observeForDay(epochDay)
-    fun observeCaloriesBurnedForDay(epochDay: Long): Flow<Double> =
-        activityLogDao.observeCaloriesBurnedForDay(epochDay)
-    fun observeCaloriesBurnedForRange(start: Long, end: Long): Flow<List<DailyCaloriesTotal>> =
-        activityLogDao.observeCaloriesForRange(start, end)
-    suspend fun addActivity(entry: ActivityLogEntity): Long =
-        activityLogDao.insert(entry).also { onWidgetDataChanged() }
-    suspend fun deleteActivity(id: Long) {
-        activityLogDao.delete(id)
-        onWidgetDataChanged()
-    }
 
     // ----- Weight -----
     fun observeRecentWeights(limit: Int = 60): Flow<List<WeightLogEntity>> =

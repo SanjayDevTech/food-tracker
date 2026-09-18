@@ -39,19 +39,17 @@ data class DonutSlice(val label: String, val value: Double, val color: Color)
  * calories" detail alongside the ring.
  *
  * Layout: ring on the left (160dp), per-macro legend column on the right,
- * and a compact Goal / Food / Exercise row beneath the whole block.
+ * and a compact Goal / Food row beneath the whole block.
  */
 @Composable
 fun CalorieHero(
     consumed: Double,
-    burned: Double,
     goal: Double,
     macroSlices: List<DonutSlice>,
     modifier: Modifier = Modifier,
 ) {
-    val net = (consumed - burned).coerceAtLeast(0.0)
-    val remaining = (goal - net).coerceAtLeast(0.0)
-    val ratio = (net / goal.coerceAtLeast(1.0)).toFloat().coerceIn(0f, 1.5f)
+    val remaining = (goal - consumed).coerceAtLeast(0.0)
+    val ratio = (consumed / goal.coerceAtLeast(1.0)).toFloat().coerceIn(0f, 1.5f)
     val animated by animateFloatAsState(
         targetValue = ratio.coerceAtMost(1f),
         animationSpec = tween(700),
@@ -107,7 +105,7 @@ fun CalorieHero(
             }
         }
         Spacer(Modifier.height(14.dp))
-        // Compact stat strip — Goal / Food / Exercise. Lived on the right of
+        // Compact stat strip — Goal / Food. Lived on the right of
         // the ring in the older two-block layout; moved down so the macro
         // legend can take that space.
         Row(
@@ -116,7 +114,6 @@ fun CalorieHero(
         ) {
             CalorieStat("Goal", "${goal.roundToInt()} kcal")
             CalorieStat("Food", "${consumed.roundToInt()} kcal")
-            CalorieStat("Exercise", "− ${burned.roundToInt()} kcal")
         }
     }
 }

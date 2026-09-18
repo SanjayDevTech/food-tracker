@@ -23,7 +23,6 @@ import com.example.foodtracker.ui.LocalAppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import com.example.foodtracker.ui.screens.activity.ActivityScreen
 import com.example.foodtracker.ui.screens.addfood.AddFoodScreen
 import com.example.foodtracker.ui.screens.barcode.BarcodeScreen
 import com.example.foodtracker.ui.screens.home.HomeScreen
@@ -167,7 +166,6 @@ private fun androidx.navigation.NavGraphBuilder.graph(navController: androidx.na
         HomeScreen(
             onAddFoodToMeal = { meal -> navController.navigate(LogFoodRoute(meal.name)) },
             onOpenWater = { navController.navigate(WaterRoute) },
-            onOpenActivity = { navController.navigate(ActivityRoute) },
             onOpenWeight = { navController.navigate(WeightRoute) },
             onOpenProfile = { navController.navigate(ProfileRoute) },
             onOpenSettings = { navController.navigate(SettingsRoute) },
@@ -202,9 +200,6 @@ private fun androidx.navigation.NavGraphBuilder.graph(navController: androidx.na
     }
     composable<WaterRoute> {
         WaterScreen(onBack = { navController.popBackStack() })
-    }
-    composable<ActivityRoute> {
-        ActivityScreen(onBack = { navController.popBackStack() })
     }
     composable<ProfileRoute> {
         ProfileScreen(onBack = { navController.popBackStack() })

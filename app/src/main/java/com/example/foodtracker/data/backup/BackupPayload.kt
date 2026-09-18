@@ -6,7 +6,6 @@ import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.Sex
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.WeightChangeRate
-import com.example.foodtracker.data.db.ActivityLogEntity
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.WaterLogEntity
@@ -37,7 +36,6 @@ data class BackupPayload(
     val customFoods: List<FoodSnapshot> = emptyList(),
     val foodLog: List<FoodLogSnapshot>,
     val waterLog: List<WaterLogSnapshot>,
-    val activityLog: List<ActivityLogSnapshot>,
     val weightLog: List<WeightLogSnapshot>,
 ) {
     companion object {
@@ -296,36 +294,6 @@ data class WaterLogSnapshot(
             id = e.id,
             dateEpochDay = e.dateEpochDay,
             amountMl = e.amountMl,
-            loggedAtMillis = e.loggedAtMillis,
-        )
-    }
-}
-
-@Serializable
-data class ActivityLogSnapshot(
-    val id: Long,
-    val dateEpochDay: Long,
-    val activityType: String,
-    val minutes: Int,
-    val caloriesBurned: Double,
-    val loggedAtMillis: Long,
-) {
-    fun toEntity() = ActivityLogEntity(
-        id = id,
-        dateEpochDay = dateEpochDay,
-        activityType = activityType,
-        minutes = minutes,
-        caloriesBurned = caloriesBurned,
-        loggedAtMillis = loggedAtMillis,
-    )
-
-    companion object {
-        fun from(e: ActivityLogEntity) = ActivityLogSnapshot(
-            id = e.id,
-            dateEpochDay = e.dateEpochDay,
-            activityType = e.activityType,
-            minutes = e.minutes,
-            caloriesBurned = e.caloriesBurned,
             loggedAtMillis = e.loggedAtMillis,
         )
     }

@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
@@ -90,7 +89,6 @@ import com.example.foodtracker.util.DateUtil
 fun HomeScreen(
     onAddFoodToMeal: (MealType) -> Unit,
     onOpenWater: () -> Unit,
-    onOpenActivity: () -> Unit,
     onOpenWeight: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -195,7 +193,6 @@ fun HomeScreen(
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     CalorieHero(
                         consumed = n.calories,
-                        burned = state.caloriesBurned,
                         goal = state.goals.calories,
                         macroSlices = listOf(
                             DonutSlice("Carbs", n.carbs, MacroCarbs),
@@ -240,15 +237,6 @@ fun HomeScreen(
                         sub = "of ${state.goals.waterMl} ml",
                         tint = MacroWater,
                         onClick = onOpenWater,
-                    )
-                    StatTile(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.LocalFireDepartment,
-                        title = "Burned",
-                        value = "${state.caloriesBurned.toInt()} kcal",
-                        sub = "exercise & activity",
-                        tint = MacroBurned,
-                        onClick = onOpenActivity,
                     )
                     val latest = state.latestWeight
                     StatTile(

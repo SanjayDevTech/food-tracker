@@ -30,7 +30,6 @@ class FoodTrackerApp : Application() {
             foodDao = database.foodDao(),
             foodLogDao = database.foodLogDao(),
             waterLogDao = database.waterLogDao(),
-            activityLogDao = database.activityLogDao(),
             weightLogDao = database.weightLogDao(),
             api = api,
             usdaApi = usdaApi,
