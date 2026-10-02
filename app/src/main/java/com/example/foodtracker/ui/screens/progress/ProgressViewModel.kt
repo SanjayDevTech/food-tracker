@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.ProfileStore
+import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.DailyWaterTotal
 import com.example.foodtracker.data.db.FoodLogWithFood
@@ -36,6 +37,9 @@ data class ProgressUiState(
     val goalWeightKg: Double? = null,
     val water: List<LinePoint> = emptyList(),
     val waterAvgMl: Int = 0,
+    /** Daily targets, drawn as the charts' dashed reference line. */
+    val calorieGoal: Double = 0.0,
+    val waterGoalMl: Int = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -101,6 +105,8 @@ class ProgressViewModel(
         val weightChange =
             if (weightSorted.size >= 2) weightSorted.last().weightKg - weightSorted.first().weightKg else null
 
+        val goals = GoalCalculator.goalsFor(profile)
+
         return ProgressUiState(
             range = range,
             caloriesIn = caloriesIn,
@@ -110,6 +116,8 @@ class ProgressViewModel(
             goalWeightKg = profile.goalWeightKg,
             water = waterPts,
             waterAvgMl = waterAvgMl,
+            calorieGoal = goals.calories,
+            waterGoalMl = goals.waterMl,
         )
     }
 }

@@ -32,6 +32,7 @@ import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.components.LineChart
 import com.example.foodtracker.ui.components.LinePoint
 import com.example.foodtracker.ui.theme.Dimens
+import kotlin.math.roundToInt
 import com.example.foodtracker.ui.theme.MacroCarbs
 import com.example.foodtracker.ui.theme.MacroWater
 import com.example.foodtracker.ui.theme.MacroWeight
@@ -76,7 +77,13 @@ fun ProgressScreen(onBack: () -> Unit) {
                     title = "Calories eaten",
                     subtitle = if (state.caloriesInAvg > 0) "${state.caloriesInAvg} kcal / logged day" else null,
                 ) {
-                    ProgressChart(state.caloriesIn, MacroCarbs, "kcal")
+                    ProgressChart(
+                        points = state.caloriesIn,
+                        color = MacroCarbs,
+                        unit = "kcal",
+                        goal = state.calorieGoal.takeIf { it > 0 },
+                        goalLabel = { "Goal ${it.roundToInt()} kcal" },
+                    )
                 }
             }
 
@@ -107,7 +114,13 @@ fun ProgressScreen(onBack: () -> Unit) {
                     title = "Water",
                     subtitle = if (state.waterAvgMl > 0) "${state.waterAvgMl} ml / day avg" else null,
                 ) {
-                    ProgressChart(state.water, MacroWater, "ml")
+                    ProgressChart(
+                        points = state.water,
+                        color = MacroWater,
+                        unit = "ml",
+                        goal = state.waterGoalMl.takeIf { it > 0 }?.toDouble(),
+                        goalLabel = { "Goal ${it.roundToInt()} ml" },
+                    )
                 }
             }
 
@@ -116,13 +129,26 @@ fun ProgressScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun ProgressChart(points: List<LinePoint>, color: Color, unit: String) {
+private fun ProgressChart(
+    points: List<LinePoint>,
+    color: Color,
+    unit: String,
+    /** Daily target, drawn as the same dashed line the weight chart uses. */
+    goal: Double? = null,
+    goalLabel: (Double) -> String = { "" },
+) {
     // A flat all-zero series carries no signal — show a hint instead of a line
     // pinned to the axis.
     if (points.size < 2 || points.all { it.value == 0.0 }) {
         EmptyChart("No data logged in this range yet.")
     } else {
-        LineChart(points = points, lineColor = color, unit = unit)
+        LineChart(
+            points = points,
+            lineColor = color,
+            unit = unit,
+            referenceLine = goal,
+            referenceLabel = goal?.let(goalLabel),
+        )
     }
 }
 
