@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.db.FoodEntity
+import kotlin.math.roundToInt
 
 @Composable
 fun FoodRow(
@@ -66,7 +67,7 @@ fun FoodRow(
             Text(
                 listOfNotNull(
                     food.brand?.takeIf { it.isNotBlank() },
-                    "${food.calories.toInt()} kcal · ${food.servingLabel}",
+                    "${food.servingCalories().roundToInt()} kcal · ${food.servingLabel}",
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

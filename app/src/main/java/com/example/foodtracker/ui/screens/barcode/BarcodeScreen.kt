@@ -57,6 +57,7 @@ import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.rememberAppHaptics
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -466,7 +467,7 @@ private fun CachedPanel(
             )
         }
         Text(
-            "${food.calories.toInt()} kcal per 100 g · ${food.servingLabel}",
+            "${food.servingCalories().roundToInt()} kcal · ${food.servingLabel}",
             style = MaterialTheme.typography.bodyLarge,
         )
         source?.let {

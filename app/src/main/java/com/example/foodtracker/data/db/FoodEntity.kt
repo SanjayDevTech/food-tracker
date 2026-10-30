@@ -77,6 +77,13 @@ data class FoodEntity(
         listOf(ServingVariant(servingLabel, servingGrams))
     }
 
+    /**
+     * Calories for one canonical serving. Stored nutrient values are per 100 g,
+     * so anything that pairs a number with [servingLabel] must scale first — a
+     * 35 g idli is 51 kcal, not the 145 kcal held in [calories].
+     */
+    fun servingCalories(): Double = calories * (servingGrams / 100.0)
+
     fun nutrientsPer100g(): Nutrients = Nutrients(
         calories = calories,
         carbs = carbs,

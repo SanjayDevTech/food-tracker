@@ -83,6 +83,7 @@ import com.example.foodtracker.ui.theme.MacroProtein
 import com.example.foodtracker.ui.theme.MacroWater
 import com.example.foodtracker.ui.theme.MacroWeight
 import com.example.foodtracker.util.DateUtil
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -1048,7 +1049,7 @@ private fun QuickLogSection(
                             )
                         }
                         Text(
-                            "${food.calories.toInt()} kcal · ${food.servingLabel}",
+                            "${food.servingCalories().roundToInt()} kcal · ${food.servingLabel}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
