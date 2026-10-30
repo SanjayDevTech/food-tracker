@@ -6,14 +6,16 @@ import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Sex
 import com.example.foodtracker.data.UserProfile
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
  * Computes daily nutrient goals from a user profile using Mifflin-St Jeor
- * for BMR and a configurable activity multiplier for TDEE. Macro splits
- * follow common recommendations (40% carbs / 30% protein / 30% fat) with
- * adjustments for the chosen goal. Micronutrient goals follow the Indian
- * ICMR RDA where reasonable, with sensible defaults otherwise.
+ * for BMR and a configurable activity multiplier for TDEE. Protein is set
+ * per kg of body weight (see [proteinPerKg]), fat takes 28% of calories, and
+ * carbs absorb the remainder — so the split moves with the goal and the
+ * training load rather than being fixed. Micronutrient goals follow the
+ * Indian ICMR RDA where reasonable, with sensible defaults otherwise.
  */
 object GoalCalculator {
 
@@ -42,14 +44,44 @@ object GoalCalculator {
     fun targetCalories(profile: UserProfile): Double =
         max(1200.0, tdee(profile) + calorieAdjustment(profile))
 
+    /**
+     * Grams of protein per kg of body weight. Protein is the one macro set
+     * from body mass rather than from calories, so it has to account for
+     * training: 1.2 g/kg is roughly the sedentary RDA and is far too low for
+     * someone holding their weight while lifting. [ActivityLevel] is the only
+     * training signal the profile carries, so it does that work here — a
+     * Maintain goal runs 1.0 g/kg sedentary up to 1.8 g/kg for an athlete,
+     * which is where muscle gain at stable weight actually sits.
+     *
+     * Lose and Gain start higher for different reasons: a deficit needs the
+     * extra protein to spare lean mass, a surplus to build it. The whole grid
+     * stays inside the 0.8-2.2 g/kg band the ISSN position stand covers.
+     */
+    fun proteinPerKg(profile: UserProfile): Double {
+        val base = when (profile.goal) {
+            Goal.Maintain -> 1.0
+            Goal.Gain -> 1.3
+            Goal.Lose -> 1.5
+        }
+        val training = when (profile.activityLevel) {
+            ActivityLevel.Sedentary -> 0.0
+            ActivityLevel.Light -> 0.2
+            ActivityLevel.Moderate -> 0.4
+            ActivityLevel.Active -> 0.6
+            ActivityLevel.VeryActive -> 0.8
+        }
+        return base + training
+    }
+
     fun goalsFor(profile: UserProfile): NutrientGoals {
         val cals = targetCalories(profile)
 
-        val proteinG = when (profile.goal) {
-            Goal.Gain -> profile.weightKg * 1.8
-            Goal.Lose -> profile.weightKg * 1.6
-            Goal.Maintain -> profile.weightKg * 1.2
-        }
+        // Capped at 40% of calories. Body-weight protein and calorie-derived
+        // fat are computed independently, so a heavy person pinned to the
+        // 1200 kcal floor could otherwise be handed 200 g of protein and
+        // almost no carbs. Inert for any realistic profile — a hard cut at
+        // 2.3 g/kg still only reaches about 30%.
+        val proteinG = min(profile.weightKg * proteinPerKg(profile), (cals * 0.40) / 4.0)
         val fatG = (cals * 0.28) / 9.0
         val proteinCals = proteinG * 4.0
         val fatCals = fatG * 9.0
