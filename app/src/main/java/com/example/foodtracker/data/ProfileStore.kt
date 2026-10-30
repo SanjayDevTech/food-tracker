@@ -46,6 +46,7 @@ private object Keys {
     val GOAL = stringPreferencesKey("goal")
     val WEIGHT_CHANGE_RATE = stringPreferencesKey("weight_change_rate")
     val GOAL_WEIGHT = doublePreferencesKey("goal_weight_kg")
+    val TRAINING_MIX = doublePreferencesKey("training_mix")
     val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val COLOR_PALETTE = stringPreferencesKey("color_palette")
@@ -112,6 +113,7 @@ class ProfileStore(
             goal = Goal.fromName(p[Keys.GOAL] ?: Goal.Maintain.name),
             weightChangeRate = WeightChangeRate.fromName(p[Keys.WEIGHT_CHANGE_RATE]),
             goalWeightKg = p[Keys.GOAL_WEIGHT],
+            trainingMix = p[Keys.TRAINING_MIX],
         )
     }
 
@@ -189,6 +191,8 @@ class ProfileStore(
             p[Keys.WEIGHT_CHANGE_RATE] = profile.weightChangeRate.name
             val goalWeight = profile.goalWeightKg
             if (goalWeight == null) p.remove(Keys.GOAL_WEIGHT) else p[Keys.GOAL_WEIGHT] = goalWeight
+            val mix = profile.trainingMix
+            if (mix == null) p.remove(Keys.TRAINING_MIX) else p[Keys.TRAINING_MIX] = mix
             if (markOnboarded) p[Keys.ONBOARDED] = true
         }
         // Goals are derived from the profile, so a save changes what the

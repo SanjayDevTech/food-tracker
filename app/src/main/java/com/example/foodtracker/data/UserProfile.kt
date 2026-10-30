@@ -19,4 +19,34 @@ data class UserProfile(
      * by [weightChangeRate]; this field is purely for progress feedback.
      */
     val goalWeightKg: Double? = null,
-)
+    /**
+     * Where training sits between resistance work and endurance work:
+     * `0.0` = all gym, `1.0` = all running, `0.5` = both in equal measure.
+     *
+     * Optional. [activityLevel] already says *how much* someone trains; this
+     * says *what kind*, which is what protein requirements actually turn on.
+     * Null means the question was never answered and is read as
+     * [TRAINING_MIX_BALANCED], so skipping it leaves every target exactly as
+     * it was before the field existed.
+     */
+    val trainingMix: Double? = null,
+) {
+    companion object {
+        /** Equal parts resistance and endurance — the reading for an unset [trainingMix]. */
+        const val TRAINING_MIX_BALANCED = 0.5
+    }
+}
+
+/**
+ * Human label for a [UserProfile.trainingMix] position. Written against the
+ * five slider stops rather than exact equality, since the value round-trips
+ * through a Float.
+ */
+fun trainingMixLabel(mix: Double?): String =
+    when (mix ?: UserProfile.TRAINING_MIX_BALANCED) {
+        in 0.0..0.125 -> "Gym only"
+        in 0.125..0.375 -> "Mostly gym"
+        in 0.375..0.625 -> "Both equally"
+        in 0.625..0.875 -> "Mostly running"
+        else -> "Running only"
+    }

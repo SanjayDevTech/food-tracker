@@ -54,8 +54,16 @@ object GoalCalculator {
      * which is where muscle gain at stable weight actually sits.
      *
      * Lose and Gain start higher for different reasons: a deficit needs the
-     * extra protein to spare lean mass, a surplus to build it. The whole grid
-     * stays inside the 0.8-2.2 g/kg band the ISSN position stand covers.
+     * extra protein to spare lean mass, a surplus to build it.
+     *
+     * [UserProfile.trainingMix] then splits that activity bump by *kind* of
+     * training, because the two are not equivalent: the ISSN puts strength
+     * athletes around 1.6-2.0 g/kg and endurance athletes around 1.2-1.4. All
+     * gym takes 125% of the bump, all running 75%, and the unset midpoint
+     * takes it whole — so a profile that never touches the slider gets the
+     * same number it did before the field existed. The two are multiplied
+     * rather than added, which also means the mix correctly does nothing at
+     * Sedentary: there is no training to characterise.
      */
     fun proteinPerKg(profile: UserProfile): Double {
         val base = when (profile.goal) {
@@ -70,7 +78,11 @@ object GoalCalculator {
             ActivityLevel.Active -> 0.6
             ActivityLevel.VeryActive -> 0.8
         }
-        return base + training
+        val mix = profile.trainingMix?.coerceIn(0.0, 1.0) ?: UserProfile.TRAINING_MIX_BALANCED
+        val emphasis = 1.25 - (0.5 * mix)
+        // Clamped to the span the literature actually supports. Only the
+        // extreme corner (hard cut, athlete, all gym) reaches the ceiling.
+        return (base + training * emphasis).coerceIn(0.8, 2.4)
     }
 
     fun goalsFor(profile: UserProfile): NutrientGoals {

@@ -59,6 +59,7 @@ import com.example.foodtracker.ui.components.HapticSlider
 import com.example.foodtracker.ui.components.NumberStepper
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.theme.Dimens
+import com.example.foodtracker.data.trainingMixLabel
 
 /**
  * Who the user is and what they are aiming at: the header card, the edit form,
@@ -175,6 +176,12 @@ fun ProfileScreen(
                                 )
                             }
                         }
+                        Spacer(Modifier.height(10.dp))
+                        TrainingMixRow(
+                            mix = state.draft.trainingMix,
+                            enabled = state.draft.activityLevel != ActivityLevel.Sedentary,
+                            onChange = { v -> vm.updateDraft { it.copy(trainingMix = v) } },
+                        )
                         Spacer(Modifier.height(8.dp))
                         FormLabel("Goal")
                         ExclusiveButtonGroup(
@@ -412,6 +419,65 @@ private fun NutrientCategory.displayLabel(): String = when (this) {
     NutrientCategory.Macros -> "Macros"
     NutrientCategory.Minerals -> "Minerals"
     NutrientCategory.Vitamins -> "Vitamins"
+}
+
+/**
+ * Optional resistance-vs-endurance slider.
+ *
+ * Only [com.example.foodtracker.domain.GoalCalculator.proteinPerKg] reads it,
+ * and only to split the activity bump, so leaving it alone is a real choice
+ * rather than an unanswered question: null sits at the midpoint and yields the
+ * same targets as before the slider existed. Disabled at Sedentary, where
+ * there is no training to characterise and dragging would change nothing.
+ */
+@Composable
+private fun TrainingMixRow(
+    mix: Double?,
+    enabled: Boolean,
+    onChange: (Double) -> Unit,
+) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Training type",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                if (enabled) trainingMixLabel(mix) else "Not training",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (enabled) MaterialTheme.colorScheme.primary else muted,
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Gym", style = MaterialTheme.typography.labelMedium, color = muted)
+            HapticSlider(
+                value = (mix ?: UserProfile.TRAINING_MIX_BALANCED).toFloat(),
+                onValueChange = { onChange(it.toDouble().coerceIn(0.0, 1.0)) },
+                valueRange = 0f..1f,
+                // Four intervals: gym only / mostly gym / both / mostly
+                // running / running only. Matches [trainingMixLabel].
+                steps = 3,
+                granularity = 0.25f,
+                enabled = enabled,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            )
+            Text("Running", style = MaterialTheme.typography.labelMedium, color = muted)
+        }
+        Text(
+            if (enabled) {
+                "Optional. Lifting raises your protein target more than cardio does."
+            } else {
+                "Pick an activity level above Sedentary to set this."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+        )
+    }
 }
 
 @Composable

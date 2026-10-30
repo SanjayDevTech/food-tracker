@@ -56,6 +56,8 @@ data class ProfileSnapshot(
     val hapticsEnabled: Boolean = true,
     val themeMode: String = ThemeMode.System.name,
     val goalWeightKg: Double? = null,
+    /** Added after SCHEMA_VERSION 2. Defaulted, so older payloads still load. */
+    val trainingMix: Double? = null,
 ) {
     fun toUserProfile() = UserProfile(
         name = name,
@@ -67,6 +69,7 @@ data class ProfileSnapshot(
         goal = Goal.fromName(goal),
         weightChangeRate = WeightChangeRate.fromName(weightChangeRate),
         goalWeightKg = goalWeightKg,
+        trainingMix = trainingMix,
     )
 
     companion object {
@@ -82,6 +85,7 @@ data class ProfileSnapshot(
             hapticsEnabled = haptics,
             themeMode = theme.name,
             goalWeightKg = profile.goalWeightKg,
+            trainingMix = profile.trainingMix,
         )
     }
 }

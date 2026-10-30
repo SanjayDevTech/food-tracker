@@ -26,6 +26,7 @@ fun HapticSlider(
     modifier: Modifier = Modifier,
     steps: Int = 0,
     granularity: Float = 1f,
+    enabled: Boolean = true,
 ) {
     val haptics = rememberAppHaptics()
     val lastBucket = remember { mutableFloatStateOf(Float.NaN) }
@@ -43,6 +44,7 @@ fun HapticSlider(
         },
         valueRange = valueRange,
         steps = steps,
+        enabled = enabled,
         modifier = modifier,
     )
 }
