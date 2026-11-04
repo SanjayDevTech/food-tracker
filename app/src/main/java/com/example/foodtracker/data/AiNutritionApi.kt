@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -53,9 +54,28 @@ data class AiNutrition(
  * with a POST body instead of a GET query. All failures return null so the
  * form silently falls back to manual entry.
  */
+/** The nutrient keys every reply must carry, in the order the prompt lists them. */
+private val NUTRIENT_KEYS = listOf(
+    "calories", "carbs", "sugar", "fiber", "protein", "fat", "saturatedFat",
+    "omega3", "cholesterol", "sodium", "calcium", "iron", "magnesium",
+    "potassium", "zinc", "phosphorus", "selenium", "copper", "manganese",
+    "vitaminA", "vitaminC", "vitaminD", "vitaminE", "vitaminK", "vitaminB12",
+    "folate", "vitaminB1", "vitaminB2", "vitaminB3", "vitaminB6",
+)
+
 class AiNutritionApi {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    /**
+     * Which concrete model last answered, as the provider reports it. Gemini
+     * returns `modelVersion`, so an alias like `gemini-flash-lite-latest`
+     * names what it actually resolved to. Also logged: when Google moves the
+     * alias underneath a release, this is the only signal that it did.
+     */
+    @Volatile
+    var lastModelVersion: String? = null
+        private set
 
     /**
      * Three tries in total, then give up — about four seconds of waiting in
@@ -235,6 +255,53 @@ class AiNutritionApi {
 
     // ─── Provider calls ─────────────────────────────────────────────────────
 
+    /**
+     * The exact object every reply must return, handed to Gemini as a
+     * `response_schema` so the server enforces it rather than the prompt
+     * asking nicely.
+     *
+     * This is what holds replies steady across a model swap: the Gemini ids
+     * in [AiProvider] are `-latest` aliases, so Google can move the model
+     * underneath a release, and a schema makes the SHAPE — every key present,
+     * numbers as numbers, category from the fixed list — a property of the
+     * request instead of of whichever model answers. It cannot do anything
+     * about the VALUES; those are the model's, and no request setting makes
+     * two different models agree on how much iron is in a dosa.
+     */
+    private fun nutritionSchema(): JsonObject = buildJsonObject {
+        put("type", "OBJECT")
+        putJsonObject("properties") {
+            putJsonObject("servingGrams") { put("type", "NUMBER") }
+            putJsonObject("servingLabel") { put("type", "STRING") }
+            putJsonObject("category") {
+                put("type", "STRING")
+                putJsonArray("enum") {
+                    FoodCategory.entries
+                        .filter { it != FoodCategory.Custom }
+                        .forEach { add(it.name) }
+                }
+            }
+            // Deliberately absent from `required` — a food with no named
+            // sizes omits it, which is the common case.
+            putJsonObject("servingVariants") {
+                put("type", "ARRAY")
+                putJsonObject("items") {
+                    put("type", "OBJECT")
+                    putJsonObject("properties") {
+                        putJsonObject("label") { put("type", "STRING") }
+                        putJsonObject("grams") { put("type", "NUMBER") }
+                    }
+                    putJsonArray("required") { add("label"); add("grams") }
+                }
+            }
+            NUTRIENT_KEYS.forEach { key -> putJsonObject(key) { put("type", "NUMBER") } }
+        }
+        putJsonArray("required") {
+            add("servingGrams"); add("servingLabel"); add("category")
+            NUTRIENT_KEYS.forEach { add(it) }
+        }
+    }
+
     private suspend fun callGemini(prompt: String, model: String, apiKey: String): String? {
         val body = buildJsonObject {
             putJsonArray("contents") {
@@ -246,6 +313,7 @@ class AiNutritionApi {
             }
             putJsonObject("generationConfig") {
                 put("response_mime_type", "application/json")
+                put("response_schema", nutritionSchema())
             }
         }.toString()
         val resp = post(
@@ -254,7 +322,16 @@ class AiNutritionApi {
             body,
         ) ?: return null
         return runCatching {
-            json.parseToJsonElement(resp).jsonObject["candidates"]
+            val root = json.parseToJsonElement(resp).jsonObject
+            root["modelVersion"]?.jsonPrimitive?.contentOrNull?.let { resolved ->
+                lastModelVersion = resolved
+                if (resolved != model) {
+                    // Only ever true for an alias id — this is the alias
+                    // naming the model it resolved to today.
+                    android.util.Log.i("AiNutritionApi", "$model resolved to $resolved")
+                }
+            }
+            root["candidates"]
                 ?.jsonArray?.firstOrNull()?.jsonObject
                 ?.get("content")?.jsonObject
                 ?.get("parts")?.jsonArray?.firstOrNull()?.jsonObject
