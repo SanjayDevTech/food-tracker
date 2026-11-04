@@ -60,6 +60,14 @@ enum class AiProvider(
         ),
     );
 
+    /**
+     * Whether the request can pin the reply's JSON shape server-side, so the
+     * prompt does not have to spell out the key list and category values.
+     * Only Gemini carries a `response_schema` today; the others are told the
+     * contract in words instead (see [AiNutritionApi]).
+     */
+    val enforcesSchema: Boolean get() = this == Gemini
+
     /** Cheapest capable model — the default selection. */
     val defaultModel: AiModel get() = models.first()
 

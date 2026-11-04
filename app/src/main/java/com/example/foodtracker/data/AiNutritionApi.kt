@@ -108,7 +108,7 @@ class AiNutritionApi {
         // Resolve against the provider's model list; a stale/blank id falls back
         // to the provider's default.
         val modelId = provider.modelFromId(model).id
-        val prompt = buildPrompt(foodName.trim(), instructions.trim())
+        val prompt = buildPrompt(foodName.trim(), instructions.trim(), provider.enforcesSchema)
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
@@ -136,7 +136,7 @@ class AiNutritionApi {
     ): AiNutrition? = withContext(Dispatchers.IO) {
         if (foodName.isBlank() || apiKey.isBlank()) return@withContext null
         val modelId = provider.modelFromId(model).id
-        val prompt = buildVerifyPrompt(foodName.trim(), candidate, instructions.trim())
+        val prompt = buildVerifyPrompt(foodName.trim(), candidate, instructions.trim(), provider.enforcesSchema)
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
@@ -147,89 +147,92 @@ class AiNutritionApi {
 
     // ─── Prompt ───────────────────────────────────────────────────────────
 
-    private fun buildPrompt(foodName: String, instructions: String): String = """
-        You are a nutrition database. Return ONLY a compact JSON object (no markdown,
-        no explanation) for the food below.
-        The user is in India. Prefer Indian food-composition references and Indian
-        household portions. For regional dishes, assume a common South Indian
-        preparation first, especially Tamil Nadu, Kerala, or Karnataka style.
-        Account for typical regional ingredients and proportions such as rice,
-        lentils, coconut, curry leaves, mustard seeds, spices, oil, ghee, and
-        tempering. Do not substitute a generic Western recipe when an Indian
-        interpretation is reasonable. For an ambiguous dish, choose the most
-        common South Indian household version and make the assumed style clear
-        in the servingLabel when useful.
-        First pick a TYPICAL SINGLE SERVING of this specific food (e.g. 1 medium
-        banana, 1 cup cooked rice, 2 slices bread, 1 katori dal). Then set:
-        - "servingGrams": the weight of that one serving in grams (number).
-        - "servingLabel": a short label naming that serving and its grams,
-          e.g. "1 medium (120 g)" or "1 cup (195 g)".
-        - "category": classify the food as EXACTLY ONE of these values:
-          SouthIndian, NorthIndian, Snack, Beverage, Dairy, Fruit, Vegetable,
-          Grain, Protein, Packaged, Other. Use Other if none clearly fits.
-        - "servingVariants": OPTIONAL, and usually omitted. Include it ONLY
-          when this food is genuinely eaten in distinct named sizes a person
-          would recognise and ask for — a small/medium/large banana, a
-          half/full plate of biryani, a small/large cup of tea. OMIT it
-          entirely for anything measured out rather than portioned (flour,
-          oil, ghee, spices, pickle by the spoon), for anything sold in a
-          fixed unit (a packaged bar, a bottle), and whenever you are unsure.
-          Omitting it is the normal, correct answer.
-          When you do include it, give 2-4 objects of {"label", "grams"}:
-          short labels like "Small", "Medium", "Large", and one entry MUST be
-          the typical serving above with grams EQUAL to servingGrams. The
-          nutrients below always describe servingGrams only — never scale
-          them per variant.
-        Give every nutrient value FOR THAT ONE SERVING (not per 100 g).
-        Return every key listed below. Use 0 only when the nutrient is genuinely
-        absent or nutritionally negligible for this serving. Do not invent a
-        trace amount: when a reliable value is unavailable, use 0 and treat it
-        as unavailable rather than guessing. Keep meaningful values even when
-        they are small, especially zinc, iron, copper, potassium, calcium,
-        vitamin C, and vitamin K.
+    /**
+     * The part of the contract Gemini gets for free from its
+     * `response_schema` — the JSON-only instruction, the category values and
+     * the required-key list. Sent only to providers whose reply shape is not
+     * enforced server-side, which is where it still has to be said.
+     */
+    private fun jsonContract(schemaEnforced: Boolean): String =
+        if (schemaEnforced) "" else """
+        Return ONLY a compact JSON object, no markdown and no explanation.
+        category must be exactly one of: SouthIndian, NorthIndian, Snack,
+        Beverage, Dairy, Fruit, Vegetable, Grain, Protein, Packaged, Other.
+        Required keys: servingGrams, servingLabel, category, ${NUTRIENT_KEYS.joinToString(", ")}.
+        """.trimIndent()
+
+    private fun buildPrompt(
+        foodName: String,
+        instructions: String,
+        schemaEnforced: Boolean,
+    ): String = """
+        You are a nutrition database. The user is in India — prefer Indian
+        food-composition data (IFCT) over Western tables wherever it exists.
+
+        Food: "$foodName"
+
+        Pick ONE typical Indian household serving of this food, then give that
+        serving's nutrition. Assume a common South Indian preparation (Tamil
+        Nadu, Kerala, Karnataka) unless the name says otherwise, with real
+        proportions of rice, lentils, coconut, oil, ghee and tempering. Never
+        substitute a Western recipe for an Indian dish.
+
+        - servingGrams: that serving's weight in grams.
+        - servingLabel: names the serving and ends with its grams, like
+          "1 medium (120 g)".
+        - servingVariants: OPTIONAL and usually omitted. Only for a food eaten
+          in distinct named sizes someone would ask for. Omit it for anything
+          spooned or measured out, anything sold as a fixed unit, and whenever
+          unsure. If included, give 2-4 {label, grams} with one entry's grams
+          EQUAL to servingGrams.
+
+        Every nutrient value is FOR THAT ONE SERVING — never per 100 g, never
+        scaled to a variant.
+
+        Accuracy:
+        - calories must agree with 4xcarbs + 4xprotein + 9xfat to within 10%.
+          If they disagree, correct the nutrients.
+        - Use 0 only when a nutrient is genuinely absent or no reliable value
+          exists, never as a guessed trace. Keep small real values, especially
+          zinc, iron, copper, potassium, calcium, vitamin C and vitamin K.
+
         Units — kcal: calories. grams: carbs, sugar, fiber, protein, fat,
         saturatedFat, omega3. milligrams: cholesterol, sodium, calcium, iron,
         magnesium, potassium, zinc, phosphorus, copper, manganese, vitaminC,
         vitaminE, vitaminB1, vitaminB2, vitaminB3, vitaminB6. micrograms:
         selenium, vitaminA, vitaminD, vitaminK, vitaminB12, folate.
-        Keys (every one below is required; servingVariants above is the only
-        optional key): servingGrams, servingLabel, category, calories, carbs, sugar, fiber, protein,
-        fat, saturatedFat, omega3, cholesterol, sodium, calcium, iron, magnesium,
-        potassium, zinc, phosphorus, selenium, copper, manganese, vitaminA,
-        vitaminC, vitaminD, vitaminE, vitaminK, vitaminB12, folate, vitaminB1,
-        vitaminB2, vitaminB3, vitaminB6.
-        Food: "$foodName"
+        ${jsonContract(schemaEnforced)}
         ${instructionsPrompt(instructions)}
     """.trimIndent()
 
-    private fun buildVerifyPrompt(foodName: String, candidate: AiNutrition, instructions: String): String = """
-                You are a meticulous nutrition fact-checker. Below is a proposed nutrition
-                profile for a food, for ONE SERVING, as a JSON object. Check every field
-        against reliable food-composition data:
-                - Treat the user as being in India. Validate regional dishes against a
-                    plausible South Indian preparation first, especially Tamil Nadu,
-                    Kerala, or Karnataka style, including its usual coconut, lentil, oil,
-                    ghee, spice, and tempering proportions. Do not silently replace it
-                    with a generic Western preparation.
-        - Confirm servingGrams is a realistic serving weight and servingLabel matches it.
-        - Confirm category is the best fit from: SouthIndian, NorthIndian, Snack,
-          Beverage, Dairy, Fruit, Vegetable, Grain, Protein, Packaged, Other.
-                - servingVariants is optional. If present, confirm this food really is
-                    eaten in those distinct named sizes and that one entry's grams equals
-                    servingGrams; drop the key entirely if the sizes are invented, if the
-                    food is measured out rather than portioned, or if it is sold as a
-                    fixed unit. Add it only if the food plainly has 2-4 recognised sizes
-                    and it is missing. Never scale the nutrients to a variant.
-                - Correct every nutrient that is wrong or implausible for that serving;
-                    do not silently copy a per-100 g value into a per-serving field.
-                - Keep meaningful small values. Use 0 only for a genuinely absent or
-                    nutritionally negligible nutrient, or when no reliable value exists;
-                    do not fabricate trace amounts to fill the schema. Same units as given.
-        Return ONLY the corrected JSON object using the exact SAME keys — no
-        markdown, no explanation.
+    private fun buildVerifyPrompt(
+        foodName: String,
+        candidate: AiNutrition,
+        instructions: String,
+        schemaEnforced: Boolean,
+    ): String = """
+        You are a nutrition fact-checker. Below is a proposed profile for ONE
+        SERVING of a food. Correct every field that is wrong or implausible and
+        return the whole object.
+
         Food: "$foodName"
-        ${instructionsPrompt(instructions)}
         Proposed: ${candidateJson(candidate)}
+
+        Check:
+        - The values match Indian food-composition data (IFCT) where it exists.
+        - servingGrams is a realistic single serving and servingLabel matches it.
+        - The dish is a South Indian household preparation unless its name says
+          otherwise — never a Western substitute, and with the coconut, lentil,
+          oil, ghee and tempering proportions that implies.
+        - calories agree with 4xcarbs + 4xprotein + 9xfat to within 10%.
+        - No per-100 g value has been copied into a per-serving field.
+        - servingVariants, if present, are sizes this food really comes in, with
+          one entry's grams equal to servingGrams. Drop the key otherwise; add
+          it only if the food plainly has 2-4 recognised sizes.
+        - 0 only for a genuinely absent or unavailable nutrient, never a guessed
+          trace. Same units as given.
+        ${jsonContract(schemaEnforced)}
+        ${instructionsPrompt(instructions)}
     """.trimIndent()
 
     private fun instructionsPrompt(instructions: String): String =
