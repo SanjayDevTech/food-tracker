@@ -2,8 +2,6 @@ package com.example.foodtracker.ui.screens.addfood
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.foodtracker.data.AiChatMessage
-import com.example.foodtracker.data.AiChatRole
 import com.example.foodtracker.data.AiNutrition
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.FoodRepository
@@ -73,16 +71,6 @@ data class AddFoodFormState(
     /** Whether this run includes the verify pass (skipped for premium models). */
     val aiVerifies: Boolean = true,
     val aiError: String? = null,
-    /**
-     * True once an AI autofill has landed. Gates the refine chat, which only
-     * makes sense against something the AI produced — there is nothing to
-     * discuss about a blank form.
-     */
-    val aiAutofilled: Boolean = false,
-    /** Refine conversation, oldest first. Empty until the user sends one. */
-    val aiChat: List<AiChatMessage> = emptyList(),
-    val aiChatBusy: Boolean = false,
-    val aiChatError: String? = null,
 )
 
 /** Stages of the AI autofill, surfaced as an animated progress dialog. */
@@ -174,7 +162,6 @@ class AddFoodViewModel(
         _state.update { s ->
             s.copy(
                 aiError = null,
-                aiAutofilled = true,
                 // AI returns a typical serving + per-serving values; set the
                 // serving and enter values on the PerServing basis so the save
                 // path scales them to per-100 g for storage.
@@ -215,77 +202,6 @@ class AddFoodViewModel(
                 vitaminB6 = n.vitaminB6.formatField(),
             )
         }
-    }
-
-    /**
-     * Send one refine instruction ("make it 2 idlis", "this was deep fried")
-     * and apply the result to the form.
-     *
-     * The entry handed to the model is rebuilt from the CURRENT form, not from
-     * the last AI reply, so anything the user corrected by hand is what gets
-     * refined. A failure keeps the user's message in the transcript and
-     * surfaces the reason, so they can reword and retry without retyping.
-     */
-    fun refineWithAi(instruction: String) {
-        val text = instruction.trim()
-        val s = _state.value
-        if (text.isBlank() || s.aiChatBusy || !s.aiAutofilled) return
-        val name = s.name.trim()
-        if (name.isBlank()) return
-        _state.update {
-            it.copy(
-                aiChat = it.aiChat + AiChatMessage(AiChatRole.User, text),
-                aiChatBusy = true,
-                aiChatError = null,
-            )
-        }
-        viewModelScope.launch {
-            val provider = profileStore.aiProvider.first()
-            val key = profileStore.aiApiKey.first()
-            val model = provider.modelFromId(profileStore.aiModelId.first()).id
-            if (key.isNullOrBlank()) {
-                _state.update {
-                    it.copy(
-                        aiChatBusy = false,
-                        aiChatError = "Add your ${provider.displayName} API key in Settings first.",
-                    )
-                }
-                return@launch
-            }
-            // Everything before the message we just appended.
-            val history = _state.value.aiChat.dropLast(1).takeLast(MAX_CHAT_CONTEXT)
-            val result = repository.refineAiNutrition(
-                name = name,
-                current = _state.value.toAiNutrition(),
-                history = history,
-                instruction = text,
-                provider = provider,
-                model = model,
-                apiKey = key,
-            )
-            if (result == null) {
-                _state.update {
-                    it.copy(
-                        aiChatBusy = false,
-                        aiChatError = repository.lastAiError()
-                            ?: "Couldn't apply that. Try rewording it.",
-                    )
-                }
-                return@launch
-            }
-            applyResult(result.nutrition)
-            _state.update {
-                it.copy(
-                    aiChat = it.aiChat + AiChatMessage(AiChatRole.Assistant, result.note),
-                    aiChatBusy = false,
-                    aiChatError = null,
-                )
-            }
-        }
-    }
-
-    fun clearAiChatError() {
-        _state.update { it.copy(aiChatError = null) }
     }
 
     /** Pre-fill just the barcode field — the rest of the form starts blank for manual entry. */
@@ -339,9 +255,40 @@ class AddFoodViewModel(
     fun save() {
         val s = _state.value
         if (s.name.isBlank()) return
-        val servingGrams = s.effectiveServingGrams()
-        val servingLabel = s.effectiveServingLabel()
-        val entered = s.enteredNutrients()
+        val servingGrams = s.servingGrams.toDoubleOrNull()?.takeIf { it > 0 } ?: 100.0
+        val servingLabel = s.servingLabel.ifBlank { "1 serving (${servingGrams.toInt()} g)" }
+        val entered = Nutrients(
+            calories = s.calories.toDoubleOrZero(),
+            carbs = s.carbs.toDoubleOrZero(),
+            sugar = s.sugar.toDoubleOrZero(),
+            fiber = s.fiber.toDoubleOrZero(),
+            protein = s.protein.toDoubleOrZero(),
+            fat = s.fat.toDoubleOrZero(),
+            saturatedFat = s.saturatedFat.toDoubleOrZero(),
+            omega3 = s.omega3.toDoubleOrZero(),
+            sodium = s.sodium.toDoubleOrZero(),
+            cholesterol = s.cholesterol.toDoubleOrZero(),
+            calcium = s.calcium.toDoubleOrZero(),
+            iron = s.iron.toDoubleOrZero(),
+            magnesium = s.magnesium.toDoubleOrZero(),
+            potassium = s.potassium.toDoubleOrZero(),
+            zinc = s.zinc.toDoubleOrZero(),
+            phosphorus = s.phosphorus.toDoubleOrZero(),
+            selenium = s.selenium.toDoubleOrZero(),
+            copper = s.copper.toDoubleOrZero(),
+            manganese = s.manganese.toDoubleOrZero(),
+            vitaminA = s.vitaminA.toDoubleOrZero(),
+            vitaminC = s.vitaminC.toDoubleOrZero(),
+            vitaminD = s.vitaminD.toDoubleOrZero(),
+            vitaminE = s.vitaminE.toDoubleOrZero(),
+            vitaminK = s.vitaminK.toDoubleOrZero(),
+            vitaminB12 = s.vitaminB12.toDoubleOrZero(),
+            folate = s.folate.toDoubleOrZero(),
+            vitaminB1 = s.vitaminB1.toDoubleOrZero(),
+            vitaminB2 = s.vitaminB2.toDoubleOrZero(),
+            vitaminB3 = s.vitaminB3.toDoubleOrZero(),
+            vitaminB6 = s.vitaminB6.toDoubleOrZero(),
+        )
         // Storage is always per-100g — scale up when the user typed in per-serving.
         val per100g = when (s.basis) {
             NutritionBasis.Per100g -> entered
@@ -370,69 +317,6 @@ class AddFoodViewModel(
             _state.update { it.copy(saved = true) }
         }
     }
-}
-
-/** How many conversation lines to resend. The entry itself is the state. */
-private const val MAX_CHAT_CONTEXT = 8
-
-private fun AddFoodFormState.effectiveServingGrams(): Double =
-    servingGrams.toDoubleOrNull()?.takeIf { it > 0 } ?: 100.0
-
-private fun AddFoodFormState.effectiveServingLabel(): String =
-    servingLabel.ifBlank { "1 serving (${effectiveServingGrams().toInt()} g)" }
-
-/** The numbers exactly as typed, on whatever [AddFoodFormState.basis] is set. */
-private fun AddFoodFormState.enteredNutrients(): Nutrients = Nutrients(
-    calories = calories.toDoubleOrZero(),
-    carbs = carbs.toDoubleOrZero(),
-    sugar = sugar.toDoubleOrZero(),
-    fiber = fiber.toDoubleOrZero(),
-    protein = protein.toDoubleOrZero(),
-    fat = fat.toDoubleOrZero(),
-    saturatedFat = saturatedFat.toDoubleOrZero(),
-    omega3 = omega3.toDoubleOrZero(),
-    sodium = sodium.toDoubleOrZero(),
-    cholesterol = cholesterol.toDoubleOrZero(),
-    calcium = calcium.toDoubleOrZero(),
-    iron = iron.toDoubleOrZero(),
-    magnesium = magnesium.toDoubleOrZero(),
-    potassium = potassium.toDoubleOrZero(),
-    zinc = zinc.toDoubleOrZero(),
-    phosphorus = phosphorus.toDoubleOrZero(),
-    selenium = selenium.toDoubleOrZero(),
-    copper = copper.toDoubleOrZero(),
-    manganese = manganese.toDoubleOrZero(),
-    vitaminA = vitaminA.toDoubleOrZero(),
-    vitaminC = vitaminC.toDoubleOrZero(),
-    vitaminD = vitaminD.toDoubleOrZero(),
-    vitaminE = vitaminE.toDoubleOrZero(),
-    vitaminK = vitaminK.toDoubleOrZero(),
-    vitaminB12 = vitaminB12.toDoubleOrZero(),
-    folate = folate.toDoubleOrZero(),
-    vitaminB1 = vitaminB1.toDoubleOrZero(),
-    vitaminB2 = vitaminB2.toDoubleOrZero(),
-    vitaminB3 = vitaminB3.toDoubleOrZero(),
-    vitaminB6 = vitaminB6.toDoubleOrZero(),
-)
-
-/**
- * The form as the AI sees it for a refine turn. [AiNutrition] is always
- * per-serving, so values typed on the per-100 g basis are scaled down first.
- */
-private fun AddFoodFormState.toAiNutrition(): AiNutrition {
-    val grams = effectiveServingGrams()
-    val entered = enteredNutrients()
-    val perServing = when (basis) {
-        NutritionBasis.PerServing -> entered
-        NutritionBasis.Per100g -> entered * (grams / 100.0)
-    }
-    return AiNutrition(
-        servingGrams = grams,
-        servingLabel = effectiveServingLabel(),
-        category = category,
-        nutrients = perServing,
-        servingVariants = servingVariants,
-    )
 }
 
 private fun String.toDoubleOrZero(): Double = this.toDoubleOrNull() ?: 0.0

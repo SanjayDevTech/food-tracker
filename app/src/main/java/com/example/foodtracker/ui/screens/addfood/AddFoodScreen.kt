@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.AiChatRole
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.data.ServingVariant
@@ -58,7 +57,6 @@ fun AddFoodScreen(
     val haptics = rememberAppHaptics()
     var showAiInstructions by rememberSaveable { mutableStateOf(false) }
     var aiInstructions by rememberSaveable { mutableStateOf("") }
-    var showAiRefine by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
     LaunchedEffect(prefillBarcode) {
         if (!prefillBarcode.isNullOrBlank() && state.barcode.isNullOrBlank()) {
@@ -67,20 +65,6 @@ fun AddFoodScreen(
     }
 
     AiProgressDialog(state.aiStep, verifies = state.aiVerifies)
-
-    if (showAiRefine) {
-        AiRefineSheet(
-            foodName = state.name.trim().ifBlank { "this food" },
-            messages = state.aiChat,
-            busy = state.aiChatBusy,
-            error = state.aiChatError,
-            onSend = { instruction -> vm.refineWithAi(instruction) },
-            onDismiss = {
-                showAiRefine = false
-                vm.clearAiChatError()
-            },
-        )
-    }
 
     if (showAiInstructions) {
         AlertDialog(
@@ -166,21 +150,6 @@ fun AddFoodScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("✨ Ask AI to fill nutrition")
-                }
-                if (state.aiAutofilled) {
-                    OutlinedButton(
-                        onClick = {
-                            haptics.light()
-                            showAiRefine = true
-                        },
-                        enabled = state.aiStep == AiStep.Idle,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (state.aiChat.isEmpty()) "💬 Refine with AI"
-                            else "💬 Refine with AI · ${state.aiChat.count { m -> m.role == AiChatRole.User }} sent",
-                        )
-                    }
                 }
                 state.aiError?.let { err ->
                     Text(
