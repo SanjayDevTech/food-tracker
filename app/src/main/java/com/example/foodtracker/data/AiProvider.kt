@@ -15,8 +15,13 @@ data class AiModel(val id: String, val label: String, val premium: Boolean = fal
  *
  * Each provider offers a short [models] list ordered cheapest-first; the first
  * entry ([defaultModel]) is the cheapest model that's still accurate enough for
- * nutrition lookups and is what's selected by default. Model ids track what the
- * providers publish and may need bumping as new versions ship.
+ * nutrition lookups and is what's selected by default.
+ *
+ * Gemini uses Google's `-latest` aliases rather than pinned version ids, so the
+ * list never goes stale between releases. The cost is that Google can move the
+ * model underneath a release: if autofill quality or JSON adherence ever drifts
+ * with no change on our side, suspect that first. Claude and OpenAI stay pinned
+ * and do need bumping as new versions ship.
  */
 enum class AiProvider(
     val displayName: String,
@@ -31,9 +36,9 @@ enum class AiProvider(
         "aistudio.google.com/apikey",
         "https://aistudio.google.com/apikey",
         listOf(
-            AiModel("gemini-3.1-flash-lite", "3.1 Flash Lite"),
-            AiModel("gemini-3.6-flash", "3.6 Flash"),
-            AiModel("gemini-3.1-pro-preview", "3.1 Pro", premium = true),
+            AiModel("gemini-flash-lite-latest", "Flash Lite"),
+            AiModel("gemini-flash-latest", "Flash"),
+            AiModel("gemini-pro-latest", "Pro", premium = true),
         ),
     ),
     Claude(
@@ -58,7 +63,13 @@ enum class AiProvider(
     /** Cheapest capable model — the default selection. */
     val defaultModel: AiModel get() = models.first()
 
-    /** Resolve a stored id to one of this provider's models, else the default. */
+    /**
+     * Resolve a stored id to one of this provider's models, else the default.
+     *
+     * This is also the upgrade path: a user whose preference still names a
+     * retired id (`gemini-3.1-flash-lite`, say) lands on the current default
+     * on next read, with no migration code.
+     */
     fun modelFromId(id: String?): AiModel = models.firstOrNull { it.id == id } ?: defaultModel
 
     companion object {
