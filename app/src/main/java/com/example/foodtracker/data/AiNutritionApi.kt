@@ -271,8 +271,14 @@ class AiNutritionApi {
         SERVING of servingGrams, not per 100 g.
         Apply the user's latest request to that entry and return the result.
         - Leave every value the request does not affect exactly as it is.
-        - If the request changes the PORTION ("2 idlis", "half a cup", "150 g"),
-          scale servingGrams, servingLabel AND every nutrient to match.
+        - If the request names a QUANTITY ("1 idli", "2 servings", "half a
+          cup", "150 g"), that quantity REPLACES the current serving — do not
+          keep the existing one and do not restate it. Work out servingGrams
+          for exactly the quantity asked for, then scale every nutrient to it.
+          Asking for 1 of something currently recorded as 2 must roughly HALVE
+          servingGrams and every nutrient.
+        - servingLabel must always name the serving AND its weight in grams,
+          e.g. "1 idli (65 g)" or "1 cup (195 g)" — never a bare "2 idlis".
         - If it changes the PREPARATION (deep fried instead of steamed, no
           sugar, extra ghee, more coconut), re-derive every nutrient the change
           affects, including servingGrams if the weight changes.
@@ -284,9 +290,10 @@ class AiNutritionApi {
         South Indian unless the conversation says otherwise.
         Return ONLY a compact JSON object (no markdown, no explanation) with the
         SAME keys as the current entry, plus one extra key:
-        - "note": ONE short plain sentence, at most 15 words, saying what you
-          changed, e.g. "Doubled to 2 idlis." or "Switched to deep fried, fat
-          and calories up."
+        - "note": ONE short plain sentence, at most 15 words, stating what the
+          entry now describes, e.g. "Now 1 idli, 65 g." or "Switched to deep
+          fried, fat and calories up." The note must match the values you
+          return — never describe a change you did not make.
         servingVariants stays optional under the same rule as before: only for
         foods genuinely eaten in distinct named sizes, with one entry matching
         servingGrams. Never scale the nutrients to a variant.
