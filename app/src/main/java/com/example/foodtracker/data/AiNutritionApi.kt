@@ -40,6 +40,20 @@ data class AiNutrition(
     val servingVariants: List<ServingVariant> = emptyList(),
 )
 
+/** Who said it, in a [AiNutritionApi.refineNutrition] conversation. */
+enum class AiChatRole { User, Assistant }
+
+/**
+ * One line of the refine conversation. [AiChatRole.User] lines are what the
+ * user typed; [AiChatRole.Assistant] lines are the model's own one-sentence
+ * summary of the change it made, which is all the history the next turn
+ * needs — the authoritative state is the entry itself, re-sent every time.
+ */
+data class AiChatMessage(val role: AiChatRole, val text: String)
+
+/** A refined entry plus the model's short note on what it changed. */
+data class AiRefinement(val nutrition: AiNutrition, val note: String)
+
 /**
  * Optional AI nutrition lookup. Given a food name, asks the user's chosen LLM
  * provider ([AiProvider]) for per-100 g nutrition and maps the reply into
@@ -112,6 +126,40 @@ class AiNutritionApi {
             AiProvider.OpenAI -> callOpenAi(prompt, modelId, apiKey)
         } ?: return@withContext null
         parseResult(reply)
+    }
+
+    /**
+     * Conversational refinement of an entry already on screen: "make it 2
+     * idlis", "this was deep fried", "use a 150 g serving".
+     *
+     * [current] is rebuilt from the form each turn rather than remembered
+     * here, so a value the user typed by hand is what gets refined. [history]
+     * carries the earlier turns so follow-ups like "actually make it 3" work.
+     * Returns null on failure, leaving the form untouched.
+     */
+    suspend fun refineNutrition(
+        foodName: String,
+        current: AiNutrition,
+        history: List<AiChatMessage>,
+        instruction: String,
+        provider: AiProvider,
+        model: String,
+        apiKey: String,
+    ): AiRefinement? = withContext(Dispatchers.IO) {
+        if (instruction.isBlank() || apiKey.isBlank()) return@withContext null
+        lastError = null
+        val modelId = provider.modelFromId(model).id
+        val prompt = buildRefinePrompt(foodName.trim(), current, history, instruction.trim())
+        val reply = when (provider) {
+            AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
+            AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
+            AiProvider.OpenAI -> callOpenAi(prompt, modelId, apiKey)
+        } ?: return@withContext null
+        val parsed = parseRefinement(reply)
+        if (parsed == null && lastError == null) {
+            lastError = "The AI reply couldn't be read. Try rewording your request."
+        }
+        parsed
     }
 
     // ─── Prompt ───────────────────────────────────────────────────────────
@@ -200,6 +248,51 @@ class AiNutritionApi {
         ${instructionsPrompt(instructions)}
         Proposed: ${candidateJson(candidate)}
     """.trimIndent()
+
+    private fun buildRefinePrompt(
+        foodName: String,
+        current: AiNutrition,
+        history: List<AiChatMessage>,
+        instruction: String,
+    ): String = """
+        You are refining an existing nutrition entry through a short conversation.
+        The CURRENT entry is given below as JSON. Its nutrients are for ONE
+        SERVING of servingGrams, not per 100 g.
+        Apply the user's latest request to that entry and return the result.
+        - Leave every value the request does not affect exactly as it is.
+        - If the request changes the PORTION ("2 idlis", "half a cup", "150 g"),
+          scale servingGrams, servingLabel AND every nutrient to match.
+        - If it changes the PREPARATION (deep fried instead of steamed, no
+          sugar, extra ghee, more coconut), re-derive every nutrient the change
+          affects, including servingGrams if the weight changes.
+        - If it corrects a single value, change that value and anything that
+          must follow from it.
+        - If the request is unclear or you cannot apply it, return the entry
+          completely unchanged and say why in the note.
+        The user is in India; keep the dish a plausible Indian preparation,
+        South Indian unless the conversation says otherwise.
+        Return ONLY a compact JSON object (no markdown, no explanation) with the
+        SAME keys as the current entry, plus one extra key:
+        - "note": ONE short plain sentence, at most 15 words, saying what you
+          changed, e.g. "Doubled to 2 idlis." or "Switched to deep fried, fat
+          and calories up."
+        servingVariants stays optional under the same rule as before: only for
+        foods genuinely eaten in distinct named sizes, with one entry matching
+        servingGrams. Never scale the nutrients to a variant.
+        Food: "${'$'}foodName"
+        ${'$'}{historyPrompt(history)}
+        Current entry: ${'$'}{candidateJson(current)}
+        User's latest request: ${'$'}instruction
+    """.trimIndent()
+
+    private fun historyPrompt(history: List<AiChatMessage>): String {
+        if (history.isEmpty()) return ""
+        val lines = history.joinToString("\n") { m ->
+            val who = if (m.role == AiChatRole.User) "User" else "You"
+            "${'$'}who: ${'$'}{m.text}"
+        }
+        return "Conversation so far (oldest first):\n${'$'}lines"
+    }
 
     private fun instructionsPrompt(instructions: String): String =
         if (instructions.isBlank()) "" else "Additional user instructions (use as context, not as a nutrient value): $instructions"
@@ -361,14 +454,32 @@ class AiNutritionApi {
      * nutrients). Returns null if the payload has no usable macros so the form
      * isn't wiped with zeros.
      */
-    private fun parseResult(reply: String): AiNutrition? {
+    private fun parseResult(reply: String): AiNutrition? =
+        extractObject(reply)?.let { mapNutrition(it) }
+
+    /**
+     * Same payload as [parseResult] plus the model's "note". A missing or
+     * blank note is not a failure — the values are what matter, so it falls
+     * back to a generic line.
+     */
+    private fun parseRefinement(reply: String): AiRefinement? {
+        val obj = extractObject(reply) ?: return null
+        val nutrition = mapNutrition(obj) ?: return null
+        val note = obj["note"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+        return AiRefinement(nutrition, note ?: "Updated the entry.")
+    }
+
+    /** Models sometimes wrap the object in ``` fences or prose — dig it out. */
+    private fun extractObject(reply: String): JsonObject? {
         val start = reply.indexOf('{')
         val end = reply.lastIndexOf('}')
         if (start < 0 || end <= start) return null
-        val obj = runCatching {
+        return runCatching {
             json.parseToJsonElement(reply.substring(start, end + 1)).jsonObject
-        }.getOrNull() ?: return null
+        }.getOrNull()
+    }
 
+    private fun mapNutrition(obj: JsonObject): AiNutrition? {
         fun num(key: String): Double = obj[key]?.jsonPrimitive?.doubleOrNull ?: 0.0
         fun str(key: String): String? =
             obj[key]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }

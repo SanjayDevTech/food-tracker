@@ -86,6 +86,18 @@ class FoodRepository(
         apiKey: String,
     ): AiNutrition? = aiApi.fetchNutrition(name, instructions, provider, model, apiKey)
 
+    /** Conversational refinement of an AI result. See [AiNutritionApi.refineNutrition]. */
+    suspend fun refineAiNutrition(
+        name: String,
+        current: AiNutrition,
+        history: List<AiChatMessage>,
+        instruction: String,
+        provider: AiProvider,
+        model: String,
+        apiKey: String,
+    ): AiRefinement? =
+        aiApi.refineNutrition(name, current, history, instruction, provider, model, apiKey)
+
     /** Reason for the most recent AI failure, or null. See [AiNutritionApi.lastError]. */
     fun lastAiError(): String? = aiApi.lastError
 
