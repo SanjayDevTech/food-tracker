@@ -3,6 +3,7 @@ package com.example.foodtracker.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -26,6 +27,17 @@ data class AiNutrition(
     val servingLabel: String,
     val category: FoodCategory,
     val nutrients: Nutrients,
+    /**
+     * Optional named sizes for foods that genuinely come in them (a small /
+     * medium / large banana). Empty for the common case, which leaves
+     * [com.example.foodtracker.data.db.FoodEntity.fromNutrientsPer100g] to
+     * build its usual canonical + gram-reference pair. Already passed through
+     * [ServingVariant.sanitize], so the canonical serving leads the list.
+     *
+     * These are gram amounts only — [nutrients] always describes
+     * [servingGrams], never a variant.
+     */
+    val servingVariants: List<ServingVariant> = emptyList(),
 )
 
 /**
@@ -124,6 +136,19 @@ class AiNutritionApi {
         - "category": classify the food as EXACTLY ONE of these values:
           SouthIndian, NorthIndian, Snack, Beverage, Dairy, Fruit, Vegetable,
           Grain, Protein, Packaged, Other. Use Other if none clearly fits.
+        - "servingVariants": OPTIONAL, and usually omitted. Include it ONLY
+          when this food is genuinely eaten in distinct named sizes a person
+          would recognise and ask for — a small/medium/large banana, a
+          half/full plate of biryani, a small/large cup of tea. OMIT it
+          entirely for anything measured out rather than portioned (flour,
+          oil, ghee, spices, pickle by the spoon), for anything sold in a
+          fixed unit (a packaged bar, a bottle), and whenever you are unsure.
+          Omitting it is the normal, correct answer.
+          When you do include it, give 2-4 objects of {"label", "grams"}:
+          short labels like "Small", "Medium", "Large", and one entry MUST be
+          the typical serving above with grams EQUAL to servingGrams. The
+          nutrients below always describe servingGrams only — never scale
+          them per variant.
         Give every nutrient value FOR THAT ONE SERVING (not per 100 g).
         Return every key listed below. Use 0 only when the nutrient is genuinely
         absent or nutritionally negligible for this serving. Do not invent a
@@ -136,7 +161,8 @@ class AiNutritionApi {
         magnesium, potassium, zinc, phosphorus, copper, manganese, vitaminC,
         vitaminE, vitaminB1, vitaminB2, vitaminB3, vitaminB6. micrograms:
         selenium, vitaminA, vitaminD, vitaminK, vitaminB12, folate.
-        Keys: servingGrams, servingLabel, category, calories, carbs, sugar, fiber, protein,
+        Keys (every one below is required; servingVariants above is the only
+        optional key): servingGrams, servingLabel, category, calories, carbs, sugar, fiber, protein,
         fat, saturatedFat, omega3, cholesterol, sodium, calcium, iron, magnesium,
         potassium, zinc, phosphorus, selenium, copper, manganese, vitaminA,
         vitaminC, vitaminD, vitaminE, vitaminK, vitaminB12, folate, vitaminB1,
@@ -157,6 +183,12 @@ class AiNutritionApi {
         - Confirm servingGrams is a realistic serving weight and servingLabel matches it.
         - Confirm category is the best fit from: SouthIndian, NorthIndian, Snack,
           Beverage, Dairy, Fruit, Vegetable, Grain, Protein, Packaged, Other.
+                - servingVariants is optional. If present, confirm this food really is
+                    eaten in those distinct named sizes and that one entry's grams equals
+                    servingGrams; drop the key entirely if the sizes are invented, if the
+                    food is measured out rather than portioned, or if it is sold as a
+                    fixed unit. Add it only if the food plainly has 2-4 recognised sizes
+                    and it is missing. Never scale the nutrients to a variant.
                 - Correct every nutrient that is wrong or implausible for that serving;
                     do not silently copy a per-100 g value into a per-serving field.
                 - Keep meaningful small values. Use 0 only for a genuinely absent or
@@ -176,6 +208,13 @@ class AiNutritionApi {
         put("servingGrams", c.servingGrams)
         put("servingLabel", c.servingLabel)
         put("category", c.category.name)
+        if (c.servingVariants.isNotEmpty()) {
+            putJsonArray("servingVariants") {
+                c.servingVariants.forEach { v ->
+                    addJsonObject { put("label", v.label); put("grams", v.grams) }
+                }
+            }
+        }
         val n = c.nutrients
         put("calories", n.calories); put("carbs", n.carbs); put("sugar", n.sugar)
         put("fiber", n.fiber); put("protein", n.protein); put("fat", n.fat)
@@ -378,6 +417,24 @@ class AiNutritionApi {
             servingLabel = label,
             category = category,
             nutrients = n,
+            servingVariants = ServingVariant.sanitize(parseVariants(obj), grams, label),
         )
+    }
+
+    /**
+     * Read the optional `servingVariants` array. Absent is the expected case,
+     * and anything malformed is dropped rather than failing the whole reply —
+     * a food with no named sizes is still a perfectly good result.
+     */
+    private fun parseVariants(obj: JsonObject): List<ServingVariant> {
+        val array = runCatching { obj["servingVariants"]?.jsonArray }.getOrNull() ?: return emptyList()
+        return array.mapNotNull { element ->
+            runCatching {
+                val v = element.jsonObject
+                val label = v["label"]?.jsonPrimitive?.contentOrNull ?: return@runCatching null
+                val grams = v["grams"]?.jsonPrimitive?.doubleOrNull ?: return@runCatching null
+                ServingVariant(label, grams)
+            }.getOrNull()
+        }
     }
 }

@@ -8,6 +8,7 @@ import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
+import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.db.FoodEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,12 @@ data class AddFoodFormState(
     val category: FoodCategory = FoodCategory.Custom,
     val servingGrams: String = "100",
     val servingLabel: String = "1 serving (100 g)",
+    /**
+     * Named sizes for this food, when it has them — from the AI autofill or
+     * carried over from a scanned product. Empty is the common case and lets
+     * [FoodEntity.fromNutrientsPer100g] build its usual defaults on save.
+     */
+    val servingVariants: List<ServingVariant> = emptyList(),
     /** Which basis the user is entering values in; we scale to per-100g on save. */
     val basis: NutritionBasis = NutritionBasis.Per100g,
     val calories: String = "",
@@ -161,6 +168,7 @@ class AddFoodViewModel(
                 category = result.category,
                 servingGrams = result.servingGrams.formatGrams(),
                 servingLabel = result.servingLabel,
+                servingVariants = result.servingVariants,
                 basis = NutritionBasis.PerServing,
                 calories = n.calories.formatField(),
                 carbs = n.carbs.formatField(),
@@ -209,6 +217,7 @@ class AddFoodViewModel(
                 category = FoodCategory.fromName(food.category),
                 servingGrams = food.servingGrams.takeIf { it > 0 }?.toString() ?: "100",
                 servingLabel = food.servingLabel,
+                servingVariants = food.servingVariants,
                 calories = food.calories.formatField(),
                 carbs = food.carbs.formatField(),
                 sugar = food.sugar.formatField(),
@@ -247,6 +256,7 @@ class AddFoodViewModel(
         val s = _state.value
         if (s.name.isBlank()) return
         val servingGrams = s.servingGrams.toDoubleOrNull()?.takeIf { it > 0 } ?: 100.0
+        val servingLabel = s.servingLabel.ifBlank { "1 serving (${servingGrams.toInt()} g)" }
         val entered = Nutrients(
             calories = s.calories.toDoubleOrZero(),
             carbs = s.carbs.toDoubleOrZero(),
@@ -293,7 +303,14 @@ class AddFoodViewModel(
                     category = s.category.name,
                     isCustom = true,
                     servingGrams = servingGrams,
-                    servingLabel = s.servingLabel.ifBlank { "1 serving (${servingGrams.toInt()} g)" },
+                    servingLabel = servingLabel,
+                    // Re-sanitized against the serving the user may have edited
+                    // since the AI filled it in; [] falls back to the defaults.
+                    servingVariants = ServingVariant.sanitize(
+                        s.servingVariants,
+                        servingGrams,
+                        servingLabel,
+                    ),
                     n = per100g,
                 )
             )

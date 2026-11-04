@@ -34,12 +34,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.NutritionBasis
+import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.rememberAppHaptics
@@ -190,6 +192,13 @@ fun AddFoodScreen(
                 )
             }
 
+            if (state.servingVariants.isNotEmpty()) {
+                ServingVariantsRow(
+                    variants = state.servingVariants,
+                    onClear = { vm.update { it.copy(servingVariants = emptyList()) } },
+                )
+            }
+
             Text("Values you're entering are:", style = MaterialTheme.typography.labelLarge)
             BasisRow(
                 basis = state.basis,
@@ -245,6 +254,32 @@ fun AddFoodScreen(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+/**
+ * Read-only view of the named sizes attached to this food — the AI returns
+ * them only for foods that genuinely have them, so most saves never show this.
+ * Nutrients always describe the serving above; these are alternate gram
+ * amounts offered at log time. Clearing falls back to the default
+ * canonical + 100 g pair.
+ */
+@Composable
+private fun ServingVariantsRow(
+    variants: List<ServingVariant>,
+    onClear: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Serving options", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        TextButton(onClick = onClear) { Text("Clear") }
+    }
+    Text(
+        variants.joinToString(" · ") { "${it.label} ${it.grams.toInt()} g" },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
