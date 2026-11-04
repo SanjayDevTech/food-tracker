@@ -1,6 +1,7 @@
 package com.example.foodtracker.data
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -69,6 +70,16 @@ data class AiRefinement(val nutrition: AiNutrition, val note: String)
 class AiNutritionApi {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    /**
+     * Three tries in total, then give up — about four seconds of waiting in
+     * the worst case. A provider shedding load on one model stays down for
+     * minutes, so retrying harder than this only makes the user wait longer
+     * for the same failure; the error text points them at another model
+     * instead.
+     */
+    private val RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L)
+    private val MAX_ATTEMPTS = RETRY_DELAYS_MS.size + 1
 
     /**
      * Human-readable reason for the most recent failure (set on the fetch path),
@@ -324,7 +335,7 @@ class AiNutritionApi {
 
     // ─── Provider calls ─────────────────────────────────────────────────────
 
-    private fun callGemini(prompt: String, model: String, apiKey: String): String? {
+    private suspend fun callGemini(prompt: String, model: String, apiKey: String): String? {
         val body = buildJsonObject {
             putJsonArray("contents") {
                 addJsonObject {
@@ -351,7 +362,7 @@ class AiNutritionApi {
         }.getOrNull()
     }
 
-    private fun callClaude(prompt: String, model: String, apiKey: String): String? {
+    private suspend fun callClaude(prompt: String, model: String, apiKey: String): String? {
         val body = buildJsonObject {
             put("model", model)
             put("max_tokens", 1024)
@@ -374,7 +385,7 @@ class AiNutritionApi {
         }.getOrNull()
     }
 
-    private fun callOpenAi(prompt: String, model: String, apiKey: String): String? {
+    private suspend fun callOpenAi(prompt: String, model: String, apiKey: String): String? {
         val body = buildJsonObject {
             put("model", model)
             putJsonArray("messages") {
@@ -400,7 +411,54 @@ class AiNutritionApi {
 
     // ─── HTTP + parsing ─────────────────────────────────────────────────────
 
-    private fun post(urlStr: String, headers: Map<String, String>, body: String): String? {
+    /** Outcome of a single HTTP attempt. */
+    private sealed interface PostResult {
+        data class Ok(val body: String) : PostResult
+        data class Failed(val message: String, val retryable: Boolean) : PostResult
+    }
+
+    /**
+     * POST with a short retry on transient upstream failures.
+     *
+     * Providers routinely answer 503 "model is experiencing high demand" or
+     * 429 for a model that is momentarily hot, and the read timeout fires on a
+     * slow first token. Those are worth a second look; a rejected key or an
+     * unknown model is not, so only [isRetryable] codes and network errors are
+     * retried. [lastError] keeps the final failure so the UI still explains
+     * what went wrong.
+     */
+    private suspend fun post(urlStr: String, headers: Map<String, String>, body: String): String? {
+        var attempt = 0
+        while (true) {
+            when (val result = postOnce(urlStr, headers, body)) {
+                is PostResult.Ok -> {
+                    lastError = null
+                    return result.body
+                }
+                is PostResult.Failed -> {
+                    lastError = result.message
+                    if (!result.retryable || attempt >= MAX_ATTEMPTS - 1) return null
+                    delay(RETRY_DELAYS_MS[attempt])
+                    attempt++
+                }
+            }
+        }
+    }
+
+    /**
+     * Transient states worth retrying: a request timeout or any 5xx, which in
+     * practice is a provider briefly shedding load on one model.
+     *
+     * 429 is deliberately NOT retryable even though it looks transient. Both
+     * flavours need far longer than this backoff — a per-minute rate limit
+     * needs about a minute, and a free-tier daily quota reports its reset in
+     * tens of minutes — so retrying only makes the user wait for the same
+     * failure.
+     */
+    private fun isRetryable(code: Int): Boolean =
+        code == 408 || code in 500..599
+
+    private fun postOnce(urlStr: String, headers: Map<String, String>, body: String): PostResult {
         val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
@@ -416,14 +474,16 @@ class AiNutritionApi {
             if (code !in 200..299) {
                 val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
                 android.util.Log.w("AiNutritionApi", "POST $urlStr -> HTTP $code: ${err?.take(800)}")
-                lastError = describeHttp(code, err)
-                return null
+                PostResult.Failed(describeHttp(code, err), retryable = isRetryable(code))
+            } else {
+                PostResult.Ok(conn.inputStream.bufferedReader().use { it.readText() })
             }
-            conn.inputStream.bufferedReader().use { it.readText() }
         } catch (e: Exception) {
             android.util.Log.w("AiNutritionApi", "POST $urlStr failed: ${e.javaClass.simpleName}: ${e.message}")
-            lastError = "Network error — check your internet connection and try again."
-            null
+            PostResult.Failed(
+                "Network error — check your internet connection and try again.",
+                retryable = true,
+            )
         } finally {
             conn.disconnect()
         }
@@ -433,6 +493,15 @@ class AiNutritionApi {
         // Billing/credit problems can arrive as 400/402/429 depending on provider
         // — detect them from the error body so the message is actionable.
         val b = body?.lowercase().orEmpty()
+        // A free-tier daily cap is not a billing problem and is not fixed by
+        // retrying — it is fixed by waiting, and the provider says how long.
+        // Checked before the billing sniff below, whose keywords it shares.
+        if (b.contains("free_tier") || b.contains("free tier")) {
+            val resets = retryAfterPhrase(body)
+            return "You've used up today's free-tier requests for this model." +
+                (resets?.let { " Resets in about " + it + "." } ?: "") +
+                " Pick a different model in Settings, or add billing to your key."
+        }
         if (b.contains("credit balance") || b.contains("billing") ||
             b.contains("insufficient_quota") || b.contains("insufficient funds")
         ) {
@@ -441,11 +510,31 @@ class AiNutritionApi {
         return when (code) {
             401, 403 -> "Your API key was rejected (HTTP $code). Check the key and selected provider in Settings."
             404 -> "That model isn't available to your account (HTTP 404). Pick a different model, or your plan may not include it."
-            429 -> "Rate limit or quota exceeded (HTTP 429). Your plan may be out of quota — wait a bit, switch model, or enable billing for your key."
+            429 -> "That model is rate-limited right now (HTTP 429). Nothing is wrong with your key — pick a different model in Settings, or wait a minute and retry."
             400 -> "The provider rejected the request (HTTP 400). Try a different model."
+            // 503 in particular is the provider shedding load on one model;
+            // the key is fine and another model usually answers immediately,
+            // so say so rather than just "try again later".
+            503 -> "That model is overloaded right now (HTTP 503). This is the provider's side, not your key — pick a different model in Settings, or retry in a few minutes."
             in 500..599 -> "The AI provider had a server error (HTTP $code). Try again shortly."
             else -> "AI request failed (HTTP $code)."
         }
+    }
+
+    /**
+     * Providers report when a quota clears ("Please retry in 53m50.8s"). Pull
+     * that out so the message can say when it is worth trying again, rounded
+     * to whole minutes because the seconds are noise at this scale.
+     */
+    private fun retryAfterPhrase(body: String?): String? {
+        val text = body.orEmpty()
+        val minutesAndSeconds = Regex("retry in (\\d+)m([\\d.]+)s", RegexOption.IGNORE_CASE)
+            .find(text)?.groupValues?.get(1)?.toDoubleOrNull()?.times(60)
+        val secondsOnly = Regex("retry in ([\\d.]+)s", RegexOption.IGNORE_CASE)
+            .find(text)?.groupValues?.get(1)?.toDoubleOrNull()
+        val seconds = minutesAndSeconds ?: secondsOnly ?: return null
+        val minutes = (seconds / 60).roundToInt()
+        return if (minutes >= 1) "$minutes min" else "under a minute"
     }
 
     /**
