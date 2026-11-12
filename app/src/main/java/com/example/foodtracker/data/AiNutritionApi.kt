@@ -63,6 +63,17 @@ private val NUTRIENT_KEYS = listOf(
     "folate", "vitaminB1", "vitaminB2", "vitaminB3", "vitaminB6",
 )
 
+/**
+ * Sub-components of fiber and protein. Genuinely optional: unlike
+ * [NUTRIENT_KEYS] these are left out of the schema's `required` list and the
+ * model is told to omit them unless it has real composition data, because a
+ * fabricated amino-acid profile is worse than no breakdown at all. A reply
+ * that omits them leaves the fields at 0, which the app reads as unknown.
+ */
+private val OPTIONAL_NUTRIENT_KEYS = listOf(
+    "solubleFiber", "insolubleFiber", "essentialAminoAcids", "leucine",
+)
+
 class AiNutritionApi {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -196,6 +207,11 @@ class AiNutritionApi {
           exists, never as a guessed trace. Keep small real values, especially
           zinc, iron, copper, potassium, calcium, vitamin C and vitamin K.
 
+        Optional, grams — omit all four unless real composition data exists
+        for this food, and always for a mixed dish. solubleFiber +
+        insolubleFiber = fiber. essentialAminoAcids is ~30% of protein for a
+        cereal and ~45% for egg or dairy; leucine is ~a fifth of it.
+
         Units — kcal: calories. grams: carbs, sugar, fiber, protein, fat,
         saturatedFat, omega3. milligrams: cholesterol, sodium, calcium, iron,
         magnesium, potassium, zinc, phosphorus, copper, manganese, vitaminC,
@@ -231,6 +247,9 @@ class AiNutritionApi {
           it only if the food plainly has 2-4 recognised sizes.
         - 0 only for a genuinely absent or unavailable nutrient, never a guessed
           trace. Same units as given.
+        - Optional detail, if present: solubleFiber + insolubleFiber = fiber,
+          essentialAminoAcids 30-45% of protein, leucine a fifth of that.
+          Drop all four for a food with no real data.
         ${jsonContract(schemaEnforced)}
         ${instructionsPrompt(instructions)}
     """.trimIndent()
@@ -254,6 +273,14 @@ class AiNutritionApi {
         put("vitaminE", n.vitaminE); put("vitaminK", n.vitaminK); put("vitaminB12", n.vitaminB12)
         put("folate", n.folate); put("vitaminB1", n.vitaminB1); put("vitaminB2", n.vitaminB2)
         put("vitaminB3", n.vitaminB3); put("vitaminB6", n.vitaminB6)
+        // Only when known — sending zeros would invite the fact-checker to
+        // "correct" an absent breakdown into an invented one.
+        if (n.hasFiberSplit()) {
+            put("solubleFiber", n.solubleFiber); put("insolubleFiber", n.insolubleFiber)
+        }
+        if (n.hasAminoAcids()) {
+            put("essentialAminoAcids", n.essentialAminoAcids); put("leucine", n.leucine)
+        }
     }.toString()
 
     // ─── Provider calls ─────────────────────────────────────────────────────
@@ -298,6 +325,9 @@ class AiNutritionApi {
                 }
             }
             NUTRIENT_KEYS.forEach { key -> putJsonObject(key) { put("type", "NUMBER") } }
+            // Declared so a model that HAS the data can return it, but kept
+            // out of `required` below so one that doesn't simply omits them.
+            OPTIONAL_NUTRIENT_KEYS.forEach { key -> putJsonObject(key) { put("type", "NUMBER") } }
         }
         putJsonArray("required") {
             add("servingGrams"); add("servingLabel"); add("category")
@@ -575,6 +605,8 @@ class AiNutritionApi {
         )
         if (!(n.calories > 0.0 || n.protein > 0.0 || n.carbs > 0.0 || n.fat > 0.0)) return null
 
+        val detailed = n.withOptionalDetail(obj)
+
         // Fall back to a 100 g serving if the model omitted or botched the size.
         val grams = num("servingGrams").takeIf { it > 0.0 } ?: 100.0
         val label = str("servingLabel") ?: "1 serving (${grams.roundToInt()} g)"
@@ -584,8 +616,53 @@ class AiNutritionApi {
             servingGrams = grams,
             servingLabel = label,
             category = category,
-            nutrients = n,
+            nutrients = detailed,
             servingVariants = ServingVariant.sanitize(parseVariants(obj), grams, label),
+        )
+    }
+
+    /**
+     * Fold the optional fiber split and protein profile into [this], but only
+     * where the reply's own arithmetic holds.
+     *
+     * A breakdown whose parts contradict the whole is a hallucination, not a
+     * measurement, and storing it would put two numbers on screen that argue
+     * with each other. Each group is taken or dropped as a unit; dropping
+     * leaves the fields at 0, which the app reads as unknown and hides, so the
+     * food still shows its correct total fiber and protein.
+     *
+     * The ranges below are not invented. Every one of the fourteen published
+     * food profiles seeded in
+     * [com.example.foodtracker.data.db.IndianFoodSeed] — wheat at the bottom,
+     * dairy at the top — falls inside them, with the real spread being
+     * 29-47% of protein as essential amino acids and 18-22% of that as
+     * leucine. The bounds are widened a little past the observed spread so a
+     * genuinely unusual food is not rejected, which still leaves a box narrow
+     * enough that a guessed pair rarely lands in it.
+     */
+    private fun Nutrients.withOptionalDetail(obj: JsonObject): Nutrients {
+        fun num(key: String): Double =
+            (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.doubleOrNull
+                ?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+
+        val soluble = num("solubleFiber")
+        val insoluble = num("insolubleFiber")
+        // Allow a 20% rounding gap against our own fiber figure; beyond that
+        // the model is describing a different portion, or inventing.
+        val fiberOk = fiber > 0.0 && (soluble > 0.0 || insoluble > 0.0) &&
+            kotlin.math.abs((soluble + insoluble) - fiber) <= fiber * 0.20
+
+        val eaa = num("essentialAminoAcids")
+        val leucine = num("leucine")
+        val aminoOk = protein > 0.0 && eaa > 0.0 && leucine > 0.0 &&
+            eaa / protein in 0.25..0.55 &&
+            leucine / eaa in 0.14..0.25
+
+        return copy(
+            solubleFiber = if (fiberOk) soluble else 0.0,
+            insolubleFiber = if (fiberOk) insoluble else 0.0,
+            essentialAminoAcids = if (aminoOk) eaa else 0.0,
+            leucine = if (aminoOk) leucine else 0.0,
         )
     }
 

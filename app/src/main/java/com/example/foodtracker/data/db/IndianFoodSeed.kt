@@ -18,7 +18,7 @@ object IndianFoodSeed {
      * every seeded food in place by name — preserving the user's log history,
      * favourites, weight entries, and custom foods.
      */
-    const val SEED_VERSION = 9
+    const val SEED_VERSION = 10
 
     private fun food(
         name: String,
@@ -66,6 +66,77 @@ object IndianFoodSeed {
             ServingVariant("Medium", grams),
             ServingVariant("Small", roundServing(grams * 0.7)),
             ServingVariant("Large", roundServing(grams * 1.4)),
+        )
+    }
+
+
+    /**
+     * The protein quality of one food, held as grams per gram of protein
+     * rather than as absolute grams: [eaa] is the share of its protein made up
+     * of the nine essential amino acids, [leucine] the share that is leucine.
+     *
+     * Ratios, not absolutes, because our per-100 g protein figures are our own
+     * (IFCT-leaning, rounded) and rarely match the USDA entry these profiles
+     * come from. Scaling a published ratio by OUR protein keeps the parts
+     * consistent with the whole shown right above them, and makes it
+     * arithmetically impossible for them to exceed it.
+     *
+     * Each pair is that food's own USDA SR profile summed, not a food-group
+     * average — which is why only the ~25 single-ingredient staples below
+     * carry one. Every other seeded food, and every custom or AI food, keeps 0
+     * (unknown) and shows no breakdown at all. A mixed dish like sambar or
+     * biryani gets none: its protein comes from several sources in proportions
+     * that vary by cook.
+     */
+    private class AminoPattern(val eaa: Double, val leucine: Double)
+
+    // Animal protein and dairy — the complete profiles, 41-47% EAA.
+    private val AA_EGG = AminoPattern(eaa = 0.445, leucine = 0.087)
+    private val AA_CHICKEN = AminoPattern(eaa = 0.415, leucine = 0.075)
+    // One pattern for milk, curd and paneer: all three are the same casein +
+    // whey protein. Curd ferments the lactose, not the amino acids, and paneer
+    // concentrates the casein rather than changing its profile.
+    private val AA_DAIRY = AminoPattern(eaa = 0.465, leucine = 0.099)
+
+    // Cereals — 29-37% EAA, and the lowest leucine yields per gram of food,
+    // because there is so little protein to take a share of.
+    private val AA_RICE_WHITE = AminoPattern(eaa = 0.373, leucine = 0.083)
+    private val AA_RICE_BROWN = AminoPattern(eaa = 0.370, leucine = 0.081)
+    private val AA_OATS = AminoPattern(eaa = 0.348, leucine = 0.074)
+    private val AA_WHEAT = AminoPattern(eaa = 0.292, leucine = 0.065)
+
+    // Pulses — 36-39% EAA, between the cereals and animal protein, which is
+    // why a rice-and-dal meal scores better than either grain alone.
+    private val AA_LENTIL = AminoPattern(eaa = 0.365, leucine = 0.073)
+    private val AA_CHICKPEA = AminoPattern(eaa = 0.364, leucine = 0.071)
+    private val AA_MUNG = AminoPattern(eaa = 0.393, leucine = 0.080)
+    private val AA_COWPEA = AminoPattern(eaa = 0.386, leucine = 0.077)
+    private val AA_URAD = AminoPattern(eaa = 0.393, leucine = 0.079)
+    private val AA_TOOR = AminoPattern(eaa = 0.369, leucine = 0.071)
+    private val AA_SOY = AminoPattern(eaa = 0.383, leucine = 0.079)
+
+    /**
+     * Attach the optional detail — the protein profile and/or the soluble
+     * share of fiber — to an otherwise plain [Nutrients].
+     *
+     * [solubleFiberFraction] is the published soluble share of this food's
+     * total dietary fiber, applied to OUR fiber figure for the same reason the
+     * amino acids are ratios: the two parts then add up to the total on screen
+     * instead of contradicting it.
+     *
+     * Leaving either argument null leaves those fields at 0, which the app
+     * reads as unknown and hides.
+     */
+    private fun Nutrients.detail(
+        amino: AminoPattern? = null,
+        solubleFiberFraction: Double? = null,
+    ): Nutrients {
+        val soluble = solubleFiberFraction?.let { fiber * it }
+        return copy(
+            solubleFiber = soluble ?: solubleFiber,
+            insolubleFiber = soluble?.let { fiber - it } ?: insolubleFiber,
+            essentialAminoAcids = amino?.let { protein * it.eaa } ?: essentialAminoAcids,
+            leucine = amino?.let { protein * it.leucine } ?: leucine,
         )
     }
 
@@ -447,13 +518,13 @@ object IndianFoodSeed {
         // ---------- DAIRY ----------
         food("Milk (toned, cow)", FoodCategory.Dairy, 250.0, "1 glass (250 ml)",
             Nutrients(calories = 58.0, carbs = 4.8, sugar = 4.8, protein = 3.2, fat = 3.0, saturatedFat = 1.9,
-                sodium = 44.0, calcium = 125.0, magnesium = 11.0, potassium = 150.0, zinc = 0.4, vitaminA = 28.0, vitaminB12 = 0.4, vitaminD = 1.2, phosphorus = 95.0, selenium = 2.0, copper = 0.01, manganese = 0.0, vitaminB1 = 0.04, vitaminB2 = 0.18, vitaminB3 = 0.1, vitaminB6 = 0.04)),
+                sodium = 44.0, calcium = 125.0, magnesium = 11.0, potassium = 150.0, zinc = 0.4, vitaminA = 28.0, vitaminB12 = 0.4, vitaminD = 1.2, phosphorus = 95.0, selenium = 2.0, copper = 0.01, manganese = 0.0, vitaminB1 = 0.04, vitaminB2 = 0.18, vitaminB3 = 0.1, vitaminB6 = 0.04).detail(amino = AA_DAIRY)),
         food("Curd / Dahi", FoodCategory.Dairy, 100.0, "1 small bowl (100 g)",
             Nutrients(calories = 60.0, carbs = 4.7, protein = 3.1, fat = 3.3, saturatedFat = 2.1, sugar = 4.7,
-                sodium = 36.0, calcium = 110.0, magnesium = 10.0, potassium = 140.0, zinc = 0.5, vitaminB12 = 0.4, phosphorus = 100.0, selenium = 2.2, copper = 0.01, manganese = 0.0, vitaminB1 = 0.04, vitaminB2 = 0.17, vitaminB3 = 0.1, vitaminB6 = 0.04)),
+                sodium = 36.0, calcium = 110.0, magnesium = 10.0, potassium = 140.0, zinc = 0.5, vitaminB12 = 0.4, phosphorus = 100.0, selenium = 2.2, copper = 0.01, manganese = 0.0, vitaminB1 = 0.04, vitaminB2 = 0.17, vitaminB3 = 0.1, vitaminB6 = 0.04).detail(amino = AA_DAIRY)),
         food("Paneer", FoodCategory.Dairy, 50.0, "50 g cube",
             Nutrients(calories = 265.0, carbs = 1.2, protein = 18.0, fat = 21.0, saturatedFat = 12.0, sodium = 22.0,
-                calcium = 480.0, iron = 0.2, magnesium = 18.0, potassium = 104.0, zinc = 2.7, vitaminA = 200.0, vitaminB12 = 1.0, phosphorus = 210.0, selenium = 5.0, copper = 0.03, manganese = 0.02, vitaminB1 = 0.03, vitaminB2 = 0.2, vitaminB3 = 0.1, vitaminB6 = 0.06)),
+                calcium = 480.0, iron = 0.2, magnesium = 18.0, potassium = 104.0, zinc = 2.7, vitaminA = 200.0, vitaminB12 = 1.0, phosphorus = 210.0, selenium = 5.0, copper = 0.03, manganese = 0.02, vitaminB1 = 0.03, vitaminB2 = 0.2, vitaminB3 = 0.1, vitaminB6 = 0.06).detail(amino = AA_DAIRY)),
         food("Ghee", FoodCategory.Dairy, 5.0, "1 tsp (5 g)",
             Nutrients(calories = 900.0, fat = 100.0, saturatedFat = 62.0, cholesterol = 256.0, vitaminA = 700.0, phosphorus = 1.0, selenium = 0.0, copper = 0.0, manganese = 0.0, vitaminB1 = 0.0, vitaminB2 = 0.0, vitaminB3 = 0.0, vitaminB6 = 0.0)),
         food("Butter (salted)", FoodCategory.Dairy, 10.0, "2 tsp (10 g)",
@@ -462,7 +533,7 @@ object IndianFoodSeed {
         // ---------- FRUITS ----------
         food("Banana", FoodCategory.Fruit, 120.0, "1 medium (120 g)",
             Nutrients(calories = 89.0, carbs = 23.0, sugar = 12.0, protein = 1.1, fat = 0.3, fiber = 2.6,
-                potassium = 358.0, vitaminC = 8.7, magnesium = 27.0, vitaminA = 3.0, phosphorus = 22.0, selenium = 1.0, copper = 0.08, manganese = 0.27, vitaminB1 = 0.03, vitaminB2 = 0.07, vitaminB3 = 0.67, vitaminB6 = 0.37),
+                potassium = 358.0, vitaminC = 8.7, magnesium = 27.0, vitaminA = 3.0, phosphorus = 22.0, selenium = 1.0, copper = 0.08, manganese = 0.27, vitaminB1 = 0.03, vitaminB2 = 0.07, vitaminB3 = 0.67, vitaminB6 = 0.37).detail(solubleFiberFraction = 0.27),
             servingVariants = listOf(
                 ServingVariant("Medium", 120.0),
                 ServingVariant("Small", 100.0),
@@ -478,7 +549,7 @@ object IndianFoodSeed {
             )),
         food("Apple", FoodCategory.Fruit, 150.0, "1 medium (150 g)",
             Nutrients(calories = 52.0, carbs = 14.0, sugar = 10.4, protein = 0.3, fat = 0.2, fiber = 2.4,
-                potassium = 107.0, vitaminC = 4.6, phosphorus = 11.0, selenium = 0.0, copper = 0.03, manganese = 0.04, vitaminB1 = 0.02, vitaminB2 = 0.03, vitaminB3 = 0.09, vitaminB6 = 0.04)),
+                potassium = 107.0, vitaminC = 4.6, phosphorus = 11.0, selenium = 0.0, copper = 0.03, manganese = 0.04, vitaminB1 = 0.02, vitaminB2 = 0.03, vitaminB3 = 0.09, vitaminB6 = 0.04).detail(solubleFiberFraction = 0.35)),
         food("Papaya", FoodCategory.Fruit, 150.0, "1 cup cubed (150 g)",
             Nutrients(calories = 43.0, carbs = 11.0, sugar = 8.0, protein = 0.5, fat = 0.3, fiber = 1.7,
                 potassium = 182.0, vitaminA = 47.0, vitaminC = 60.9, folate = 37.0, phosphorus = 10.0, selenium = 0.6, copper = 0.05, manganese = 0.04, vitaminB1 = 0.02, vitaminB2 = 0.03, vitaminB3 = 0.36, vitaminB6 = 0.04)),
@@ -487,7 +558,7 @@ object IndianFoodSeed {
                 potassium = 236.0, vitaminC = 10.2, vitaminK = 16.4, folate = 38.0, phosphorus = 36.0, selenium = 0.5, copper = 0.16, manganese = 0.12, vitaminB1 = 0.07, vitaminB2 = 0.05, vitaminB3 = 0.29, vitaminB6 = 0.08)),
         food("Guava", FoodCategory.Fruit, 100.0, "1 fruit (100 g)",
             Nutrients(calories = 68.0, carbs = 14.0, sugar = 8.9, protein = 2.6, fat = 1.0, fiber = 5.4,
-                potassium = 417.0, vitaminA = 31.0, vitaminC = 228.0, folate = 49.0, phosphorus = 40.0, selenium = 0.6, copper = 0.23, manganese = 0.15, vitaminB1 = 0.07, vitaminB2 = 0.04, vitaminB3 = 1.08, vitaminB6 = 0.11)),
+                potassium = 417.0, vitaminA = 31.0, vitaminC = 228.0, folate = 49.0, phosphorus = 40.0, selenium = 0.6, copper = 0.23, manganese = 0.15, vitaminB1 = 0.07, vitaminB2 = 0.04, vitaminB3 = 1.08, vitaminB6 = 0.11).detail(solubleFiberFraction = 0.3)),
         food("Watermelon", FoodCategory.Fruit, 200.0, "1 cup (200 g)",
             Nutrients(calories = 30.0, carbs = 7.6, sugar = 6.2, protein = 0.6, fat = 0.2, fiber = 0.4,
                 potassium = 112.0, vitaminA = 28.0, vitaminC = 8.1, phosphorus = 11.0, selenium = 0.4, copper = 0.04, manganese = 0.04, vitaminB1 = 0.03, vitaminB2 = 0.02, vitaminB3 = 0.18, vitaminB6 = 0.05)),
@@ -499,7 +570,7 @@ object IndianFoodSeed {
                 potassium = 220.0, calcium = 32.0, iron = 0.6, vitaminC = 9.0, phosphorus = 21.0, selenium = 0.6, copper = 0.19, manganese = 0.2, vitaminB1 = 0.03, vitaminB2 = 0.06, vitaminB3 = 0.4, vitaminB6 = 0.11)),
         food("Orange", FoodCategory.Fruit, 130.0, "1 medium (130 g)",
             Nutrients(calories = 47.0, carbs = 12.0, sugar = 9.4, protein = 0.9, fat = 0.1, fiber = 2.4,
-                calcium = 40.0, potassium = 181.0, vitaminA = 11.0, vitaminC = 53.2, folate = 30.0, phosphorus = 14.0, selenium = 0.5, copper = 0.05, manganese = 0.03, vitaminB1 = 0.09, vitaminB2 = 0.04, vitaminB3 = 0.28, vitaminB6 = 0.06)),
+                calcium = 40.0, potassium = 181.0, vitaminA = 11.0, vitaminC = 53.2, folate = 30.0, phosphorus = 14.0, selenium = 0.5, copper = 0.05, manganese = 0.03, vitaminB1 = 0.09, vitaminB2 = 0.04, vitaminB3 = 0.28, vitaminB6 = 0.06).detail(solubleFiberFraction = 0.6)),
         food("Mosambi (Sweet Lime)", FoodCategory.Fruit, 150.0, "1 fruit (150 g)",
             Nutrients(calories = 43.0, carbs = 9.3, sugar = 6.5, protein = 0.8, fat = 0.3, fiber = 1.8,
                 calcium = 40.0, potassium = 170.0, vitaminC = 50.0, folate = 25.0, phosphorus = 13.0, selenium = 0.4, copper = 0.04, manganese = 0.03, vitaminB1 = 0.08, vitaminB2 = 0.03, vitaminB3 = 0.25, vitaminB6 = 0.05)),
@@ -524,13 +595,13 @@ object IndianFoodSeed {
         food("Spinach (raw)", FoodCategory.Vegetable, 30.0, "1 cup (30 g)",
             Nutrients(calories = 23.0, carbs = 3.6, protein = 2.9, fat = 0.4, fiber = 2.2, sodium = 79.0,
                 calcium = 99.0, iron = 2.7, magnesium = 79.0, potassium = 558.0,
-                vitaminA = 469.0, vitaminC = 28.1, vitaminK = 482.0, folate = 194.0, phosphorus = 49.0, selenium = 1.0, copper = 0.13, manganese = 0.9, vitaminB1 = 0.08, vitaminB2 = 0.19, vitaminB3 = 0.72, vitaminB6 = 0.2)),
+                vitaminA = 469.0, vitaminC = 28.1, vitaminK = 482.0, folate = 194.0, phosphorus = 49.0, selenium = 1.0, copper = 0.13, manganese = 0.9, vitaminB1 = 0.08, vitaminB2 = 0.19, vitaminB3 = 0.72, vitaminB6 = 0.2).detail(solubleFiberFraction = 0.27)),
         food("Carrot (raw)", FoodCategory.Vegetable, 80.0, "1 medium (80 g)",
             Nutrients(calories = 41.0, carbs = 9.6, sugar = 4.7, protein = 0.9, fat = 0.2, fiber = 2.8, sodium = 69.0,
-                calcium = 33.0, magnesium = 12.0, potassium = 320.0, zinc = 0.24, vitaminA = 835.0, vitaminC = 5.9, vitaminK = 13.2, folate = 19.0, phosphorus = 35.0, selenium = 0.1, copper = 0.05, manganese = 0.14, vitaminB1 = 0.07, vitaminB2 = 0.06, vitaminB3 = 0.98, vitaminB6 = 0.14)),
+                calcium = 33.0, magnesium = 12.0, potassium = 320.0, zinc = 0.24, vitaminA = 835.0, vitaminC = 5.9, vitaminK = 13.2, folate = 19.0, phosphorus = 35.0, selenium = 0.1, copper = 0.05, manganese = 0.14, vitaminB1 = 0.07, vitaminB2 = 0.06, vitaminB3 = 0.98, vitaminB6 = 0.14).detail(solubleFiberFraction = 0.4)),
         food("Potato (boiled)", FoodCategory.Vegetable, 150.0, "1 medium (150 g)",
             Nutrients(calories = 87.0, carbs = 20.0, sugar = 0.9, protein = 1.9, fat = 0.1, fiber = 1.8, sodium = 4.0,
-                calcium = 5.0, iron = 0.3, magnesium = 20.0, potassium = 379.0, zinc = 0.30, vitaminC = 13.0, folate = 10.0, phosphorus = 44.0, selenium = 0.3, copper = 0.18, manganese = 0.14, vitaminB1 = 0.11, vitaminB2 = 0.02, vitaminB3 = 1.44, vitaminB6 = 0.3)),
+                calcium = 5.0, iron = 0.3, magnesium = 20.0, potassium = 379.0, zinc = 0.30, vitaminC = 13.0, folate = 10.0, phosphorus = 44.0, selenium = 0.3, copper = 0.18, manganese = 0.14, vitaminB1 = 0.11, vitaminB2 = 0.02, vitaminB3 = 1.44, vitaminB6 = 0.3).detail(solubleFiberFraction = 0.44)),
         food("Ladyfinger (Bhindi, raw)", FoodCategory.Vegetable, 100.0, "1 cup (100 g)",
             Nutrients(calories = 33.0, carbs = 7.5, sugar = 1.5, protein = 1.9, fat = 0.2, fiber = 3.2, sodium = 7.0,
                 calcium = 82.0, iron = 0.6, magnesium = 57.0, potassium = 299.0,
@@ -563,16 +634,16 @@ object IndianFoodSeed {
         // ---------- GRAINS / STAPLES ----------
         food("White Rice (cooked)", FoodCategory.Grain, 150.0, "1 cup (150 g)",
             Nutrients(calories = 130.0, carbs = 28.0, protein = 2.7, fat = 0.3, fiber = 0.4, sodium = 1.0,
-                calcium = 10.0, iron = 0.2, magnesium = 12.0, potassium = 35.0, zinc = 0.49, folate = 3.0, phosphorus = 43.0, selenium = 7.5, copper = 0.07, manganese = 0.47, vitaminB1 = 0.02, vitaminB2 = 0.01, vitaminB3 = 0.4, vitaminB6 = 0.05)),
+                calcium = 10.0, iron = 0.2, magnesium = 12.0, potassium = 35.0, zinc = 0.49, folate = 3.0, phosphorus = 43.0, selenium = 7.5, copper = 0.07, manganese = 0.47, vitaminB1 = 0.02, vitaminB2 = 0.01, vitaminB3 = 0.4, vitaminB6 = 0.05).detail(amino = AA_RICE_WHITE, solubleFiberFraction = 0.12)),
         food("Brown Rice (cooked)", FoodCategory.Grain, 150.0, "1 cup (150 g)",
             Nutrients(calories = 123.0, carbs = 25.6, protein = 2.7, fat = 1.0, fiber = 1.6, sodium = 4.0,
-                calcium = 3.0, iron = 0.6, magnesium = 39.0, potassium = 86.0, zinc = 1.05, phosphorus = 83.0, selenium = 9.8, copper = 0.1, manganese = 0.97, vitaminB1 = 0.1, vitaminB2 = 0.03, vitaminB3 = 1.5, vitaminB6 = 0.15)),
+                calcium = 3.0, iron = 0.6, magnesium = 39.0, potassium = 86.0, zinc = 1.05, phosphorus = 83.0, selenium = 9.8, copper = 0.1, manganese = 0.97, vitaminB1 = 0.1, vitaminB2 = 0.03, vitaminB3 = 1.5, vitaminB6 = 0.15).detail(amino = AA_RICE_BROWN, solubleFiberFraction = 0.12)),
         food("Oats (cooked)", FoodCategory.Grain, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 71.0, carbs = 12.0, protein = 2.5, fat = 1.5, fiber = 1.7, sodium = 49.0,
-                calcium = 9.0, iron = 0.9, magnesium = 26.0, potassium = 70.0, folate = 6.0, phosphorus = 77.0, selenium = 4.5, copper = 0.09, manganese = 0.6, vitaminB1 = 0.08, vitaminB2 = 0.02, vitaminB3 = 0.2, vitaminB6 = 0.01)),
+                calcium = 9.0, iron = 0.9, magnesium = 26.0, potassium = 70.0, folate = 6.0, phosphorus = 77.0, selenium = 4.5, copper = 0.09, manganese = 0.6, vitaminB1 = 0.08, vitaminB2 = 0.02, vitaminB3 = 0.2, vitaminB6 = 0.01).detail(amino = AA_OATS, solubleFiberFraction = 0.5)),
         food("Whole Wheat Flour (atta)", FoodCategory.Grain, 30.0, "1/4 cup (30 g)",
             Nutrients(calories = 340.0, carbs = 72.0, protein = 13.0, fat = 2.5, fiber = 11.0, sodium = 2.0,
-                calcium = 34.0, iron = 3.6, magnesium = 137.0, potassium = 363.0, zinc = 2.9, folate = 44.0, phosphorus = 355.0, selenium = 12.0, copper = 0.41, manganese = 3.8, vitaminB1 = 0.45, vitaminB2 = 0.17, vitaminB3 = 5.5, vitaminB6 = 0.34)),
+                calcium = 34.0, iron = 3.6, magnesium = 137.0, potassium = 363.0, zinc = 2.9, folate = 44.0, phosphorus = 355.0, selenium = 12.0, copper = 0.41, manganese = 3.8, vitaminB1 = 0.45, vitaminB2 = 0.17, vitaminB3 = 5.5, vitaminB6 = 0.34).detail(amino = AA_WHEAT, solubleFiberFraction = 0.18)),
 
         // ---------- PROTEINS ----------
         // Real egg weights, not a ×0.7/×1.4 scale of "1 large". USDA: medium ≈ 44 g,
@@ -580,7 +651,7 @@ object IndianFoodSeed {
         food("Egg (boiled)", FoodCategory.Protein, 50.0, "1 egg (50 g)",
             Nutrients(calories = 155.0, carbs = 1.1, protein = 13.0, fat = 11.0, saturatedFat = 3.3,
                 cholesterol = 373.0, sodium = 124.0, calcium = 50.0, iron = 1.2, magnesium = 10.0, potassium = 126.0, zinc = 1.3,
-                vitaminA = 149.0, vitaminB12 = 1.1, vitaminD = 2.0, folate = 44.0, phosphorus = 172.0, selenium = 30.0, copper = 0.07, manganese = 0.03, vitaminB1 = 0.07, vitaminB2 = 0.51, vitaminB3 = 0.07, vitaminB6 = 0.12),
+                vitaminA = 149.0, vitaminB12 = 1.1, vitaminD = 2.0, folate = 44.0, phosphorus = 172.0, selenium = 30.0, copper = 0.07, manganese = 0.03, vitaminB1 = 0.07, vitaminB2 = 0.51, vitaminB3 = 0.07, vitaminB6 = 0.12).detail(amino = AA_EGG),
             servingVariants = listOf(
                 ServingVariant("Medium", 50.0),
                 ServingVariant("Small", 44.0),
@@ -588,7 +659,7 @@ object IndianFoodSeed {
             )),
         food("Chicken Breast (cooked)", FoodCategory.Protein, 100.0, "1 fillet (100 g)",
             Nutrients(calories = 165.0, carbs = 0.0, protein = 31.0, fat = 3.6, saturatedFat = 1.0,
-                cholesterol = 85.0, sodium = 74.0, calcium = 15.0, iron = 1.0, magnesium = 29.0, potassium = 256.0, zinc = 1.0, vitaminB12 = 0.3, phosphorus = 210.0, selenium = 27.0, copper = 0.05, manganese = 0.02, vitaminB1 = 0.07, vitaminB2 = 0.12, vitaminB3 = 13.5, vitaminB6 = 0.6)),
+                cholesterol = 85.0, sodium = 74.0, calcium = 15.0, iron = 1.0, magnesium = 29.0, potassium = 256.0, zinc = 1.0, vitaminB12 = 0.3, phosphorus = 210.0, selenium = 27.0, copper = 0.05, manganese = 0.02, vitaminB1 = 0.07, vitaminB2 = 0.12, vitaminB3 = 13.5, vitaminB6 = 0.6).detail(amino = AA_CHICKEN)),
         // South Indian home-style chicken curry — bone-in pieces in a coconut /
         // onion-tomato masala gravy (nattu kozhi / kozhi kuzhambu). Values are per
         // 100 g of served curry (bone-in portion + gravy), so protein reads lower
@@ -599,34 +670,34 @@ object IndianFoodSeed {
                 vitaminB12 = 0.4, phosphorus = 130.0, selenium = 15.0, copper = 0.08, manganese = 0.12, vitaminB1 = 0.06, vitaminB2 = 0.12, vitaminB3 = 5.0, vitaminB6 = 0.25)),
         food("Toor Dal (cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 95.0, carbs = 14.0, protein = 6.0, fat = 1.5, fiber = 3.5,
-                calcium = 17.0, iron = 1.6, magnesium = 38.0, potassium = 280.0, zinc = 1.3, folate = 110.0, phosphorus = 110.0, selenium = 3.0, copper = 0.25, manganese = 0.45, vitaminB1 = 0.15, vitaminB2 = 0.05, vitaminB3 = 0.7, vitaminB6 = 0.1)),
+                calcium = 17.0, iron = 1.6, magnesium = 38.0, potassium = 280.0, zinc = 1.3, folate = 110.0, phosphorus = 110.0, selenium = 3.0, copper = 0.25, manganese = 0.45, vitaminB1 = 0.15, vitaminB2 = 0.05, vitaminB3 = 0.7, vitaminB6 = 0.1).detail(amino = AA_TOOR, solubleFiberFraction = 0.12)),
         food("Moong Dal (cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 90.0, carbs = 14.0, protein = 6.0, fat = 1.0, fiber = 3.5,
-                calcium = 27.0, iron = 1.4, magnesium = 48.0, potassium = 266.0, folate = 159.0, phosphorus = 100.0, selenium = 2.5, copper = 0.22, manganese = 0.3, vitaminB1 = 0.16, vitaminB2 = 0.06, vitaminB3 = 0.6, vitaminB6 = 0.07)),
+                calcium = 27.0, iron = 1.4, magnesium = 48.0, potassium = 266.0, folate = 159.0, phosphorus = 100.0, selenium = 2.5, copper = 0.22, manganese = 0.3, vitaminB1 = 0.16, vitaminB2 = 0.06, vitaminB3 = 0.6, vitaminB6 = 0.07).detail(amino = AA_MUNG, solubleFiberFraction = 0.12)),
         food("Masoor Dal (cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 100.0, carbs = 15.0, protein = 7.0, fat = 1.0, fiber = 4.0,
-                calcium = 19.0, iron = 3.3, magnesium = 36.0, potassium = 369.0, folate = 181.0, phosphorus = 120.0, selenium = 2.8, copper = 0.25, manganese = 0.49, vitaminB1 = 0.17, vitaminB2 = 0.07, vitaminB3 = 1.0, vitaminB6 = 0.18)),
+                calcium = 19.0, iron = 3.3, magnesium = 36.0, potassium = 369.0, folate = 181.0, phosphorus = 120.0, selenium = 2.8, copper = 0.25, manganese = 0.49, vitaminB1 = 0.17, vitaminB2 = 0.07, vitaminB3 = 1.0, vitaminB6 = 0.18).detail(amino = AA_LENTIL, solubleFiberFraction = 0.13)),
         food("Horse Gram (Kollu, cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 130.0, carbs = 22.0, protein = 9.0, fat = 1.0, fiber = 5.0,
                 calcium = 78.0, iron = 4.5, magnesium = 60.0, potassium = 287.0, folate = 90.0, phosphorus = 130.0, selenium = 3.0, copper = 0.3, manganese = 0.55, vitaminB1 = 0.14, vitaminB2 = 0.08, vitaminB3 = 0.55, vitaminB6 = 0.1)),
         food("Whole Moong (cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 105.0, carbs = 19.0, protein = 7.0, fat = 0.4, fiber = 7.6,
-                calcium = 27.0, iron = 1.4, magnesium = 48.0, potassium = 266.0, folate = 159.0, phosphorus = 99.0, selenium = 2.5, copper = 0.21, manganese = 0.3, vitaminB1 = 0.16, vitaminB2 = 0.06, vitaminB3 = 0.58, vitaminB6 = 0.07)),
+                calcium = 27.0, iron = 1.4, magnesium = 48.0, potassium = 266.0, folate = 159.0, phosphorus = 99.0, selenium = 2.5, copper = 0.21, manganese = 0.3, vitaminB1 = 0.16, vitaminB2 = 0.06, vitaminB3 = 0.58, vitaminB6 = 0.07).detail(amino = AA_MUNG, solubleFiberFraction = 0.12)),
         food("Whole Urad (Black Gram, cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 120.0, carbs = 20.0, protein = 8.0, fat = 0.4, fiber = 8.0,
-                calcium = 22.0, iron = 2.9, magnesium = 39.0, potassium = 280.0, folate = 130.0, phosphorus = 140.0, selenium = 2.8, copper = 0.27, manganese = 0.5, vitaminB1 = 0.17, vitaminB2 = 0.06, vitaminB3 = 0.55, vitaminB6 = 0.08)),
+                calcium = 22.0, iron = 2.9, magnesium = 39.0, potassium = 280.0, folate = 130.0, phosphorus = 140.0, selenium = 2.8, copper = 0.27, manganese = 0.5, vitaminB1 = 0.17, vitaminB2 = 0.06, vitaminB3 = 0.55, vitaminB6 = 0.08).detail(amino = AA_URAD, solubleFiberFraction = 0.12)),
         food("Kala Chana (Black Chickpea, cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 160.0, carbs = 28.0, protein = 9.0, fat = 2.5, fiber = 8.0,
-                calcium = 49.0, iron = 2.9, magnesium = 48.0, potassium = 291.0, folate = 172.0, phosphorus = 120.0, selenium = 3.7, copper = 0.35, manganese = 1.0, vitaminB1 = 0.12, vitaminB2 = 0.06, vitaminB3 = 0.53, vitaminB6 = 0.14)),
+                calcium = 49.0, iron = 2.9, magnesium = 48.0, potassium = 291.0, folate = 172.0, phosphorus = 120.0, selenium = 3.7, copper = 0.35, manganese = 1.0, vitaminB1 = 0.12, vitaminB2 = 0.06, vitaminB3 = 0.53, vitaminB6 = 0.14).detail(amino = AA_CHICKPEA, solubleFiberFraction = 0.17)),
         food("Cowpea / Lobia (cooked)", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 116.0, carbs = 21.0, protein = 8.0, fat = 0.5, fiber = 6.5,
-                calcium = 24.0, iron = 2.5, magnesium = 53.0, potassium = 278.0, folate = 208.0, phosphorus = 120.0, selenium = 2.5, copper = 0.27, manganese = 0.48, vitaminB1 = 0.2, vitaminB2 = 0.06, vitaminB3 = 0.5, vitaminB6 = 0.1)),
+                calcium = 24.0, iron = 2.5, magnesium = 53.0, potassium = 278.0, folate = 208.0, phosphorus = 120.0, selenium = 2.5, copper = 0.27, manganese = 0.48, vitaminB1 = 0.2, vitaminB2 = 0.06, vitaminB3 = 0.5, vitaminB6 = 0.1).detail(amino = AA_COWPEA, solubleFiberFraction = 0.12)),
         food("Sprouted Moong (raw)", FoodCategory.Protein, 100.0, "1 cup (100 g)",
             Nutrients(calories = 30.0, carbs = 5.9, protein = 3.0, fat = 0.2, fiber = 1.8, sodium = 6.0,
-                calcium = 13.0, iron = 0.9, magnesium = 21.0, potassium = 149.0, vitaminC = 13.2, folate = 61.0, phosphorus = 54.0, selenium = 0.6, copper = 0.16, manganese = 0.19, vitaminB1 = 0.08, vitaminB2 = 0.12, vitaminB3 = 0.75, vitaminB6 = 0.09)),
+                calcium = 13.0, iron = 0.9, magnesium = 21.0, potassium = 149.0, vitaminC = 13.2, folate = 61.0, phosphorus = 54.0, selenium = 0.6, copper = 0.16, manganese = 0.19, vitaminB1 = 0.08, vitaminB2 = 0.12, vitaminB3 = 0.75, vitaminB6 = 0.09).detail(amino = AA_MUNG, solubleFiberFraction = 0.12)),
         food("Soya Chunks (cooked)", FoodCategory.Protein, 100.0, "1 cup (100 g)",
             Nutrients(calories = 100.0, carbs = 6.0, protein = 16.0, fat = 0.5, fiber = 3.5, sodium = 25.0,
-                calcium = 60.0, iron = 5.6, magnesium = 80.0, potassium = 360.0, folate = 100.0, phosphorus = 290.0, selenium = 8.0, copper = 0.5, manganese = 1.2, vitaminB1 = 0.3, vitaminB2 = 0.25, vitaminB3 = 1.2, vitaminB6 = 0.2)),
+                calcium = 60.0, iron = 5.6, magnesium = 80.0, potassium = 360.0, folate = 100.0, phosphorus = 290.0, selenium = 8.0, copper = 0.5, manganese = 1.2, vitaminB1 = 0.3, vitaminB2 = 0.25, vitaminB3 = 1.2, vitaminB6 = 0.2).detail(amino = AA_SOY, solubleFiberFraction = 0.15)),
 
         // ---------- OTHER ----------
         // Plain sugar — default serving is 1 tsp (~4 g), but log can be scaled

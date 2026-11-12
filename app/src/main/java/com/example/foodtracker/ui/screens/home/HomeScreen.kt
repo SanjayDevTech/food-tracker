@@ -60,6 +60,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.NutrientFieldsByCategory
+import com.example.foodtracker.data.subFieldsFor
+import com.example.foodtracker.ui.components.NutrientSubRow
+import com.example.foodtracker.ui.components.NutrientSubRows
 import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
@@ -643,6 +646,54 @@ private fun NutrientBreakdown(
     }
 }
 
+/**
+ * The optional detail for Fiber and Protein — soluble/insoluble, and essential
+ * amino acids with leucine called out — shown inside the nutrient's bottom
+ * sheet, not next to its bar.
+ *
+ * Renders nothing unless at least one food logged today carries the
+ * breakdown, which is the normal state for a diary full of custom and
+ * AI-filled foods. When it does render it says what share of the parent it
+ * covers, because summing only the foods that happen to have data would
+ * otherwise present a partial figure as a complete one.
+ */
+@Composable
+private fun SubBreakdown(
+    fieldKey: String,
+    consumed: Nutrients,
+    logs: List<FoodLogWithFood>,
+) {
+    val subs = subFieldsFor(fieldKey)
+    if (subs.isEmpty()) return
+    val known = subs.any { it.read(consumed) > 0.0 }
+    if (!known) return
+
+    // What fraction of today's fiber (or protein) came from foods that have a
+    // breakdown at all. Walks the day's logs, so it is remembered on them.
+    val coverage = remember(fieldKey, logs) {
+        var total = 0.0
+        var covered = 0.0
+        logs.forEach { row ->
+            val n = row.food.nutrientsPer100g() * (row.log.grams / 100.0)
+            val parent = if (fieldKey == "fiber") n.fiber else n.protein
+            val hasDetail = if (fieldKey == "fiber") n.hasFiberSplit() else n.hasAminoAcids()
+            total += parent
+            if (hasDetail) covered += parent
+        }
+        if (total <= 0.0) 1.0 else covered / total
+    }
+
+    val parentLabel = if (fieldKey == "fiber") "fiber" else "protein"
+    NutrientSubRows(
+        rows = subs.map { sub ->
+            NutrientSubRow(sub.label, "${sub.read(consumed).smartRound()} g")
+        },
+        note = if (coverage >= 0.995) null else
+            "From the ${(coverage * 100).roundToInt()}% of today's $parentLabel " +
+                "whose foods have a published breakdown.",
+    )
+}
+
 private data class NutrientContribution(
     val name: String,
     val detail: String,
@@ -739,6 +790,12 @@ private fun NutrientContributionSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    // Fiber and protein break down further. This lives here
+                    // rather than beside the bar on the home screen: the bars
+                    // are the day's scoreboard and adding rows to them makes
+                    // the scoreboard longer for everyone, whether or not they
+                    // care. Behind a tap it costs nothing to ignore.
+                    SubBreakdown(field.key, consumed, logs)
                     Spacer(Modifier.height(12.dp))
                 }
             }

@@ -10,6 +10,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.room.withTransaction
 import com.example.foodtracker.BuildConfig
 import com.example.foodtracker.data.AllNutrientFields
+import com.example.foodtracker.data.AllNutrientSubFields
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.db.AppDatabase
@@ -154,8 +155,13 @@ class BackupManager(
                 "values by g/100. `dailyGoals` are the user's daily targets (same " +
                 "keys/units) for gauging whether intake is on track. " +
                 "Conventions: a nutrient absent from a food's `per100g` (or from " +
-                "`dailyGoals`) means that value is ~0, NOT unknown. `brand` is present " +
-                "only when the food carries one.",
+                "`dailyGoals`) means that value is ~0, NOT unknown. The four " +
+                "exceptions are solubleFiber, insolubleFiber, essentialAminoAcids " +
+                "and leucine: most foods have no published figure for these, so " +
+                "absent means UNKNOWN, not zero — do not read it as the food " +
+                "containing none, and do not sum them across foods as if the " +
+                "missing ones were 0. `brand` is present only when the food " +
+                "carries one.",
             range = AnalysisRangeInfo(
                 label = range.label,
                 startDate = DateUtil.epochDayToDate(start).toString(),
@@ -164,7 +170,8 @@ class BackupManager(
                 entries = logs.size,
                 distinctFoods = foods.size,
             ),
-            units = AllNutrientFields.associate { it.key to it.unit.symbol },
+            units = AllNutrientFields.associate { it.key to it.unit.symbol } +
+                AllNutrientSubFields.associate { it.key to "g" },
             profile = AnalysisProfile(
                 sex = profile.sex.name,
                 ageYears = profile.ageYears,
@@ -200,12 +207,21 @@ class BackupManager(
         payload.logs.size
     }
 
-    /** Per-100 g nutrients as a compact map, rounded, with zero values dropped. */
+    /**
+     * Per-100 g nutrients as a compact map, rounded, with zero values dropped.
+     *
+     * The optional sub-nutrients ride along on the same rule: a food without a
+     * published breakdown holds 0 for them and so contributes no key at all,
+     * which is exactly the right signal — absent means unknown here, and an
+     * explicit 0 would tell a reader the food contains none.
+     */
     private fun compactNutrients(n: Nutrients): Map<String, Double> =
-        AllNutrientFields.mapNotNull { field ->
-            val v = round2(field.read(n))
-            if (v == 0.0) null else field.key to v
-        }.toMap()
+        (AllNutrientFields.map { it.key to it.read(n) } +
+            AllNutrientSubFields.map { it.key to it.read(n) })
+            .mapNotNull { (key, raw) ->
+                val v = round2(raw)
+                if (v == 0.0) null else key to v
+            }.toMap()
 
     // ─── External export / import (Storage Access Framework) ──────────────
 

@@ -224,6 +224,10 @@ class OpenFoodFactsApi {
         carbs = nutriments.num("carbohydrates$suffix") ?: 0.0,
         sugar = nutriments.num("sugars$suffix") ?: 0.0,
         fiber = nutriments.num("fiber$suffix") ?: 0.0,
+        // Rarely declared on a label, so usually absent — which leaves
+        // these at 0 (unknown) and the breakdown hidden.
+        solubleFiber = nutriments.num("soluble-fiber$suffix") ?: 0.0,
+        insolubleFiber = nutriments.num("insoluble-fiber$suffix") ?: 0.0,
         protein = nutriments.num("proteins$suffix") ?: 0.0,
         fat = nutriments.num("fat$suffix") ?: 0.0,
         saturatedFat = nutriments.num("saturated-fat$suffix") ?: 0.0,

@@ -242,6 +242,22 @@ fun AddFoodScreen(
             NumberField("Vitamin B12 (µg)", state.vitaminB12) { v -> vm.update { it.copy(vitaminB12 = v) } }
             NumberField("Folate (µg)", state.folate) { v -> vm.update { it.copy(folate = v) } }
 
+            // Last, and optional. These are the sub-components the home screen
+            // shows under Fiber and Protein; left blank they save as 0, which
+            // the app reads as unknown and simply doesn't draw.
+            SectionHeader("Optional detail ($basisSuffix)")
+            Text(
+                "Leave these blank unless you have real figures. Soluble and " +
+                    "insoluble should add up to fiber; essential amino acids " +
+                    "run about a third of protein, and leucine a fifth of that.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            NumberField("Soluble fiber (g)", state.solubleFiber) { v -> vm.update { it.copy(solubleFiber = v) } }
+            NumberField("Insoluble fiber (g)", state.insolubleFiber) { v -> vm.update { it.copy(insolubleFiber = v) } }
+            NumberField("Essential amino acids (g)", state.essentialAminoAcids) { v -> vm.update { it.copy(essentialAminoAcids = v) } }
+            NumberField("of which leucine (g)", state.leucine) { v -> vm.update { it.copy(leucine = v) } }
+
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {

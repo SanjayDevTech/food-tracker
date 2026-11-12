@@ -63,6 +63,12 @@ data class AddFoodFormState(
     val vitaminB2: String = "",
     val vitaminB3: String = "",
     val vitaminB6: String = "",
+    // Optional detail. Blank is the normal state: most foods have no
+    // published breakdown, and a blank saves as 0, which reads as unknown.
+    val solubleFiber: String = "",
+    val insolubleFiber: String = "",
+    val essentialAminoAcids: String = "",
+    val leucine: String = "",
     val saved: Boolean = false,
     /** Whether the "Ask AI" affordance is available (global setting is on). */
     val aiEnabled: Boolean = false,
@@ -200,6 +206,10 @@ class AddFoodViewModel(
                 vitaminB2 = n.vitaminB2.formatField(),
                 vitaminB3 = n.vitaminB3.formatField(),
                 vitaminB6 = n.vitaminB6.formatField(),
+                solubleFiber = n.solubleFiber.formatField(),
+                insolubleFiber = n.insolubleFiber.formatField(),
+                essentialAminoAcids = n.essentialAminoAcids.formatField(),
+                leucine = n.leucine.formatField(),
             )
         }
     }
@@ -248,6 +258,10 @@ class AddFoodViewModel(
                 vitaminB2 = food.vitaminB2.formatField(),
                 vitaminB3 = food.vitaminB3.formatField(),
                 vitaminB6 = food.vitaminB6.formatField(),
+                solubleFiber = food.solubleFiber.formatField(),
+                insolubleFiber = food.insolubleFiber.formatField(),
+                essentialAminoAcids = food.essentialAminoAcids.formatField(),
+                leucine = food.leucine.formatField(),
             )
         }
     }
@@ -288,6 +302,10 @@ class AddFoodViewModel(
             vitaminB2 = s.vitaminB2.toDoubleOrZero(),
             vitaminB3 = s.vitaminB3.toDoubleOrZero(),
             vitaminB6 = s.vitaminB6.toDoubleOrZero(),
+            solubleFiber = s.solubleFiber.toDoubleOrZero(),
+            insolubleFiber = s.insolubleFiber.toDoubleOrZero(),
+            essentialAminoAcids = s.essentialAminoAcids.toDoubleOrZero(),
+            leucine = s.leucine.toDoubleOrZero(),
         )
         // Storage is always per-100g — scale up when the user typed in per-serving.
         val per100g = when (s.basis) {

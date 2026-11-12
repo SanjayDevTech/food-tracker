@@ -136,6 +136,11 @@ data class FoodSnapshot(
     val vitaminB2: Double = 0.0,
     val vitaminB3: Double = 0.0,
     val vitaminB6: Double = 0.0,
+    /** Added after SCHEMA_VERSION 2. Defaulted, so older payloads still load. */
+    val solubleFiber: Double = 0.0,
+    val insolubleFiber: Double = 0.0,
+    val essentialAminoAcids: Double = 0.0,
+    val leucine: Double = 0.0,
 ) {
     /**
      * Build a [FoodEntity] for insert. Local `id` is dropped (Room re-issues
@@ -185,6 +190,10 @@ data class FoodSnapshot(
         vitaminB2 = vitaminB2,
         vitaminB3 = vitaminB3,
         vitaminB6 = vitaminB6,
+        solubleFiber = solubleFiber,
+        insolubleFiber = insolubleFiber,
+        essentialAminoAcids = essentialAminoAcids,
+        leucine = leucine,
     )
 
     companion object {
@@ -231,6 +240,10 @@ data class FoodSnapshot(
             vitaminB2 = e.vitaminB2,
             vitaminB3 = e.vitaminB3,
             vitaminB6 = e.vitaminB6,
+            solubleFiber = e.solubleFiber,
+            insolubleFiber = e.insolubleFiber,
+            essentialAminoAcids = e.essentialAminoAcids,
+            leucine = e.leucine,
         )
     }
 }

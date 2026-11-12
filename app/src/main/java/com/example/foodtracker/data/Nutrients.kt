@@ -34,6 +34,17 @@ data class Nutrients(
     val vitaminB2: Double = 0.0,
     val vitaminB3: Double = 0.0,
     val vitaminB6: Double = 0.0,
+
+    // ── Optional detail ──────────────────────────────────────────────
+    // Sub-components of fiber and protein. 0 means UNKNOWN here, not
+    // "none": most foods carry no split at all (every custom food, every
+    // AI food filled before this existed, and the seeded foods outside the
+    // hand-filled subset). The UI must therefore hide the breakdown rather
+    // than draw it as zero. See [hasFiberSplit] / [hasAminoAcids].
+    val solubleFiber: Double = 0.0,
+    val insolubleFiber: Double = 0.0,
+    val essentialAminoAcids: Double = 0.0,
+    val leucine: Double = 0.0,
 ) {
     operator fun plus(other: Nutrients) = Nutrients(
         calories + other.calories,
@@ -66,6 +77,10 @@ data class Nutrients(
         vitaminB2 + other.vitaminB2,
         vitaminB3 + other.vitaminB3,
         vitaminB6 + other.vitaminB6,
+        solubleFiber + other.solubleFiber,
+        insolubleFiber + other.insolubleFiber,
+        essentialAminoAcids + other.essentialAminoAcids,
+        leucine + other.leucine,
     )
 
     operator fun times(factor: Double) = Nutrients(
@@ -99,7 +114,17 @@ data class Nutrients(
         vitaminB2 * factor,
         vitaminB3 * factor,
         vitaminB6 * factor,
+        solubleFiber * factor,
+        insolubleFiber * factor,
+        essentialAminoAcids * factor,
+        leucine * factor,
     )
+
+    /** True when this food carries a soluble/insoluble split worth drawing. */
+    fun hasFiberSplit(): Boolean = solubleFiber > 0.0 || insolubleFiber > 0.0
+
+    /** True when this food carries an amino-acid breakdown worth drawing. */
+    fun hasAminoAcids(): Boolean = essentialAminoAcids > 0.0
 
     companion object {
         val Zero = Nutrients()
@@ -175,3 +200,48 @@ val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("vitaminB12", "Vitamin B12", NutrientUnit.Microgram, NutrientCategory.Vitamins, { it.vitaminB12 }, { it.vitaminB12 }),
     NutrientField("folate", "Folate", NutrientUnit.Microgram, NutrientCategory.Vitamins, { it.folate }, { it.folate }),
 )
+
+/**
+ * A component of a parent nutrient — soluble fiber under Fiber, leucine under
+ * Protein. Deliberately NOT a [NutrientField]: sub-nutrients carry no goal, no
+ * bar and no contribution sheet. They are a detail you can open when curious,
+ * not a number to hit, and the UI is built so they never compete with the ten
+ * macro rows above them.
+ */
+data class NutrientSubField(
+    val key: String,
+    val label: String,
+    val read: (Nutrients) -> Double,
+)
+
+/** Shown under the Fiber row. Soluble + insoluble should total [Nutrients.fiber]. */
+val FiberSubFields: List<NutrientSubField> = listOf(
+    NutrientSubField("solubleFiber", "Soluble") { it.solubleFiber },
+    NutrientSubField("insolubleFiber", "Insoluble") { it.insolubleFiber },
+)
+
+/**
+ * Shown under the Protein row.
+ *
+ * Only two values, by design. The nine essential amino acids are each real and
+ * each knowable, but outside a lab you get them from a composition table, and
+ * for most of what this app logs there is no table — so the choice is between
+ * two numbers that can be sanity-checked (essential AAs run 29-47% of protein,
+ * leucine 15-24% of that) and nine that cannot. Leucine earns its own row
+ * because it is the one with a number worth acting on: roughly 2.5 g in a meal
+ * is what triggers muscle protein synthesis.
+ */
+val ProteinSubFields: List<NutrientSubField> = listOf(
+    NutrientSubField("essentialAminoAcids", "Essential amino acids") { it.essentialAminoAcids },
+    NutrientSubField("leucine", "of which leucine") { it.leucine },
+)
+
+/** Every sub-nutrient, for the exports that walk the whole set. All in grams. */
+val AllNutrientSubFields: List<NutrientSubField> = FiberSubFields + ProteinSubFields
+
+/** The sub-nutrients to offer under a given [NutrientField], if any. */
+fun subFieldsFor(key: String): List<NutrientSubField> = when (key) {
+    "fiber" -> FiberSubFields
+    "protein" -> ProteinSubFields
+    else -> emptyList()
+}

@@ -249,7 +249,29 @@ class UsdaFoodApi {
         vitaminB2 = byId[1166] ?: 0.0,
         vitaminB3 = byId[1167] ?: 0.0,
         vitaminB6 = byId[1175] ?: 0.0,
+        // Optional detail. USDA publishes all of this per food, so a
+        // USDA-sourced food gets a real breakdown for free; anything it omits
+        // stays 0, which the UI reads as unknown and hides.
+        solubleFiber = byId[1082] ?: 0.0,
+        insolubleFiber = byId[1084] ?: 0.0,
+        // No "total essential amino acids" id exists — USDA reports the nine
+        // separately, so sum them, the same way omega-3 is summed above.
+        // Partial coverage would understate the total, so this is all-or-nothing.
+        essentialAminoAcids = ESSENTIAL_AMINO_ACID_IDS
+            .fold(0.0 as Double?) { acc, id -> acc?.let { a -> byId[id]?.let { a + it } } }
+            ?: 0.0,
+        leucine = byId[1213] ?: 0.0,
     )
+
+    /**
+     * USDA nutrient ids for the nine amino acids the body cannot synthesise:
+     * tryptophan, threonine, isoleucine, leucine, lysine, methionine,
+     * phenylalanine, valine, histidine. Cystine and tyrosine are deliberately
+     * absent — they are conditionally essential and counting them would push
+     * the total outside the range the rest of the app validates against.
+     */
+    private val ESSENTIAL_AMINO_ACID_IDS =
+        listOf(1210, 1211, 1212, 1213, 1214, 1215, 1217, 1219, 1221)
 
     private fun JsonObject.str(key: String): String? =
         this[key]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }

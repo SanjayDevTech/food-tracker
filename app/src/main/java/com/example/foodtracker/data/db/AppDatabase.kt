@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WaterLogEntity::class,
         WeightLogEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -88,13 +88,41 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+
+        /**
+         * v8 → v9: adds four optional sub-nutrient columns to `foods` — the
+         * soluble/insoluble fiber split, total essential amino acids, and
+         * leucine.
+         * Non-destructive ALTER, same rationale as [MIGRATION_4_5].
+         *
+         * Every existing row backfills to 0, which the app reads as UNKNOWN
+         * rather than "contains none": a food keeps its total fiber and protein
+         * exactly as before and simply shows no breakdown. Only the hand-filled
+         * seed subset, USDA lookups and new AI fills carry real values, so no
+         * custom or previously-AI-filled food is retro-fitted with a guess.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN soluble_fiber REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE foods ADD COLUMN insoluble_fiber REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE foods ADD COLUMN essential_amino_acids REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE foods ADD COLUMN leucine REAL NOT NULL DEFAULT 0")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "food_tracker.db",
             )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(
+                    MIGRATION_4_5,
+                    MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
+                    MIGRATION_8_9,
+                )
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket
                 // fallbackToDestructiveMigration: a *future* forgotten

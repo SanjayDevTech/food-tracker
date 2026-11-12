@@ -71,6 +71,13 @@ data class FoodEntity(
     @ColumnInfo(name = "vitamin_b2") val vitaminB2: Double = 0.0,
     @ColumnInfo(name = "vitamin_b3") val vitaminB3: Double = 0.0,
     @ColumnInfo(name = "vitamin_b6") val vitaminB6: Double = 0.0,
+
+    // Optional sub-components of fiber and protein. 0 means UNKNOWN, not
+    // "none" — see the note on [com.example.foodtracker.data.Nutrients].
+    @ColumnInfo(name = "soluble_fiber") val solubleFiber: Double = 0.0,
+    @ColumnInfo(name = "insoluble_fiber") val insolubleFiber: Double = 0.0,
+    @ColumnInfo(name = "essential_amino_acids") val essentialAminoAcids: Double = 0.0,
+    val leucine: Double = 0.0,
 ) {
     /** Variants to show in pickers. Always non-empty — falls back to the canonical serving. */
     fun variantsOrDefault(): List<ServingVariant> = servingVariants.ifEmpty {
@@ -115,6 +122,10 @@ data class FoodEntity(
         vitaminB2 = vitaminB2,
         vitaminB3 = vitaminB3,
         vitaminB6 = vitaminB6,
+        solubleFiber = solubleFiber,
+        insolubleFiber = insolubleFiber,
+        essentialAminoAcids = essentialAminoAcids,
+        leucine = leucine,
     )
 
     companion object {
@@ -171,6 +182,10 @@ data class FoodEntity(
             vitaminB2 = n.vitaminB2,
             vitaminB3 = n.vitaminB3,
             vitaminB6 = n.vitaminB6,
+            solubleFiber = n.solubleFiber,
+            insolubleFiber = n.insolubleFiber,
+            essentialAminoAcids = n.essentialAminoAcids,
+            leucine = n.leucine,
         )
     }
 }
