@@ -32,6 +32,7 @@ import com.example.foodtracker.ui.screens.profile.ProfileScreen
 import com.example.foodtracker.ui.screens.privacy.PrivacyScreen
 import com.example.foodtracker.ui.screens.progress.ProgressScreen
 import com.example.foodtracker.ui.screens.reminders.RemindersScreen
+import com.example.foodtracker.ui.screens.rich.RichFoodsScreen
 import com.example.foodtracker.ui.screens.settings.SettingsScreen
 import com.example.foodtracker.ui.screens.water.WaterScreen
 import com.example.foodtracker.ui.screens.weight.WeightScreen
@@ -171,6 +172,7 @@ private fun androidx.navigation.NavGraphBuilder.graph(navController: androidx.na
             onOpenProfile = { navController.navigate(ProfileRoute) },
             onOpenSettings = { navController.navigate(SettingsRoute) },
             onOpenProgress = { navController.navigate(ProgressRoute) },
+            onOpenRichFoods = { navController.navigate(RichFoodsRoute) },
         )
     }
     composable<LogFoodRoute> { entry ->
@@ -220,6 +222,9 @@ private fun androidx.navigation.NavGraphBuilder.graph(navController: androidx.na
     }
     composable<ProgressRoute> {
         ProgressScreen(onBack = { navController.popBackStack() })
+    }
+    composable<RichFoodsRoute> {
+        RichFoodsScreen(onBack = { navController.popBackStack() })
     }
     composable<RemindersRoute> {
         RemindersScreen(onBack = { navController.popBackStack() })

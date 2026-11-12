@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -62,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.NutrientFieldsByCategory
 import com.example.foodtracker.data.subFieldsFor
 import com.example.foodtracker.ui.components.NutrientSubRow
+import com.example.foodtracker.ui.components.color
 import com.example.foodtracker.ui.components.NutrientSubRows
 import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.MealType
@@ -97,6 +99,7 @@ fun HomeScreen(
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProgress: () -> Unit,
+    onOpenRichFoods: () -> Unit,
 ) {
     val vm: HomeViewModel = appViewModel { HomeViewModel(it.repository, it.profileStore) }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -179,6 +182,7 @@ fun HomeScreen(
                     onOpenProfile = onOpenProfile,
                     onOpenSettings = onOpenSettings,
                     onOpenProgress = onOpenProgress,
+                    onOpenRichFoods = onOpenRichFoods,
                 )
             }
             com.example.foodtracker.domain.goalProgress(state.profile)?.let { progress ->
@@ -330,6 +334,7 @@ private fun GreetingHeader(
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProgress: () -> Unit,
+    onOpenRichFoods: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -351,6 +356,7 @@ private fun GreetingHeader(
         )
         OverflowMenu(
             onOpenProgress = onOpenProgress,
+            onOpenRichFoods = onOpenRichFoods,
             onOpenProfile = onOpenProfile,
             onOpenSettings = onOpenSettings,
         )
@@ -365,6 +371,7 @@ private fun GreetingHeader(
 @Composable
 private fun OverflowMenu(
     onOpenProgress: () -> Unit,
+    onOpenRichFoods: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -389,6 +396,10 @@ private fun OverflowMenu(
             MenuAction("Stats", Icons.Default.Insights) {
                 expanded = false
                 onOpenProgress()
+            }
+            MenuAction("Rich in…", Icons.Default.Search) {
+                expanded = false
+                onOpenRichFoods()
             }
             MenuAction("Profile", Icons.Default.Person) {
                 expanded = false
@@ -867,19 +878,6 @@ private fun ContributionRow(
                     .background(color),
             )
         }
-    }
-}
-
-private fun com.example.foodtracker.data.NutrientField.color(): androidx.compose.ui.graphics.Color = when (key) {
-    "calories" -> MacroBurned
-    "carbs" -> MacroCarbs
-    "protein" -> MacroProtein
-    "fat", "saturatedFat" -> MacroFat
-    "fiber" -> MacroFiber
-    else -> when (category) {
-        NutrientCategory.Macros -> MacroBurned
-        NutrientCategory.Minerals -> MacroFiber
-        NutrientCategory.Vitamins -> MacroWater
     }
 }
 

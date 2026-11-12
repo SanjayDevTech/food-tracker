@@ -37,3 +37,6 @@ object PrivacyRoute
 
 @Serializable
 object RemindersRoute
+
+@Serializable
+object RichFoodsRoute
