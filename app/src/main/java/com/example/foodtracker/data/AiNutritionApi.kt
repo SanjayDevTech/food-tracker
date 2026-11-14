@@ -64,15 +64,34 @@ private val NUTRIENT_KEYS = listOf(
 )
 
 /**
- * Sub-components of fiber and protein. Genuinely optional: unlike
- * [NUTRIENT_KEYS] these are left out of the schema's `required` list and the
- * model is told to omit them unless it has real composition data, because a
- * fabricated amino-acid profile is worse than no breakdown at all. A reply
- * that omits them leaves the fields at 0, which the app reads as unknown.
+ * Sub-components of fiber and protein. Left out of the schema's `required`
+ * list so a food with no published breakdown — a composite dish — can omit
+ * them rather than invent one; a reply that omits them leaves the fields at
+ * 0, which the app reads as unknown and hides.
+ *
+ * Optional in the schema is NOT the same as discouraged in the prompt, and
+ * conflating the two is what made these fields come back empty for everything
+ * at first. A model will skip a non-required key unless asked for it, so the
+ * prompt asks for all four by default and names omission as the exception.
+ * [Nutrients.withOptionalDetail] is what keeps that from turning into
+ * invention: it re-derives the arithmetic and drops any group that fails, so
+ * the prompt can afford to ask broadly.
  */
 private val OPTIONAL_NUTRIENT_KEYS = listOf(
     "solubleFiber", "insolubleFiber", "essentialAminoAcids", "leucine",
 )
+
+/**
+ * The smallest sub-nutrient amount treated as present, in grams — a microgram.
+ *
+ * A bare `> 0.0` test is not the same question. One reply carried
+ * `solubleFiber = 1.65e-308`, a subnormal double that is zero for every
+ * practical purpose yet passes `> 0.0`, which let a non-answer through the
+ * presence check to be caught only by the arithmetic that follows. Nothing
+ * edible contains a microgram of fiber, so anything under this is a glitch
+ * rather than a measurement.
+ */
+private const val MIN_DETAIL_G = 1e-6
 
 class AiNutritionApi {
 
@@ -153,7 +172,55 @@ class AiNutritionApi {
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
             AiProvider.OpenAI -> callOpenAi(prompt, modelId, apiKey)
         } ?: return@withContext null
-        parseResult(reply)
+        parseResult(reply)?.withDetailCarriedFrom(candidate)
+    }
+
+    /**
+     * Keep the first pass's fiber split and amino profile when the
+     * verification pass drops them, rescaled to whatever totals it settled on.
+     *
+     * The verifier regenerates all thirty-odd keys from scratch, and the four
+     * optional ones are the first to fall out of a small model's reply — they
+     * are the only keys nothing in the schema forces it to emit. Measured on
+     * cooked green peas: the first pass returned a complete, gate-passing
+     * breakdown and the verifier returned none of it, which `applyResult` in
+     * the add-food view model then wrote over the top of the good values. Two
+     * prompt revisions did not move it, including one that put the figures in
+     * front of the model and told it to keep them, so this is enforced here
+     * instead of asked for there.
+     *
+     * Carried as RATIOS, never as amounts. The verifier's job includes fixing
+     * the serving size, and it uses it — on that same lookup it rescaled a
+     * 100 g serving to a 160 g cup, multiplying every figure by 1.6 while
+     * leaving the food's per-gram composition identical. Copying grams across
+     * would have been wrong by 60%; copying `soluble/fiber` and
+     * `eaa/protein` is right at either size, because those fractions are
+     * properties of the food rather than of the portion.
+     *
+     * The verifier's own detail wins whenever it supplies some: it has already
+     * been through [withOptionalDetail], so it is as validated as what it
+     * would replace, and it reflects any genuine correction it made. This only
+     * fills a gap — it never overrides an answer.
+     */
+    private fun AiNutrition.withDetailCarriedFrom(first: AiNutrition): AiNutrition {
+        val prior = first.nutrients
+        var n = nutrients
+
+        if (!n.hasFiberSplit() && prior.hasFiberSplit() && prior.fiber > 0.0 && n.fiber > 0.0) {
+            n = n.copy(
+                solubleFiber = n.fiber * (prior.solubleFiber / prior.fiber),
+                insolubleFiber = n.fiber * (prior.insolubleFiber / prior.fiber),
+            )
+        }
+        if (!n.hasAminoAcids() && prior.hasAminoAcids() && prior.protein > 0.0 && n.protein > 0.0) {
+            val eaa = n.protein * (prior.essentialAminoAcids / prior.protein)
+            n = n.copy(
+                essentialAminoAcids = eaa,
+                leucine = eaa * (prior.leucine / prior.essentialAminoAcids),
+            )
+        }
+
+        return if (n === nutrients) this else copy(nutrients = n)
     }
 
     // ─── Prompt ───────────────────────────────────────────────────────────
@@ -207,10 +274,31 @@ class AiNutritionApi {
           exists, never as a guessed trace. Keep small real values, especially
           zinc, iron, copper, potassium, calcium, vitamin C and vitamin K.
 
-        Optional, grams — omit all four unless real composition data exists
-        for this food, and always for a mixed dish. solubleFiber +
-        insolubleFiber = fiber. essentialAminoAcids is ~30% of protein for a
-        cereal and ~45% for egg or dairy; leucine is ~a fifth of it.
+        Composition detail — solubleFiber, insolubleFiber,
+        essentialAminoAcids, leucine, all in grams for the same serving.
+        INCLUDE all four whenever published composition data exists for this
+        food: every single ingredient, and every grain, pulse, dairy, egg,
+        meat, nut, seed, fruit and vegetable, raw or plainly cooked. These are
+        standard table values, not a judgement call — give them.
+        Fiber split: give solubleFiber and insolubleFiber, which add up to
+        fiber, the figure you gave above, for this serving. If you are sure
+        of only one of the two, give that one alone and omit the other —
+        do not pad it out to make the pair add up.
+
+        Amino acids: essentialAminoAcids is the sum of all nine essential
+        amino acids — histidine, isoleucine, leucine, lysine, methionine,
+        phenylalanine, threonine, tryptophan, valine — and leucine is the
+        leucine among them. Use this food's own composition table where you
+        have it. Otherwise a typical figure for its family is fine: as a
+        share of protein, about 0.29 for wheat, 0.35 for oats, 0.37 for rice,
+        0.36-0.39 for pulses and soy, 0.41 for meat, 0.45 for egg and 0.47
+        for dairy, with a green or immature legume lower than a dry pulse.
+        leucine is about 0.19-0.21 of essentialAminoAcids across all of them.
+        Pick the family this food actually belongs to rather than rounding to
+        the middle of the range.
+
+        Omit any pair that does not apply, and all four for a composite dish
+        with no published breakdown.
 
         Units — kcal: calories. grams: carbs, sugar, fiber, protein, fat,
         saturatedFat, omega3. milligrams: cholesterol, sodium, calcium, iron,
@@ -247,9 +335,13 @@ class AiNutritionApi {
           it only if the food plainly has 2-4 recognised sizes.
         - 0 only for a genuinely absent or unavailable nutrient, never a guessed
           trace. Same units as given.
-        - Optional detail, if present: solubleFiber + insolubleFiber = fiber,
-          essentialAminoAcids 30-45% of protein, leucine a fifth of that.
-          Drop all four for a food with no real data.
+        - Composition detail (solubleFiber, insolubleFiber,
+          essentialAminoAcids, leucine): KEEP the values given above. If you
+          change the serving size or correct fiber or protein, rescale them
+          by the same factor so solubleFiber + insolubleFiber still equals
+          fiber. Add them only from this food's own composition table, never
+          as a percentage of protein. Drop them only for a composite dish
+          with no published breakdown.
         ${jsonContract(schemaEnforced)}
         ${instructionsPrompt(instructions)}
     """.trimIndent()
@@ -471,7 +563,16 @@ class AiNutritionApi {
     private fun postOnce(urlStr: String, headers: Map<String, String>, body: String): PostResult {
         val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
-            readTimeout = 30_000
+            // 60s, not 30s: the reply is a ~34-key object generated against a
+            // response_schema, and generation time scales with the model.
+            // gemini-flash-lite answers in about two seconds and never comes
+            // near either figure, but gemini-flash exhausted all three
+            // attempts at exactly 30s each — our own limit firing mid-
+            // generation, not the network failing. Three strikes at ~31s also
+            // meant a lookup could spend 95 seconds to arrive at nothing.
+            // connectTimeout stays at 15s; reaching the server is a different
+            // question from waiting for it to think.
+            readTimeout = 60_000
             requestMethod = "POST"
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
@@ -645,16 +746,44 @@ class AiNutritionApi {
             (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.doubleOrNull
                 ?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
 
-        val soluble = num("solubleFiber")
-        val insoluble = num("insolubleFiber")
+        // Complete a half-given split rather than discard it. The two
+        // fractions are defined as summing to fiber, so the missing side is
+        // arithmetic on a figure we already have, not another guess — and
+        // half an answer is the common failure here: asked without any ratio
+        // to lean on, the model returned solubleFiber 1.2 against fiber 5.1
+        // for cooked peas, a plausible published value, and simply left
+        // insolubleFiber out. Requiring both threw that away.
+        //
+        // Only from a side that is a credible share of the whole: between a
+        // twentieth and nineteen twentieths. Outside that the given figure is
+        // describing something other than this serving's fiber, and
+        // subtracting from it would manufacture a number to match.
+        val givenSoluble = num("solubleFiber")
+        val givenInsoluble = num("insolubleFiber")
+        fun completes(given: Double) =
+            fiber > 0.0 && given in (fiber * 0.05)..(fiber * 0.95)
+
+        val soluble = if (givenSoluble <= MIN_DETAIL_G && completes(givenInsoluble)) {
+            fiber - givenInsoluble
+        } else {
+            givenSoluble
+        }
+        val insoluble = if (givenInsoluble <= MIN_DETAIL_G && completes(givenSoluble)) {
+            fiber - givenSoluble
+        } else {
+            givenInsoluble
+        }
+
         // Allow a 20% rounding gap against our own fiber figure; beyond that
-        // the model is describing a different portion, or inventing.
-        val fiberOk = fiber > 0.0 && (soluble > 0.0 || insoluble > 0.0) &&
+        // the model is describing a different portion, or inventing. A
+        // completed pair satisfies this by construction — the check still
+        // matters for the pairs the model supplied whole.
+        val fiberOk = fiber > 0.0 && (soluble > MIN_DETAIL_G || insoluble > MIN_DETAIL_G) &&
             kotlin.math.abs((soluble + insoluble) - fiber) <= fiber * 0.20
 
         val eaa = num("essentialAminoAcids")
         val leucine = num("leucine")
-        val aminoOk = protein > 0.0 && eaa > 0.0 && leucine > 0.0 &&
+        val aminoOk = protein > 0.0 && eaa > MIN_DETAIL_G && leucine > MIN_DETAIL_G &&
             eaa / protein in 0.25..0.55 &&
             leucine / eaa in 0.14..0.25
 

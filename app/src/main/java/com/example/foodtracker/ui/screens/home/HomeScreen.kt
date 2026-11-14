@@ -700,8 +700,13 @@ private fun SubBreakdown(
             NutrientSubRow(sub.label, "${sub.read(consumed).smartRound()} g")
         },
         note = if (coverage >= 0.995) null else
+            // Not "published": seeded foods carry figures from composition
+            // tables, but an AI-filled food's amino split may be a typical
+            // figure for its family rather than a measurement of that food.
+            // "Carry a breakdown" is true of both; the old wording claimed a
+            // provenance the newer half of these numbers does not have.
             "From the ${(coverage * 100).roundToInt()}% of today's $parentLabel " +
-                "whose foods have a published breakdown.",
+                "whose foods carry a breakdown.",
     )
 }
 
