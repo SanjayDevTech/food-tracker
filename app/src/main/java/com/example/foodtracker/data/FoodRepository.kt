@@ -279,8 +279,19 @@ class FoodRepository(
         // findSeededByName's LIMIT 1 took the first. Locale.ROOT because
         // SQLite's COLLATE NOCASE is ASCII-only folding — under a Turkish
         // default locale, lowercase('I') is 'ı' and the row would be missed.
+        //
+        // getAllSeeded, NOT getVisibleSeeded: this read must see hidden rows.
+        // The refresh needs different semantics from the findSeededByName it
+        // replaced — that lookup answers "which food should I show for this
+        // name", where a hidden row rightly doesn't count, while this one asks
+        // "does a row for this seed entry already exist", where it does. Read
+        // through the visible-only filter, a hidden food looks absent, falls
+        // to `return@map fresh`, and is inserted again as a brand-new visible
+        // row with a new id and uuid: @Upsert finds no primary-key or
+        // client_uuid conflict to update against. Hiding a seeded food would
+        // therefore un-hide it as a duplicate on the next SEED_VERSION bump.
         val existingByName = HashMap<String, FoodEntity>()
-        for (row in foodDao.getVisibleSeeded()) {
+        for (row in foodDao.getAllSeeded()) {
             existingByName.putIfAbsent(row.name.lowercase(Locale.ROOT), row)
         }
 
@@ -289,6 +300,12 @@ class FoodRepository(
                 ?: return@map fresh
             fresh.copy(
                 id = existing.id,
+                // Carried explicitly: `fresh` defaults it to false, so without
+                // this the wider read above would un-hide every hidden food
+                // instead of duplicating it — the same bug wearing a different
+                // hat. Hiding is the user's decision about a seeded food, and
+                // a nutrient correction is not a reason to overturn it.
+                isHidden = existing.isHidden,
                 // Preserve the stable cross-install uuid; a fresh seed list
                 // generates a new random one, which would otherwise break
                 // backup/restore merge keyed on client_uuid.

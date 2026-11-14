@@ -57,10 +57,15 @@ interface FoodDao {
     suspend fun findSeededByName(name: String): FoodEntity?
 
     /**
-     * Every row [findSeededByName] could match, in one read. Same `is_custom`
-     * and `is_hidden` filters deliberately — [getAllSeeded] is NOT equivalent,
-     * it includes hidden rows. Used by the seed refresh so it doesn't issue one
-     * query per seeded food.
+     * Every row [findSeededByName] could match, in one read — same `is_custom`
+     * and `is_hidden` filters.
+     *
+     * NOT for the seed refresh, which wants [getAllSeeded]. The difference is
+     * the hidden rows, and it matters: this answers "which food should I show
+     * for this name", where a hidden one rightly doesn't count, whereas the
+     * refresh asks "does a row for this seed entry already exist", where it
+     * does. Missing a hidden row there inserts a duplicate rather than
+     * updating it.
      */
     @Query("SELECT * FROM foods WHERE is_custom = 0 AND is_hidden = 0")
     suspend fun getVisibleSeeded(): List<FoodEntity>
