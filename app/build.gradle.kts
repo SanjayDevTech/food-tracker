@@ -47,6 +47,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // A universal APK carries every ABI forever: all four sit in
+            // base.apk on disk for the life of the install, but only the
+            // device's own is ever loaded. Dropping the x86 pair is ~135 KB
+            // of permanent footprint for no loss on any phone. (It does rule
+            // out x86_64 Chromebooks; nothing else runs x86 Android.)
+            // Debug builds keep every ABI, so emulators are unaffected.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
         }
     }
     compileOptions {
@@ -57,9 +66,17 @@ android {
         compose = true
         buildConfig = true
     }
+    androidResources {
+        localeFilters += listOf("en")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/*.version"
+            excludes += "/META-INF/com.android.tools/**"
+            excludes += "/DebugProbesKt.bin"
+            excludes += "/kotlin-tooling-metadata.json"
         }
     }
 }
