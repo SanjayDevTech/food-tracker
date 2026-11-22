@@ -88,7 +88,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.documentfile)
@@ -111,6 +110,10 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    // Not an unused dependency: CameraX already pulls guava in for
+    // ListenableFuture, so this declares nothing new to the compiler. It is
+    // here as a version pin — dropping it resolves guava to whatever CameraX
+    // asks for (33.3.1 today) instead of the version named in the catalog.
     implementation(libs.guava)
     // Play-Services-hosted ML Kit — the scan engine + model live in Google Play
     // Services, so our APK doesn't ship them (~19 MB saved across 4 ABIs).
@@ -122,7 +125,6 @@ dependencies {
     // the existing Room DAOs inside provideGlance (suspend context, no extra
     // serialization layer) and ping widgets to update after food log writes.
     implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
