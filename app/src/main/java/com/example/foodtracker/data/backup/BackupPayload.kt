@@ -101,6 +101,8 @@ data class FoodSnapshot(
     val category: String,
     val servingGrams: Double,
     val servingLabel: String,
+    val oilGrams: Double = 0.0,
+    val oilDefault: String = "Palmolein",
     val servingVariants: List<ServingVariant> = emptyList(),
     val barcode: String? = null,
     val isCustom: Boolean = false,
@@ -155,6 +157,8 @@ data class FoodSnapshot(
         category = category,
         servingGrams = servingGrams,
         servingLabel = servingLabel,
+        oilGrams = oilGrams,
+        oilDefault = oilDefault,
         servingVariants = servingVariants,
         barcode = barcode,
         isCustom = isCustom,
@@ -205,6 +209,8 @@ data class FoodSnapshot(
             category = e.category,
             servingGrams = e.servingGrams,
             servingLabel = e.servingLabel,
+            oilGrams = e.oilGrams,
+            oilDefault = e.oilDefault,
             servingVariants = e.servingVariants,
             barcode = e.barcode,
             isCustom = e.isCustom,
@@ -262,6 +268,10 @@ data class FoodLogSnapshot(
     val servings: Double,
     val grams: Double,
     val servingLabel: String = "",
+    /** Cooking oil recorded on this entry, or null for the food's default. */
+    val oil: String? = null,
+    /** Style option recorded on this entry, or null for the food's default. */
+    val style: String? = null,
     val loggedAtMillis: Long,
 ) {
     /** Local id is supplied by the caller after food lookup; mealType etc. are preserved. */
@@ -273,6 +283,8 @@ data class FoodLogSnapshot(
         servings = servings,
         grams = grams,
         servingLabel = servingLabel,
+        oil = oil,
+        style = style,
         loggedAtMillis = loggedAtMillis,
     )
 
@@ -287,6 +299,8 @@ data class FoodLogSnapshot(
             servings = e.servings,
             grams = e.grams,
             servingLabel = e.servingLabel,
+            oil = e.oil,
+            style = e.style,
             loggedAtMillis = e.loggedAtMillis,
         )
     }

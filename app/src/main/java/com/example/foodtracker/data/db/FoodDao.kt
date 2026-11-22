@@ -9,6 +9,9 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import com.example.foodtracker.data.CookingOil
+import com.example.foodtracker.data.StyleOption
+import com.example.foodtracker.data.Nutrients
 import kotlinx.coroutines.flow.Flow
 
 data class FoodLogWithFood(
@@ -16,6 +19,23 @@ data class FoodLogWithFood(
     @Relation(parentColumn = "food_id", entityColumn = "id")
     val food: FoodEntity,
 )
+
+/**
+ * What this row actually contributed, scaled to the grams logged and prepared
+ * the way it was recorded.
+ *
+ * What the entry says wins, and silence means the food's own default rather
+ * than whatever the user happens to prefer today. That distinction is the
+ * whole point of storing the choice per row: someone who logs a street samosa
+ * fried in palmolein and later starts cooking in coconut oil must not find
+ * last Tuesday's samosa quietly re-scored. Rows written before the picker
+ * existed are silent on both axes and so keep exactly the numbers they always
+ * had.
+ */
+fun FoodLogWithFood.nutrients(): Nutrients = food.nutrientsPer100g(
+    oil = CookingOil.fromName(log.oil) ?: food.defaultOil,
+    style = StyleOption.find(food.styleOptions, log.style) ?: food.styleOptions.firstOrNull(),
+) * (log.grams / 100.0)
 
 @Dao
 interface FoodDao {
@@ -99,6 +119,16 @@ interface FoodDao {
 
     @Query("UPDATE foods SET is_favourite = :favourite WHERE id = :id")
     suspend fun setFavourite(id: Long, favourite: Boolean)
+
+    /**
+     * Remember the preparation the user last picked for this food.
+     *
+     * Deliberately fired on selection rather than on log, so backing out of the
+     * sheet still teaches the app something. Cheap enough to do on every chip
+     * tap: one row, two text columns, no index touched.
+     */
+    @Query("UPDATE foods SET last_oil = :oil, last_style = :style WHERE id = :id")
+    suspend fun rememberVariant(id: Long, oil: String?, style: String?)
 
     @Query("DELETE FROM foods WHERE id = :id")
     suspend fun delete(id: Long)

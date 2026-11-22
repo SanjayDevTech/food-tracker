@@ -9,7 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,9 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ServingVariant
+import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodEntity
 
 /** Sentinel prefix on a [ServingVariant.label] marking the free-form
@@ -45,6 +52,16 @@ fun ServingSheet(
     onServingsChange: (Double) -> Unit,
     onMealChange: (MealType) -> Unit,
     onConfirm: () -> Unit,
+    /**
+     * The cooking fat to price this entry in. Null means "whatever the profile
+     * default is", which is what every caller that has no opinion should pass;
+     * the picker then pre-selects the food's own default.
+     */
+    oil: CookingOil? = null,
+    onOilChange: (CookingOil) -> Unit = {},
+    /** Preparation option, for the few seeded foods that offer a choice. */
+    style: StyleOption? = null,
+    onStyleChange: (StyleOption) -> Unit = {},
 ) {
     val variants = food.variantsOrDefault()
     // Custom-grams mode is signalled by a sentinel label prefix. In this mode
@@ -52,7 +69,13 @@ fun ServingSheet(
     // 1.0 so the existing log-write math (servings × variant.grams) still works.
     val isCustomGrams = variant.label.startsWith(CUSTOM_GRAMS_PREFIX)
     val effectiveGrams = if (isCustomGrams) variant.grams else variant.grams * servings
-    val n = food.nutrientsPer100g() * (effectiveGrams / 100.0)
+    // Only foods with added cooking fat can be re-priced; for everything else
+    // the picker is hidden and this resolves to the stored figures unchanged.
+    val showsOil = food.usesCookingOil()
+    val showsStyle = food.hasStyleAxis()
+    val effectiveOil = oil ?: food.preselectedOil()
+    val effectiveStyle = style ?: food.preselectedStyle()
+    val n = food.nutrientsPer100g(effectiveOil, effectiveStyle) * (effectiveGrams / 100.0)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -153,6 +176,76 @@ fun ServingSheet(
             )
         }
 
+        if (showsStyle) {
+            Spacer(Modifier.height(8.dp))
+            Text("Made with", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            // "Plain" is the absence of an addition, not a peer of it. When the
+            // axis is binary — one plain option, one addition — there is nothing
+            // to choose *between*, only something to switch on, so it renders as
+            // a single toggle and off means plain. An axis with two or more
+            // additions is a genuine either/or (you cannot have a ghee roast AND
+            // a butter roast), so that falls back to the full set with Plain
+            // shown, rather than silently dropping the options a toggle cannot
+            // express.
+            val plain = food.styleOptions.firstOrNull { it.ingredient == null }
+            val additions = food.styleOptions.filter { it.ingredient != null }
+            val isBinary = plain != null && additions.size == 1
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (isBinary) {
+                    val addition = additions.first()
+                    val on = effectiveStyle?.ingredient != null
+                    HapticFilterChip(
+                        selected = on,
+                        onClick = { onStyleChange(if (on) plain!! else addition) },
+                        label = { Text(addition.label, maxLines = 1) },
+                        leadingIcon = if (on) {
+                            {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                )
+                            }
+                        } else null,
+                    )
+                } else {
+                    food.styleOptions.forEach { option ->
+                        HapticFilterChip(
+                            selected = option.label == effectiveStyle?.label,
+                            onClick = { onStyleChange(option) },
+                            label = { Text(option.label, maxLines = 1) },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (showsOil) {
+            Spacer(Modifier.height(8.dp))
+            Text("Cooked in", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                CookingOil.optionsFor(food.defaultOil).forEach { option ->
+                    HapticFilterChip(
+                        selected = option == effectiveOil,
+                        onClick = { onOilChange(option) },
+                        label = { Text(option.label, maxLines = 1) },
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
         Text("Meal", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(6.dp))
@@ -165,7 +258,7 @@ fun ServingSheet(
         )
 
         Spacer(Modifier.height(16.dp))
-        NutrientPreview(n)
+        NutrientPreview(n, showFatDetail = showsOil || showsStyle)
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = onConfirm,
@@ -186,13 +279,21 @@ fun ServingSheet(
     }
 }
 
+/**
+ * [showFatDetail] adds the two rows the preparation pickers actually move. Without
+ * them the chips look inert: calories and total fat are identical across every
+ * oil by design, so a user tapping "Coconut" would see nothing change and
+ * conclude the control was broken.
+ */
 @Composable
-private fun NutrientPreview(n: Nutrients) {
-    val items = listOf(
+private fun NutrientPreview(n: Nutrients, showFatDetail: Boolean = false) {
+    val items = listOfNotNull(
         "Calories" to "${n.calories.toInt()} kcal",
         "Carbs" to "${"%.1f".format(n.carbs)} g",
         "Protein" to "${"%.1f".format(n.protein)} g",
         "Fat" to "${"%.1f".format(n.fat)} g",
+        ("Sat fat" to "${"%.1f".format(n.saturatedFat)} g").takeIf { showFatDetail },
+        ("Vitamin E" to "${"%.1f".format(n.vitaminE)} mg").takeIf { showFatDetail },
         "Fiber" to "${"%.1f".format(n.fiber)} g",
         "Sodium" to "${n.sodium.toInt()} mg",
     )

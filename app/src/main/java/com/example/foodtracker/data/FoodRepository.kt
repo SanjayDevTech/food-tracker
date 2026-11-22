@@ -99,6 +99,10 @@ class FoodRepository(
         apiKey: String,
     ): AiNutrition? = aiApi.verifyNutrition(name, candidate, instructions, provider, model, apiKey)
     suspend fun setFoodFavourite(id: Long, favourite: Boolean) = foodDao.setFavourite(id, favourite)
+
+    /** Persist the oil / style the user last chose for a food. See the DAO. */
+    suspend fun rememberVariant(foodId: Long, oil: String?, style: String?) =
+        foodDao.rememberVariant(foodId, oil, style)
     suspend fun deleteFood(id: Long) = foodDao.delete(id)
 
     /**
@@ -311,6 +315,11 @@ class FoodRepository(
                 // backup/restore merge keyed on client_uuid.
                 clientUuid = existing.clientUuid,
                 isFavourite = existing.isFavourite,
+                // The preparation this user last chose is theirs, not the
+                // seed's. A nutrient correction must not reset their dosa back
+                // to plain any more than it may un-favourite it.
+                lastOil = existing.lastOil,
+                lastStyle = existing.lastStyle,
                 // Keep the user's custom variants if they edited them; otherwise
                 // adopt the fresh seed's variants so renamed labels, new gram
                 // refs, and new size options (e.g. banana Small/Medium/Large)

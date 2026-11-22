@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WaterLogEntity::class,
         WeightLogEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -110,6 +110,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v9 → v10: teaches the app how a dish was prepared, not just what it
+         * contains.
+         *
+         * On `foods`: `oil_grams` + `oil_default` (how much added cooking fat
+         * per 100 g, and the oil the stored figures were computed in),
+         * `style_options` (preparation choices such as plain vs ghee roast),
+         * and `last_oil` + `last_style` (what the user picked last, so a food
+         * reopens where they left it). On `food_log`: nullable `oil` and
+         * `style`, recording what one entry was actually made with.
+         * Non-destructive ALTER, same rationale as [MIGRATION_4_5].
+         *
+         * Every existing food backfills to `oil_grams = 0`, meaning "no
+         * cooking fat to reattribute" — so until the seed refresh runs, every
+         * food keeps exactly the nutrients it had and shows no oil picker.
+         * Every existing log row backfills `oil` and `style` to NULL, which
+         * reads as "the food's own default" rather than as a choice the user
+         * never made.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN oil_grams REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE foods ADD COLUMN oil_default TEXT NOT NULL DEFAULT 'Palmolein'")
+                db.execSQL("ALTER TABLE foods ADD COLUMN style_options TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE foods ADD COLUMN last_oil TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE foods ADD COLUMN last_style TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE food_log ADD COLUMN oil TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE food_log ADD COLUMN style TEXT DEFAULT NULL")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -122,6 +153,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
+                    MIGRATION_9_10,
                 )
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket

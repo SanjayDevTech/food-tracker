@@ -3,6 +3,8 @@ package com.example.foodtracker.ui.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
+import com.example.foodtracker.data.CookingOil
+import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
@@ -12,6 +14,7 @@ import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
+import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.data.db.WeightLogEntity
 import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.util.DateUtil
@@ -35,7 +38,7 @@ data class HomeUiState(
     val latestWeight: WeightLogEntity? = null,
 ) {
     val totalNutrients: Nutrients = logs.fold(Nutrients.Zero) { acc, row ->
-        acc + (row.food.nutrientsPer100g() * (row.log.grams / 100.0))
+        acc + row.nutrients()
     }
     val mealGroups: Map<MealType, List<FoodLogWithFood>> = logs.groupBy { MealType.fromName(it.log.mealType) }
 }
@@ -109,6 +112,13 @@ class HomeViewModel(
         selectedDay.value = DateUtil.todayEpochDay()
     }
 
+    /** Mirror of the picker flow's behaviour: remember the pick immediately. */
+    fun rememberVariant(foodId: Long, oil: CookingOil?, style: StyleOption?) {
+        viewModelScope.launch {
+            repository.rememberVariant(foodId, oil?.name, style?.label)
+        }
+    }
+
     fun removeLog(id: Long) {
         viewModelScope.launch { repository.deleteFoodLog(id) }
     }
@@ -124,6 +134,8 @@ class HomeViewModel(
         variant: ServingVariant,
         servings: Double,
         meal: MealType,
+        oil: CookingOil? = null,
+        style: StyleOption? = null,
     ) {
         if (servings <= 0.0) return
         viewModelScope.launch {
@@ -135,6 +147,8 @@ class HomeViewModel(
                     servings = servings,
                     grams = servings * variant.grams,
                     servingLabel = variant.label,
+                    oil = oil?.takeIf { food.usesCookingOil() }?.name,
+                    style = style?.takeIf { food.hasStyleAxis() }?.label,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )

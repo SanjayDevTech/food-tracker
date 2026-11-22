@@ -26,6 +26,25 @@ data class FoodLogEntity(
     val servings: Double,
     @ColumnInfo(name = "grams") val grams: Double,
     @ColumnInfo(name = "serving_label", defaultValue = "") val servingLabel: String = "",
+    /**
+     * Name of the [com.example.foodtracker.data.CookingOil] this entry was
+     * logged with, or null to follow the food's own default.
+     *
+     * Stored per entry rather than resolved at display time because the two
+     * answer different questions. The food knows how it is usually made; the
+     * log has to say what *that* bajji was fried in. Someone who eats a street
+     * samosa and later starts cooking in coconut oil must not have last
+     * Tuesday's samosa silently re-scored.
+     *
+     * Null is the honest value for every row written before the picker existed
+     * and for foods with no cooking fat at all — those follow the default and
+     * cost nothing either way.
+     */
+    @ColumnInfo(name = "oil") val oil: String? = null,
+    /** Label of the [com.example.foodtracker.data.StyleOption] chosen, or null
+     *  for the food's default. Stored for the same reason as [oil]: the diary
+     *  has to keep saying "ghee roast" after the food's default changes. */
+    @ColumnInfo(name = "style") val style: String? = null,
     @ColumnInfo(name = "logged_at_millis") val loggedAtMillis: Long,
 )
 

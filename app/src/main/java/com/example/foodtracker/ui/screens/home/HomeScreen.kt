@@ -69,10 +69,13 @@ import com.example.foodtracker.data.NutrientTarget
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientGoals
+import com.example.foodtracker.data.CookingOil
+import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
+import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.components.CalorieHero
@@ -125,6 +128,8 @@ fun HomeScreen(
     var quickLogVariant by remember { mutableStateOf<ServingVariant?>(null) }
     var quickLogServings by remember { mutableStateOf(1.0) }
     var quickLogMeal by remember { mutableStateOf(currentMeal()) }
+    var quickLogOil by remember { mutableStateOf<CookingOil?>(null) }
+    var quickLogStyle by remember { mutableStateOf<StyleOption?>(null) }
 
     // No topBar — the greeting is rendered as the first scrollable item so it
     // scrolls off with the rest of the content (no sticky chrome, no elevation
@@ -228,6 +233,8 @@ fun HomeScreen(
                             quickLogVariant = food.variantsOrDefault().first()
                             quickLogServings = 1.0
                             quickLogMeal = currentMeal()
+                            quickLogOil = food.preselectedOil()
+                            quickLogStyle = food.preselectedStyle()
                         },
                     )
                 }
@@ -290,13 +297,17 @@ fun HomeScreen(
                 onVariantChange = { quickLogVariant = it },
                 onServingsChange = { quickLogServings = it },
                 onMealChange = { quickLogMeal = it },
+                oil = quickLogOil,
+                onOilChange = { quickLogOil = it; vm.rememberVariant(pendingFood.id, it, quickLogStyle) },
+                style = quickLogStyle,
+                onStyleChange = { quickLogStyle = it; vm.rememberVariant(pendingFood.id, quickLogOil, it) },
                 onConfirm = {
                     haptics.confirm()
                     // Read the latest sheet state through the delegates so any
                     // last-moment variant / servings / meal change is included.
                     val food = quickLogFood ?: return@ServingSheet
                     val variant = quickLogVariant ?: return@ServingSheet
-                    vm.quickLog(food, variant, quickLogServings, quickLogMeal)
+                    vm.quickLog(food, variant, quickLogServings, quickLogMeal, quickLogOil, quickLogStyle)
                     quickLogFood = null
                 },
             )
@@ -739,7 +750,11 @@ private fun NutrientContributionSheet(
             .mapNotNull { (_, rows) ->
                 val food = rows.first().food
                 val grams = rows.sumOf { it.log.grams }
-                val amount = field.read(food.nutrientsPer100g() * (grams / 100.0))
+                // Summed per row rather than from the food once, because two
+                // entries for the same dish can have been cooked in different
+                // oils — and for saturated fat or vitamin E that is the whole
+                // difference between them.
+                val amount = field.read(rows.fold(Nutrients.Zero) { a, r -> a + r.nutrients() })
                 if (amount <= 0.0) return@mapNotNull null
                 val entryNote = if (rows.size > 1) " · ${rows.size} entries" else ""
                 NutrientContribution(

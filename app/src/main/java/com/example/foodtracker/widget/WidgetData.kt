@@ -6,6 +6,7 @@ import com.example.foodtracker.BuildConfig
 import com.example.foodtracker.FoodTrackerApp
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.domain.GoalCalculator
@@ -71,9 +72,7 @@ object WidgetData {
             app.repository.observeLogForDay(today),
             app.repository.observeRecentFoods(limit = 12),
         ) { onboarded, profile, logs, recent ->
-            val consumed = logs.fold(Nutrients.Zero) { acc, row ->
-                acc + (row.food.nutrientsPer100g() * (row.log.grams / 100.0))
-            }
+            val consumed = logs.fold(Nutrients.Zero) { acc, row -> acc + row.nutrients() }
             // Debug-only: this line carries the user's intake, and there is no
             // reason for it to reach logcat on a shipped build.
             if (BuildConfig.DEBUG) Log.d(

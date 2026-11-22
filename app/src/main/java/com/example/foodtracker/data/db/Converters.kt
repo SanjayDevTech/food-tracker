@@ -2,6 +2,7 @@ package com.example.foodtracker.data.db
 
 import androidx.room.TypeConverter
 import com.example.foodtracker.data.ServingVariant
+import com.example.foodtracker.data.StyleOption
 import kotlinx.serialization.json.Json
 
 object Converters {
@@ -47,5 +48,24 @@ object Converters {
         }.getOrDefault(emptyList())
         synchronized(variantCache) { variantCache[value] = parsed }
         return parsed
+    }
+
+    @TypeConverter
+    @JvmStatic
+    fun styleOptionsToJson(options: List<StyleOption>): String =
+        if (options.isEmpty()) "" else json.encodeToString(options)
+
+    /**
+     * Uncached on purpose, unlike the serving variants above: only a handful of
+     * seeded foods carry a style axis, so almost every row is blank and returns
+     * before any parsing happens.
+     */
+    @TypeConverter
+    @JvmStatic
+    fun jsonToStyleOptions(value: String): List<StyleOption> {
+        if (value.isBlank()) return emptyList()
+        return runCatching {
+            json.decodeFromString<List<StyleOption>>(value)
+        }.getOrDefault(emptyList())
     }
 }

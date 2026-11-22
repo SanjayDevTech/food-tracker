@@ -4,8 +4,12 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ServingVariant
+import com.example.foodtracker.data.StyleOption
+import com.example.foodtracker.data.withStyle
+import com.example.foodtracker.data.withCookingOil
 
 @Entity(
     tableName = "foods",
@@ -78,7 +82,64 @@ data class FoodEntity(
     @ColumnInfo(name = "insoluble_fiber") val insolubleFiber: Double = 0.0,
     @ColumnInfo(name = "essential_amino_acids") val essentialAminoAcids: Double = 0.0,
     val leucine: Double = 0.0,
+
+    /**
+     * Added cooking fat per 100 g of the finished dish — the oil absorbed in
+     * the fryer or spent on the tempering, not the fat the ingredients brought
+     * with them. A vada is ~13; an idli, a banana and a glass of milk are 0.
+     *
+     * 0 means "no cooking fat to reattribute", which is the correct answer for
+     * every raw food, every custom food and every AI-filled food, and is why
+     * the oil picker simply does not appear for them.
+     */
+    @ColumnInfo(name = "oil_grams") val oilGrams: Double = 0.0,
+    /**
+     * Name of the [CookingOil] this row's stored nutrients were computed with.
+     * Only meaningful when [oilGrams] > 0. Held as a String because Room has
+     * no enum column and the set may grow; unknown values fall back rather
+     * than throwing — see [defaultOil].
+     */
+    @ColumnInfo(name = "oil_default") val oilDefault: String = CookingOil.Default.name,
+    /**
+     * Preparation options beyond the choice of fat — plain vs ghee roast, with
+     * coconut vs without. Empty for most foods, and always empty for custom and
+     * AI-filled ones: a variant axis is a curated claim about how a dish is
+     * made, and we have no such claim for a food the user typed in.
+     *
+     * The first entry is the default, and the stored nutrients describe the
+     * food *as that option* — so its [StyleOption.delta] is zero and every
+     * other option adds to it.
+     */
+    @ColumnInfo(name = "style_options") val styleOptions: List<StyleOption> = emptyList(),
+    /**
+     * Last oil and style the user picked for this food, remembered so the sheet
+     * reopens where they left it.
+     *
+     * Written the moment a chip is tapped, not when an entry is logged: someone
+     * who opens a dosa, switches to ghee roast and then backs out has still
+     * told us something about their kitchen, and making them re-pick it next
+     * time is the kind of small friction that stops a control being used.
+     */
+    @ColumnInfo(name = "last_oil") val lastOil: String? = null,
+    @ColumnInfo(name = "last_style") val lastStyle: String? = null,
 ) {
+    /** [oilDefault] resolved, tolerating a stored name this build no longer has. */
+    val defaultOil: CookingOil
+        get() = CookingOil.fromName(oilDefault) ?: CookingOil.Default
+
+    /** True when this food's numbers depend on a choice of cooking fat. */
+    fun usesCookingOil(): Boolean = oilGrams > 0.0
+
+    /** True when this food offers a preparation choice beyond the oil. */
+    fun hasStyleAxis(): Boolean = styleOptions.size > 1
+
+    /** The option the sheet should open on — last picked, else the default. */
+    fun preselectedStyle(): StyleOption? =
+        StyleOption.find(styleOptions, lastStyle) ?: styleOptions.firstOrNull()
+
+    /** The oil the sheet should open on — last picked, else this dish's own. */
+    fun preselectedOil(): CookingOil =
+        CookingOil.fromName(lastOil) ?: defaultOil
     /** Variants to show in pickers. Always non-empty — falls back to the canonical serving. */
     fun variantsOrDefault(): List<ServingVariant> = servingVariants.ifEmpty {
         listOf(ServingVariant(servingLabel, servingGrams))
@@ -128,6 +189,21 @@ data class FoodEntity(
         leucine = leucine,
     )
 
+    /**
+     * Per-100 g nutrients as if cooked in [oil].
+     *
+     * Pass null — or a food with no [oilGrams] — to get the stored figures
+     * unchanged, so callers that have no opinion about oil need no branch.
+     */
+    fun nutrientsPer100g(oil: CookingOil?, style: StyleOption? = null): Nutrients {
+        var n = nutrientsPer100g()
+        if (oil != null && oilGrams > 0.0) n = n.withCookingOil(oilGrams, defaultOil, oil)
+        // Applied after the oil swap, never before: a style addition brings its
+        // own fat, which the dish did not absorb in the pan and which must not
+        // be re-priced as though it had been.
+        return n.withStyle(style)
+    }
+
     companion object {
         fun fromNutrientsPer100g(
             name: String,
@@ -140,6 +216,9 @@ data class FoodEntity(
             barcode: String? = null,
             isCustom: Boolean = false,
             isFavourite: Boolean = false,
+            oilGrams: Double = 0.0,
+            oilDefault: CookingOil = CookingOil.Default,
+            styleOptions: List<StyleOption> = emptyList(),
         ) = FoodEntity(
             name = name,
             brand = brand,
@@ -186,6 +265,9 @@ data class FoodEntity(
             insolubleFiber = n.insolubleFiber,
             essentialAminoAcids = n.essentialAminoAcids,
             leucine = n.leucine,
+            oilGrams = oilGrams,
+            oilDefault = oilDefault.name,
+            styleOptions = styleOptions,
         )
     }
 }

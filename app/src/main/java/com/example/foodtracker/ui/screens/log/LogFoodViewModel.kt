@@ -3,7 +3,10 @@ package com.example.foodtracker.ui.screens.log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
+import com.example.foodtracker.data.CookingOil
+import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.OnlineSearchResult
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.db.FoodEntity
@@ -40,6 +43,8 @@ data class LogUiState(
     val selected: FoodEntity? = null,
     val selectedVariant: ServingVariant = ServingVariant.Default,
     val selectedServings: Double = 1.0,
+    val selectedOil: CookingOil? = null,
+    val selectedStyle: StyleOption? = null,
     val onlineResults: List<OnlineSearchResult> = emptyList(),
     val onlinePhase: OnlineSearchPhase = OnlineSearchPhase.Idle,
 )
@@ -47,6 +52,7 @@ data class LogUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class LogFoodViewModel(
     private val repository: FoodRepository,
+    private val profileStore: ProfileStore,
     initialMeal: MealType = MealType.Breakfast,
 ) : ViewModel() {
 
@@ -57,6 +63,9 @@ class LogFoodViewModel(
     private val _selected = MutableStateFlow<FoodEntity?>(null)
     private val _variant = MutableStateFlow(ServingVariant.Default)
     private val _servings = MutableStateFlow(1.0)
+    /** Oil chosen for the entry being composed. Null = the food's own default. */
+    private val _oil = MutableStateFlow<CookingOil?>(null)
+    private val _style = MutableStateFlow<StyleOption?>(null)
     private val _onlineResults = MutableStateFlow<List<OnlineSearchResult>>(emptyList())
     private val _onlinePhase = MutableStateFlow(OnlineSearchPhase.Idle)
 
@@ -87,10 +96,26 @@ class LogFoodViewModel(
         val food: FoodEntity?,
         val variant: ServingVariant,
         val servings: Double,
+        val oil: CookingOil?,
+        val style: StyleOption?,
     )
 
-    private val selectionFlow = combine(_selected, _variant, _servings) { sel, v, s ->
-        Selection(sel, v, s)
+    private val selectionFlow = combine(
+        _selected,
+        _variant,
+        _servings,
+        _oil,
+        _style,
+    ) { sel, v, s, pickedOil, pickedStyle ->
+        // Fall back to what this food remembers, so the sheet opens on the
+        // preparation the user last chose rather than on nothing.
+        Selection(
+            food = sel,
+            variant = v,
+            servings = s,
+            oil = sel?.let { pickedOil ?: it.preselectedOil() },
+            style = sel?.let { pickedStyle ?: it.preselectedStyle() },
+        )
     }
 
     private data class Online(
@@ -132,6 +157,8 @@ class LogFoodViewModel(
             selected = sel.food,
             selectedVariant = sel.variant,
             selectedServings = sel.servings,
+            selectedOil = sel.oil,
+            selectedStyle = sel.style,
             onlineResults = online.results,
             onlinePhase = online.phase,
         )
@@ -185,6 +212,8 @@ class LogFoodViewModel(
             _selected.update { saved }
             _variant.update { saved.variantsOrDefault().firstOrNull() ?: ServingVariant.Default }
             _servings.update { 1.0 }
+            _oil.value = null
+            _style.value = null
             _onlineResults.update { emptyList() }
             _onlinePhase.update { OnlineSearchPhase.Idle }
         }
@@ -193,11 +222,34 @@ class LogFoodViewModel(
     fun setCustomFilter(filter: CustomFilter) = _customFilter.update { filter }
     fun setMealType(type: MealType) = _mealType.update { type }
     fun select(food: FoodEntity?) {
+        _oil.value = null
+        _style.value = null
         _selected.update { food }
         _variant.update { food?.variantsOrDefault()?.firstOrNull() ?: ServingVariant.Default }
         _servings.update { 1.0 }
     }
     fun setVariant(variant: ServingVariant) = _variant.update { variant }
+
+    fun setOil(oil: CookingOil) {
+        _oil.update { oil }
+        rememberVariant()
+    }
+
+    fun setStyle(style: StyleOption) {
+        _style.update { style }
+        rememberVariant()
+    }
+
+    /**
+     * Write the current picks back to the food so the next visit opens on
+     * them. Fired on selection, not on log — see [FoodDao.rememberVariant].
+     */
+    private fun rememberVariant() {
+        val food = _selected.value ?: return
+        val oil = _oil.value?.name
+        val style = _style.value?.label
+        viewModelScope.launch { repository.rememberVariant(food.id, oil, style) }
+    }
     fun setServings(value: Double) = _servings.update { value.coerceAtLeast(0.0) }
 
     fun toggleFavourite(food: FoodEntity) {
@@ -226,7 +278,11 @@ class LogFoodViewModel(
         }
     }
 
-    /** One-tap re-log: insert the food with its default variant at 1 serving. */
+    /**
+     * One-tap re-log: the food's default serving at 1 serving, prepared the way
+     * this user last had it. Re-logging a dosa they always take as a ghee roast
+     * must not quietly hand them a plain one.
+     */
     fun quickLog(food: FoodEntity, onDone: () -> Unit = {}) {
         val variant = food.variantsOrDefault().firstOrNull() ?: ServingVariant.Default
         viewModelScope.launch {
@@ -238,6 +294,8 @@ class LogFoodViewModel(
                     servings = 1.0,
                     grams = variant.grams,
                     servingLabel = variant.label,
+                    oil = food.preselectedOil().name.takeIf { food.usesCookingOil() },
+                    style = food.preselectedStyle()?.label?.takeIf { food.hasStyleAxis() },
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )
@@ -250,6 +308,11 @@ class LogFoodViewModel(
         val variant = _variant.value
         val servings = _servings.value
         if (servings <= 0.0) return
+        // Only record an oil for foods it actually applies to — a log row for
+        // a banana claiming "Palmolein" would be noise in the diary and in any
+        // later export.
+        val oil = if (food.usesCookingOil()) state.value.selectedOil else null
+        val style = if (food.hasStyleAxis()) state.value.selectedStyle else null
         viewModelScope.launch {
             repository.addFoodLog(
                 FoodLogEntity(
@@ -259,6 +322,8 @@ class LogFoodViewModel(
                     servings = servings,
                     grams = servings * variant.grams,
                     servingLabel = variant.label,
+                    oil = oil?.name,
+                    style = style?.label,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )

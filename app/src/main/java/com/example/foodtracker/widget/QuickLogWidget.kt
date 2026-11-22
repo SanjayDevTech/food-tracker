@@ -161,6 +161,10 @@ class QuickLogActionCallback : ActionCallback {
                 servings = 1.0,
                 grams = variant.grams,
                 servingLabel = variant.label,
+                // Same rule as the in-app one-tap log: use the preparation this
+                // user last picked for the food, not the seed's default.
+                oil = food.preselectedOil().name.takeIf { food.usesCookingOil() },
+                style = food.preselectedStyle()?.label?.takeIf { food.hasStyleAxis() },
                 loggedAtMillis = System.currentTimeMillis(),
             )
         )

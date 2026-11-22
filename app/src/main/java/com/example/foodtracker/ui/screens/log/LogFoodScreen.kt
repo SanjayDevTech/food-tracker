@@ -78,7 +78,7 @@ fun LogFoodScreen(
     onScanBarcode: () -> Unit,
     onAddCustomFood: () -> Unit,
 ) {
-    val vm: LogFoodViewModel = appViewModel { LogFoodViewModel(it.repository, initialMeal) }
+    val vm: LogFoodViewModel = appViewModel { LogFoodViewModel(it.repository, it.profileStore, initialMeal) }
     val state by vm.state.collectAsStateWithLifecycle()
     val haptics = rememberAppHaptics()
     var pendingDelete by remember { mutableStateOf<FoodEntity?>(null) }
@@ -313,6 +313,10 @@ fun LogFoodScreen(
                     haptics.confirm()
                     vm.confirmLog(onDone = onBack)
                 },
+                oil = state.selectedOil,
+                onOilChange = vm::setOil,
+                style = state.selectedStyle,
+                onStyleChange = vm::setStyle,
             )
         }
     }
