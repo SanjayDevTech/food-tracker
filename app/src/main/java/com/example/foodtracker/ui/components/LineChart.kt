@@ -146,7 +146,18 @@ fun LineChart(
                     )
                     // Right-align so it doesn't collide with the leftmost data point.
                     val labelX = (w - layout.size.width - Spacing.xs.toPx()).coerceAtLeast(0f)
-                    val labelY = (refY - layout.size.height - Spacing.xs.toPx()).coerceAtLeast(0f)
+                    // Above the line by preference, below it when there is no
+                    // room. Clamping to 0 instead put the caption exactly where
+                    // the line was: a goal far above everything logged puts the
+                    // reference near the top of the plot, and "Goal 2 670 kcal"
+                    // then rendered with its own dashes struck through it.
+                    val gap = Spacing.xs.toPx()
+                    val above = refY - layout.size.height - gap
+                    val labelY = if (above >= 0f) {
+                        above
+                    } else {
+                        (refY + gap).coerceAtMost((h - layout.size.height).coerceAtLeast(0f))
+                    }
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(labelX, labelY),

@@ -7,6 +7,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -141,12 +143,26 @@ fun AppNav(
                     }
                 },
             ) { inner ->
+                val barPadding = inner.calculateBottomPadding()
                 NavHost(
                     navController = navController,
                     startDestination = TodayRoute,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = inner.calculateBottomPadding()),
+                        .padding(bottom = barPadding)
+                        // Padding moves the content up; it does not tell the
+                        // content *why*. `barPadding` already contains the
+                        // navigation-bar inset, because the bar applied it, but
+                        // a padding modifier consumes nothing — so a screen
+                        // nested in here still reads the full inset and adds it
+                        // a second time. Today's Scaffold has no bottom bar of
+                        // its own, and Material places a bar-less Scaffold's FAB
+                        // at `FabSpacing + contentWindowInsets.bottom`, which is
+                        // why the Log button floated roughly an inset clear of
+                        // the bar instead of the 16dp it should sit at. Consume
+                        // the bottom only: the status-bar inset at the top is
+                        // still each screen's own to apply.
+                        .consumeWindowInsets(PaddingValues(bottom = barPadding)),
                     enterTransition = navEnter,
                     exitTransition = navExit,
                     popEnterTransition = navPopEnter,
