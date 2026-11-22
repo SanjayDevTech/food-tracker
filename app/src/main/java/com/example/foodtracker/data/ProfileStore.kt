@@ -10,8 +10,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.example.foodtracker.ui.theme.ColorPalette
-import com.example.foodtracker.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -122,24 +120,11 @@ class ProfileStore(
     /** Default true — opt-out, not opt-in, since haptics enhance the core taps. */
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.HAPTICS_ENABLED] ?: true }
 
-    /**
-     * Mapped with legacy migration: pre-v3 installs persisted `Amoled` /
-     * `AmoledDynamic` under THEME_MODE — both flatten to the new `Dark` mode.
-     * The dynamic distinction lives on the [colorPalette] flow now.
-     */
-    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { p ->
-        when (val raw = p[Keys.THEME_MODE]) {
-            "Amoled", "AmoledDynamic" -> ThemeMode.Dark
-            else -> ThemeMode.fromName(raw)
-        }
-    }
-
-    val colorPalette: Flow<ColorPalette> = context.dataStore.data.map { p ->
-        // If user had AmoledDynamic before and hasn't changed settings yet,
-        // carry the Dynamic preference through automatically.
-        if (p[Keys.COLOR_PALETTE] == null && p[Keys.THEME_MODE] == "AmoledDynamic") ColorPalette.Dynamic
-        else ColorPalette.fromName(p[Keys.COLOR_PALETTE])
-    }
+    // THEME_MODE and COLOR_PALETTE are no longer read. The app is dark-only
+    // (design-plan decision 11), so there is nothing left for them to select.
+    // The keys stay in the DataStore deliberately: clearing them would be a
+    // migration for no gain, and leaving them means a downgrade still finds
+    // whatever the user last chose.
 
     /** Persisted SAF tree URI for backups, or null when no custom folder is set. */
     val backupFolderUri: Flow<String?> = context.dataStore.data.map { it[Keys.BACKUP_FOLDER_URI] }
@@ -203,14 +188,6 @@ class ProfileStore(
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
         context.dataStore.edit { p -> p[Keys.HAPTICS_ENABLED] = enabled }
-    }
-
-    suspend fun setThemeMode(mode: ThemeMode) {
-        context.dataStore.edit { p -> p[Keys.THEME_MODE] = mode.name }
-    }
-
-    suspend fun setColorPalette(palette: ColorPalette) {
-        context.dataStore.edit { p -> p[Keys.COLOR_PALETTE] = palette.name }
     }
 
     suspend fun setAiEnabled(enabled: Boolean) {

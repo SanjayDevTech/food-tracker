@@ -1,6 +1,8 @@
 package com.example.foodtracker.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
@@ -8,26 +10,118 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.foodtracker.ui.components.atoms.ValueText
 import com.example.foodtracker.ui.rememberAppHaptics
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Elevation
+import com.example.foodtracker.ui.theme.Radius
+import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Compact `-` value `+` row for nudging a numeric value by one step at a time
- * without the user having to drag a slider. Each tap fires a light haptic so
- * the change is felt even when the buttons are out of the focal area.
+ * `[−] value [+]` — design-plan §2's `Stepper` row.
  *
- * Pair with a continuous Slider on the surrounding screen — slider for coarse
- * swings, stepper for precision.
+ * Pair it with a slider, which is how every caller uses it: the slider takes
+ * the coarse swing and the stepper lands the last quarter-serving, because a
+ * drag cannot reliably hit 1.25 on a 412dp screen and fourteen taps to cross a
+ * range is nobody's idea of a control.
+ *
+ * Three changes from the version this replaces, all from §2. The buttons grow
+ * 32→36dp, which brings the pair back above the size a thumb can hit without
+ * aiming. The tonal `secondaryContainer` fill becomes an outline: on `#000000`
+ * a tonal fill is the only lift on the surface and reads as elevation, which §1
+ * bans outright. And the value is drawn by [ValueText] — the whole point of
+ * that atom is that `2 740 mg` and `0.4 µg` cannot share one `"%.1f"`.
+ *
+ * The editorial pass finishes that job. `OutlinedIconButton`'s defaults were
+ * doing the outlining, which meant a `outline`-toned circle that did not match
+ * any other edge in the app; the buttons now carry the same
+ * [Elevation.hairline]/`outlineVariant` edge as every card, chip and divider,
+ * and the same [Radius.sm] corner, so the control reads as two hairline keys
+ * flanking a number rather than as a widget from another kit. Nothing about
+ * the row is tinted: the number is the loudest thing here, which is rule 2.
+ *
+ * Each tap still fires a light haptic, so the change is felt even when the
+ * buttons sit outside the focal area.
+ *
+ * Three faces, one control:
+ *  - the [content] overload, for a readout too compound for an atom — the
+ *    serving sheet's `1.5 × dosa / 225 g` is two lines and two type styles;
+ *  - the `(value, unit)` overload, which is the common numeric case;
+ *  - the `String` overload, kept for the profile and onboarding forms whose
+ *    values are already formatted strings by the time they get here.
+ */
+@Composable
+fun NumberStepper(
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+    modifier: Modifier = Modifier,
+    decrementEnabled: Boolean = true,
+    incrementEnabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val haptics = rememberAppHaptics()
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        StepButton(
+            onClick = { haptics.light(); onDecrement() },
+            enabled = decrementEnabled,
+            icon = Icons.Default.Remove,
+            label = "Decrease",
+        )
+        Box(
+            modifier = Modifier.defaultMinSize(minWidth = 96.dp),
+            contentAlignment = Alignment.Center,
+        ) { content() }
+        StepButton(
+            onClick = { haptics.light(); onIncrement() },
+            enabled = incrementEnabled,
+            icon = Icons.Default.Add,
+            label = "Increase",
+        )
+    }
+}
+
+/** The numeric case: the value and its unit, formatted by [ValueText]. */
+@Composable
+fun NumberStepper(
+    value: Double,
+    unit: String,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+    modifier: Modifier = Modifier,
+    decrementEnabled: Boolean = true,
+    incrementEnabled: Boolean = true,
+) {
+    NumberStepper(
+        onDecrement = onDecrement,
+        onIncrement = onIncrement,
+        modifier = modifier,
+        decrementEnabled = decrementEnabled,
+        incrementEnabled = incrementEnabled,
+    ) {
+        ValueText(value = value, unit = unit)
+    }
+}
+
+/**
+ * Pre-formatted text. Still rendered in the numeric style so a stepper's value
+ * looks the same wherever it is built — the callers that use this one are
+ * holding strings like `"5′ 11″"` that no unit-plus-number atom can express.
  */
 @Composable
 fun NumberStepper(
@@ -38,46 +132,54 @@ fun NumberStepper(
     decrementEnabled: Boolean = true,
     incrementEnabled: Boolean = true,
 ) {
-    val haptics = rememberAppHaptics()
-    Row(
+    NumberStepper(
+        onDecrement = onDecrement,
+        onIncrement = onIncrement,
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        decrementEnabled = decrementEnabled,
+        incrementEnabled = incrementEnabled,
     ) {
-        FilledTonalIconButton(
-            onClick = {
-                haptics.light()
-                onDecrement()
-            },
-            enabled = decrementEnabled,
-            shape = RoundedCornerShape(50),
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            ),
-        ) {
-            Icon(Icons.Default.Remove, contentDescription = "Decrease")
-        }
         Text(
             value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = AppText.numberM,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
-            modifier = Modifier.defaultMinSize(minWidth = 76.dp),
+            maxLines = 1,
         )
-        FilledTonalIconButton(
-            onClick = {
-                haptics.light()
-                onIncrement()
-            },
-            enabled = incrementEnabled,
-            shape = RoundedCornerShape(50),
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            ),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Increase")
-        }
+    }
+}
+
+/**
+ * One key of the pair. Square-ish [Radius.sm] rather than Material's circle,
+ * and the app's own hairline rather than `OutlinedIconButton`'s `outline`-toned
+ * default — the point of a single edge colour is that every edge is it.
+ */
+@Composable
+private fun StepButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    icon: ImageVector,
+    label: String,
+) {
+    val scheme = MaterialTheme.colorScheme
+    OutlinedIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(36.dp),
+        shape = RoundedCornerShape(Radius.sm),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = scheme.onSurface,
+            disabledContentColor = scheme.onSurfaceVariant.copy(alpha = 0.38f),
+        ),
+        border = BorderStroke(
+            Elevation.hairline,
+            // A disabled key keeps its edge, faded: a button that loses its
+            // outline at the end of a range reads as having disappeared, and
+            // the gap it leaves shifts the number off centre.
+            if (enabled) scheme.outlineVariant else scheme.outlineVariant.copy(alpha = 0.38f),
+        ),
+    ) {
+        Icon(icon, contentDescription = label, modifier = Modifier.size(18.dp))
     }
 }

@@ -2,5 +2,4 @@
     <string name="app_name">Food Tracker</string>
     <string name="widget_goal_left_description">Calories left for today</string>
     <string name="widget_macros_description">Today\'s macros vs goal</string>
-    <string name="widget_quick_log_description">Quick-log a meal</string>
 </resources>

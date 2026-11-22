@@ -158,12 +158,51 @@ data class NutrientField(
 )
 
 /**
- * [AllNutrientFields] keyed by category. Precomputed because the input is a
- * constant — the screens that render a category used to call groupBy on every
- * recomposition, rebuilding the same three lists each time.
+ * What a single nutrient reading means today — design-plan §3 / §4.1.
+ *
+ * [Headroom] is the state the app used to get wrong. A [NutrientTarget.Limit]
+ * field sitting at 40% of its cap is a good day, and drawing it on the same
+ * 0→100% track as an RDA made it read as a failure.
+ *
+ * [Unmet] / [Partial] / [Met] split at 80%, not 100%: RDAs sit roughly 2 SD
+ * above average requirement so they cover 97.5% of people, which puts the EAR —
+ * the number that is genuinely adequate — near 80%. Holding the strip to 100%
+ * makes it cry wolf over trivial shortfalls (open question 4). No time
+ * weighting, deliberately: the strip must mean the same thing whenever you look
+ * at it, not soften because it is only 10am.
  */
-val NutrientFieldsByCategory: Map<NutrientCategory, List<NutrientField>> by lazy {
-    AllNutrientFields.groupBy { it.category }
+enum class NutrientStatus { Unmet, Partial, Met, Headroom, Over, FarOver }
+
+/**
+ * True when a reading counts toward the "n of 29 on track" tally.
+ *
+ * A limit under its cap is a pass (open question 5) — staying under sodium
+ * genuinely is on track, and it makes the denominator match the strip directly
+ * above it instead of silently dropping four cells.
+ */
+val NutrientStatus.onTrack: Boolean
+    get() = this == NutrientStatus.Met || this == NutrientStatus.Headroom
+
+/** Fraction of goal at which a [NutrientTarget.Goal] field counts as met. */
+const val MET_FRACTION = 0.80
+
+/** Resolve a reading against its goal. [goal] of zero or less is always [NutrientStatus.Unmet]. */
+fun NutrientField.statusFor(consumed: Double, goal: Double): NutrientStatus {
+    if (goal <= 0.0) return NutrientStatus.Unmet
+    val f = consumed / goal
+    return if (target == NutrientTarget.Limit) {
+        when {
+            f > 1.25 -> NutrientStatus.FarOver
+            f > 1.0 -> NutrientStatus.Over
+            else -> NutrientStatus.Headroom
+        }
+    } else {
+        when {
+            f >= MET_FRACTION -> NutrientStatus.Met
+            f >= MET_FRACTION / 2 -> NutrientStatus.Partial
+            else -> NutrientStatus.Unmet
+        }
+    }
 }
 
 val AllNutrientFields: List<NutrientField> = listOf(

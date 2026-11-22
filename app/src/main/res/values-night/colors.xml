@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Dark mode shares the brand mint container so the splash flash isn't
-         a different colour from the launcher icon background. -->
-    <color name="launcher_background">#FF15403A</color>
-    <color name="splash_background">#FF15403A</color>
-</resources>

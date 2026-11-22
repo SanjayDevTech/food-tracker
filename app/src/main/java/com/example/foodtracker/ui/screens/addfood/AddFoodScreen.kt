@@ -1,33 +1,35 @@
 package com.example.foodtracker.ui.screens.addfood
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,17 +38,58 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.rotate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.components.ExclusiveButtonGroup
+import com.example.foodtracker.ui.components.HapticFilterChip
+import com.example.foodtracker.ui.components.atoms.AppButton
+import com.example.foodtracker.ui.components.atoms.AppDivider
+import com.example.foodtracker.ui.components.atoms.AppTextButton
+import com.example.foodtracker.ui.components.atoms.AppTopBar
+import com.example.foodtracker.ui.components.atoms.NumberField
+import com.example.foodtracker.ui.components.atoms.NumberFieldGrid
+import com.example.foodtracker.ui.components.atoms.NumberFieldSpec
+import com.example.foodtracker.ui.components.atoms.filledCount
 import com.example.foodtracker.ui.rememberAppHaptics
+import com.example.foodtracker.ui.components.atoms.Section
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Sizes
+import com.example.foodtracker.ui.theme.Spacing
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Add or edit a custom food — design-plan §4.11.
+ *
+ * The form carries 34 fields because the app tracks 29 nutrients and refuses to
+ * pretend otherwise. What changed is that it no longer *shows* 34 at once.
+ *
+ * Three things do that work:
+ *
+ *  - **Accordions with a filled counter.** Minerals, vitamins and the optional
+ *    detail start collapsed, each header reading `9 fields · 0 filled`. The
+ *    normal path to a complete food is AI autofill, and the normal path should
+ *    never open on thirty empty boxes. The counter is derived from the same
+ *    list the section renders ([filledCount]), so it cannot lie.
+ *  - **The sections are rules, not cards.** Each one is now an eyebrow header
+ *    over a hairline, per house rule 1. A collapsed accordion inside a card was
+ *    a box drawn around a single line of text — five of them stacked down the
+ *    page is the Direction A anatomy this pass exists to remove, and on a form
+ *    the cost is literal: the border, its corner radius and its 16dp of inner
+ *    padding each pushed the fields further from the screen's one left margin,
+ *    so no two labels on the page started at the same x.
+ *  - **Two-column compact fields.** §4.11: half the page height for the same
+ *    fields. See `NumberFieldGrid`.
+ *  - **The AI action moved beside Name**, where its one input is. It used to
+ *    sit as a full-width button halfway down the scroll — below the fields it
+ *    exists to spare you typing.
+ *
+ * Out of scope here (§8): the autofill itself, [AddFoodViewModel], the network
+ * clients, and [AiProgressDialog], which is kept exactly as it was.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddFoodScreen(
     onBack: () -> Unit,
@@ -82,192 +125,247 @@ fun AddFoodScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    showAiInstructions = false
-                    haptics.light()
-                    vm.autofillFromAi(aiInstructions)
-                }) { Text("Ask AI") }
+                AppButton(
+                    text = "Ask AI",
+                    onClick = {
+                        showAiInstructions = false
+                        haptics.light()
+                        vm.autofillFromAi(aiInstructions)
+                    },
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showAiInstructions = false }) { Text("Cancel") }
+                AppTextButton(text = "Cancel", onClick = { showAiInstructions = false })
             },
         )
     }
 
+    val servingGramsInt = state.servingGrams.toDoubleOrNull()?.toInt() ?: 100
+    val basisSuffix = when (state.basis) {
+        NutritionBasis.Per100g -> "per 100 g"
+        NutritionBasis.PerServing -> "per $servingGramsInt g serving"
+    }
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Add custom food") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        }
+        topBar = { AppTopBar(title = "Add custom food", onBack = onBack) },
+        bottomBar = {
+            // Pinned, not scrolled to. With four collapsible sections the page's
+            // height now depends on what the user opened, so a save button at
+            // the bottom of the scroll would be somewhere different every time.
+            Column(Modifier.navigationBarsPadding()) {
+                AppDivider()
+                AppButton(
+                    text = "Save food",
+                    onClick = {
+                        haptics.confirm()
+                        vm.save()
+                    },
+                    enabled = state.name.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.gutter),
+                )
+            }
+        },
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(padding),
+            contentPadding = Spacing.screenContent,
+            // 24dp, not 32: every block below is a standing head with a rule
+            // under it (house rule 1), so the gap no longer has to mark where
+            // one section ends and the next begins.
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxl),
         ) {
-            val servingGramsInt = state.servingGrams.toDoubleOrNull()?.toInt() ?: 100
-            val basisSuffix = when (state.basis) {
-                NutritionBasis.Per100g -> "per 100 g"
-                NutritionBasis.PerServing -> "per ${servingGramsInt} g serving"
-            }
-
-            Text(
-                "Enter nutrients $basisSuffix. Leave fields empty if unknown.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            state.barcode?.takeIf { it.isNotBlank() }?.let { code ->
-                Text(
-                    "Barcode: $code",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+            item("basics") {
+                BasicsSection(
+                    state = state,
+                    servingGramsInt = servingGramsInt,
+                    onAskAi = { showAiInstructions = true },
+                    vm = vm,
                 )
             }
 
-            OutlinedTextField(
-                value = state.name,
-                onValueChange = { v -> vm.update { it.copy(name = v) } },
-                label = { Text("Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (state.aiEnabled) {
-                OutlinedButton(
-                    onClick = {
-                        showAiInstructions = true
-                    },
-                    enabled = state.name.isNotBlank() && state.aiStep == AiStep.Idle,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("✨ Ask AI to fill nutrition")
-                }
-                state.aiError?.let { err ->
-                    Text(
-                        err,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+            item("macros") {
+                FieldSection(
+                    title = "Macros",
+                    basisSuffix = basisSuffix,
+                    fields = macroFields(state, vm),
+                    initiallyExpanded = true,
+                )
+            }
+            item("minerals") {
+                FieldSection(
+                    title = "Minerals",
+                    basisSuffix = basisSuffix,
+                    fields = mineralFields(state, vm),
+                )
+            }
+            item("vitamins") {
+                FieldSection(
+                    title = "Vitamins",
+                    basisSuffix = basisSuffix,
+                    fields = vitaminFields(state, vm),
+                )
+            }
+            item("optional") {
+                FieldSection(
+                    title = "Optional detail",
+                    basisSuffix = basisSuffix,
+                    fields = optionalFields(state, vm),
+                    // Kept from the previous form, and still the honest thing
+                    // to say: these are sub-components of fiber and protein,
+                    // and a guess here quietly corrupts a reading elsewhere.
+                    note = "Leave these blank unless you have real figures. Soluble and " +
+                        "insoluble should add up to fiber; essential amino acids " +
+                        "run about a third of protein, and leucine a fifth of that.",
+                )
+            }
+        }
+    }
+}
+
+// ───────────────────────────── Basics ─────────────────────────────
+
+/**
+ * Name, brand, category, serving and basis — everything that is not a nutrient.
+ *
+ * Never collapsible. A food with no name cannot be saved, so the one section
+ * the user must touch is the one section always open.
+ *
+ * It is four [Section]s rather than one card: `BASICS`, `CATEGORY`, `SERVING`
+ * and the basis switch each get a standing head with a rule under it. The card
+ * that held all four drew one border around four unrelated groups and then left
+ * the groups themselves separated by nothing but a 12dp gap — the reader had a
+ * boundary where they did not need one and none where they did. Rules are the
+ * opposite trade, and they cost 1dp instead of 16dp of inset on every field.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BasicsSection(
+    state: AddFoodFormState,
+    servingGramsInt: Int,
+    onAskAi: () -> Unit,
+    vm: AddFoodViewModel,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Section("Basics") {
+            state.barcode?.takeIf { it.isNotBlank() }?.let { code ->
+                Text(
+                    "Barcode: $code",
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(Spacing.s))
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = state.name,
+                    onValueChange = { v -> vm.update { it.copy(name = v) } },
+                    label = { Text("Name", style = AppText.body) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                if (state.aiEnabled) {
+                    Spacer(Modifier.width(Spacing.s))
+                    // Beside the name, because the name is its entire input. As
+                    // an icon rather than a labelled button: at this size the
+                    // sparkle is the convention, and the full-width "✨ Ask AI to
+                    // fill nutrition" button it replaces was wide enough to read
+                    // as the form's primary action, which it is not.
+                    IconButton(
+                        onClick = onAskAi,
+                        enabled = state.name.isNotBlank() && state.aiStep == AiStep.Idle,
+                        modifier = Modifier.size(Sizes.iconButton),
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = "Ask AI to fill nutrition",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            state.aiError?.let { err ->
+                Spacer(Modifier.height(Spacing.xs))
+                Text(err, style = AppText.bodyS, color = MaterialTheme.colorScheme.error)
+            }
+
+            Spacer(Modifier.height(Spacing.m))
             OutlinedTextField(
                 value = state.brand,
                 onValueChange = { v -> vm.update { it.copy(brand = v) } },
-                label = { Text("Brand (optional)") },
+                label = { Text("Brand (optional)", style = AppText.body) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
 
-            Text("Category", style = MaterialTheme.typography.labelLarge)
-            CategoryChips(
-                selected = state.category,
-                onSelect = { cat -> vm.update { it.copy(category = cat) } },
-            )
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Category") {
+            // One wrapped row of pills, not four segmented controls stacked
+            // (§2). The categories are a flat set with no order; a segmented
+            // control claims an order and forced three-per-row columns that cut
+            // "South Indian" in half.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+                verticalArrangement = Arrangement.spacedBy(Spacing.s),
+            ) {
+                FoodCategory.entries.forEach { cat ->
+                    HapticFilterChip(
+                        selected = state.category == cat,
+                        onClick = { vm.update { it.copy(category = cat) } },
+                        label = { Text(cat.displayName, style = AppText.label) },
+                    )
+                }
+            }
+        }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Serving") {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                NumberField(
+                    label = "Grams",
                     value = state.servingGrams,
-                    onValueChange = { v -> vm.update { it.copy(servingGrams = v.filter { ch -> ch.isDigit() || ch == '.' }) } },
-                    label = { Text("Serving (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
+                    onValueChange = { v -> vm.update { it.copy(servingGrams = v) } },
+                    unit = "g",
+                    compact = true,
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedTextField(
                     value = state.servingLabel,
                     onValueChange = { v -> vm.update { it.copy(servingLabel = v) } },
-                    label = { Text("Serving label") },
+                    label = { Text("Serving label", style = AppText.body) },
                     singleLine = true,
-                    modifier = Modifier.weight(1.5f),
+                    modifier = Modifier.weight(1.4f),
                 )
             }
 
             if (state.servingVariants.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.xxl))
                 ServingVariantsRow(
                     variants = state.servingVariants,
                     onClear = { vm.update { it.copy(servingVariants = emptyList()) } },
                 )
             }
+        }
 
-            Text("Values you're entering are:", style = MaterialTheme.typography.labelLarge)
-            BasisRow(
-                basis = state.basis,
-                servingGramsInt = servingGramsInt,
-                onChange = { b -> vm.update { it.copy(basis = b) } },
-            )
-
-            SectionHeader("Macros ($basisSuffix)")
-            NumberField("Calories (kcal)", state.calories) { v -> vm.update { it.copy(calories = v) } }
-            NumberField("Carbs (g)", state.carbs) { v -> vm.update { it.copy(carbs = v) } }
-            NumberField("Sugar (g)", state.sugar) { v -> vm.update { it.copy(sugar = v) } }
-            NumberField("Fiber (g)", state.fiber) { v -> vm.update { it.copy(fiber = v) } }
-            NumberField("Protein (g)", state.protein) { v -> vm.update { it.copy(protein = v) } }
-            NumberField("Fat (g)", state.fat) { v -> vm.update { it.copy(fat = v) } }
-            NumberField("Saturated fat (g)", state.saturatedFat) { v -> vm.update { it.copy(saturatedFat = v) } }
-            NumberField("Omega-3 (g)", state.omega3) { v -> vm.update { it.copy(omega3 = v) } }
-            NumberField("Cholesterol (mg)", state.cholesterol) { v -> vm.update { it.copy(cholesterol = v) } }
-            NumberField("Sodium (mg)", state.sodium) { v -> vm.update { it.copy(sodium = v) } }
-
-            SectionHeader("Minerals ($basisSuffix)")
-            NumberField("Calcium (mg)", state.calcium) { v -> vm.update { it.copy(calcium = v) } }
-            NumberField("Iron (mg)", state.iron) { v -> vm.update { it.copy(iron = v) } }
-            NumberField("Magnesium (mg)", state.magnesium) { v -> vm.update { it.copy(magnesium = v) } }
-            NumberField("Potassium (mg)", state.potassium) { v -> vm.update { it.copy(potassium = v) } }
-            NumberField("Zinc (mg)", state.zinc) { v -> vm.update { it.copy(zinc = v) } }
-            NumberField("Phosphorus (mg)", state.phosphorus) { v -> vm.update { it.copy(phosphorus = v) } }
-            NumberField("Selenium (µg)", state.selenium) { v -> vm.update { it.copy(selenium = v) } }
-            NumberField("Copper (mg)", state.copper) { v -> vm.update { it.copy(copper = v) } }
-            NumberField("Manganese (mg)", state.manganese) { v -> vm.update { it.copy(manganese = v) } }
-
-            SectionHeader("Vitamins ($basisSuffix)")
-            NumberField("Vitamin A (µg)", state.vitaminA) { v -> vm.update { it.copy(vitaminA = v) } }
-            NumberField("Vitamin C (mg)", state.vitaminC) { v -> vm.update { it.copy(vitaminC = v) } }
-            NumberField("Vitamin D (µg)", state.vitaminD) { v -> vm.update { it.copy(vitaminD = v) } }
-            NumberField("Vitamin E (mg)", state.vitaminE) { v -> vm.update { it.copy(vitaminE = v) } }
-            NumberField("Vitamin K (µg)", state.vitaminK) { v -> vm.update { it.copy(vitaminK = v) } }
-            NumberField("Vitamin B1 / Thiamin (mg)", state.vitaminB1) { v -> vm.update { it.copy(vitaminB1 = v) } }
-            NumberField("Vitamin B2 / Riboflavin (mg)", state.vitaminB2) { v -> vm.update { it.copy(vitaminB2 = v) } }
-            NumberField("Vitamin B3 / Niacin (mg)", state.vitaminB3) { v -> vm.update { it.copy(vitaminB3 = v) } }
-            NumberField("Vitamin B6 (mg)", state.vitaminB6) { v -> vm.update { it.copy(vitaminB6 = v) } }
-            NumberField("Vitamin B12 (µg)", state.vitaminB12) { v -> vm.update { it.copy(vitaminB12 = v) } }
-            NumberField("Folate (µg)", state.folate) { v -> vm.update { it.copy(folate = v) } }
-
-            // Last, and optional. These are the sub-components the home screen
-            // shows under Fiber and Protein; left blank they save as 0, which
-            // the app reads as unknown and simply doesn't draw.
-            SectionHeader("Optional detail ($basisSuffix)")
-            Text(
-                "Leave these blank unless you have real figures. Soluble and " +
-                    "insoluble should add up to fiber; essential amino acids " +
-                    "run about a third of protein, and leucine a fifth of that.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            NumberField("Soluble fiber (g)", state.solubleFiber) { v -> vm.update { it.copy(solubleFiber = v) } }
-            NumberField("Insoluble fiber (g)", state.insolubleFiber) { v -> vm.update { it.copy(insolubleFiber = v) } }
-            NumberField("Essential amino acids (g)", state.essentialAminoAcids) { v -> vm.update { it.copy(essentialAminoAcids = v) } }
-            NumberField("of which leucine (g)", state.leucine) { v -> vm.update { it.copy(leucine = v) } }
-
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    haptics.confirm()
-                    vm.save()
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Values I'm entering are") {
+            ExclusiveButtonGroup(
+                options = listOf(NutritionBasis.Per100g, NutritionBasis.PerServing),
+                selected = state.basis,
+                onSelect = { b -> vm.update { it.copy(basis = b) } },
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    if (it == NutritionBasis.Per100g) "Per 100 g" else "Per $servingGramsInt g serving"
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = state.name.isNotBlank(),
-            ) { Text("Save food") }
-            Spacer(Modifier.height(8.dp))
+            )
         }
     }
 }
@@ -284,70 +382,162 @@ private fun ServingVariantsRow(
     variants: List<ServingVariant>,
     onClear: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+    Section(
+        title = "Serving options",
+        trailing = { AppTextButton(text = "Clear", onClick = onClear) },
     ) {
-        Text("Serving options", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-        TextButton(onClick = onClear) { Text("Clear") }
+        Text(
+            variants.joinToString(" · ") { "${it.label} ${it.grams.toInt()} g" },
+            style = AppText.bodyS,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
-    Text(
-        variants.joinToString(" · ") { "${it.label} ${it.grams.toInt()} g" },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
-@Composable
-private fun SectionHeader(text: String) {
-    Spacer(Modifier.height(8.dp))
-    Text(text, style = MaterialTheme.typography.titleMedium)
-}
+// ──────────────────────────── Accordion ───────────────────────────
 
+/**
+ * One collapsible block of number fields.
+ *
+ * The header carries three facts and the collapsed state carries all three, so
+ * the user can decide whether to open it without opening it: what the section
+ * is, which basis its figures are in, and how much of it is already answered.
+ *
+ * **Head, rule, content** — house rule 1's [Section], and the hairline is what
+ * makes the accordion legible without a box. Collapsed, the section is one
+ * eyebrow over one rule, so four collapsed sections read as four ruled entries
+ * in a contents list rather than as four empty boxes; expanded, the same rule
+ * becomes the lid of the grid underneath it. The card that used to be here drew
+ * a second boundary around that line and, worse, moved every field 16dp in from
+ * the margin the rest of the page uses.
+ *
+ * The counter and the chevron ride in the head's [trailing][Section] slot,
+ * which is where every section on every screen states its summary figure — so
+ * `9 fields · 0 filled` lands in the same place as Today's `2 981 kcal`.
+ *
+ * The head is the hit target and the content is not: the grid holds 34 text
+ * fields, and a tap that lands between two of them must not fold the section
+ * the user is typing in.
+ *
+ * Expansion is `rememberSaveable`, keyed by nothing — each section remembers
+ * its own state across rotation, and a section the user opened stays open while
+ * they work down the form.
+ */
 @Composable
-private fun NumberField(label: String, value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { v -> onChange(v.filter { ch -> ch.isDigit() || ch == '.' }) },
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-@Composable
-private fun BasisRow(
-    basis: NutritionBasis,
-    servingGramsInt: Int,
-    onChange: (NutritionBasis) -> Unit,
+private fun FieldSection(
+    title: String,
+    basisSuffix: String,
+    fields: List<NumberFieldSpec>,
+    initiallyExpanded: Boolean = false,
+    note: String? = null,
 ) {
-    ExclusiveButtonGroup(
-        options = listOf(NutritionBasis.Per100g, NutritionBasis.PerServing),
-        selected = basis,
-        onSelect = onChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = {
-            if (it == NutritionBasis.Per100g) "Per 100 g" else "Per $servingGramsInt g serving"
-        },
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+    val haptics = rememberAppHaptics()
+    val chevron by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "chevron",
     )
-}
+    val filled = fields.filledCount
 
-@Composable
-private fun CategoryChips(selected: FoodCategory, onSelect: (FoodCategory) -> Unit) {
-    // One expressive ButtonGroup per row of 3 — the connected shape applies
-    // inside each row; multi-line text is allowed so long category names stay
-    // legible instead of ellipsing.
-    val rows = FoodCategory.entries.chunked(3)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        rows.forEach { row ->
-            ExclusiveButtonGroup(
-                options = row,
-                selected = selected,
-                onSelect = onSelect,
-                modifier = Modifier.fillMaxWidth(),
-                label = { it.displayName },
-            )
+    Column(Modifier.fillMaxWidth()) {
+        Section(
+            title = title,
+            modifier = Modifier
+                .clickable {
+                    haptics.light()
+                    expanded = !expanded
+                }
+                // The whole head is the hit target, and an eyebrow plus a
+                // chevron is 24dp tall — short of the 48dp a finger expects.
+                .heightIn(min = Sizes.touchTarget),
+            trailing = {
+                Text(
+                    // Open, the basis is what you need to know while typing.
+                    // Closed, the count is: it answers "is there anything in
+                    // there?" without costing a tap.
+                    if (expanded) basisSuffix
+                    else "${fields.size} fields · $filled filled",
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(Spacing.s))
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.rotate(chevron),
+                )
+            },
+        ) {
+            // Section already lays 16dp under its rule, so an expanded
+            // grid starts exactly where any other section's content does.
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                if (note != null) {
+                    Text(
+                        note,
+                        style = AppText.bodyS,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(Spacing.l))
+                }
+                NumberFieldGrid(fields)
+            }
         }
     }
 }
+
+// ─────────────────────────── Field tables ─────────────────────────
+//
+// The fields as data rather than as call sites. Besides feeding the "n filled"
+// counters, this is what keeps a 34-field form readable in source: the units
+// line up in a column, so a wrong one (µg where the parser wants mg) is visible
+// by eye rather than by test.
+
+private fun macroFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(
+    NumberFieldSpec("Calories", "kcal", s.calories) { v -> vm.update { it.copy(calories = v) } },
+    NumberFieldSpec("Carbs", "g", s.carbs) { v -> vm.update { it.copy(carbs = v) } },
+    NumberFieldSpec("Sugar", "g", s.sugar) { v -> vm.update { it.copy(sugar = v) } },
+    NumberFieldSpec("Fiber", "g", s.fiber) { v -> vm.update { it.copy(fiber = v) } },
+    NumberFieldSpec("Protein", "g", s.protein) { v -> vm.update { it.copy(protein = v) } },
+    NumberFieldSpec("Fat", "g", s.fat) { v -> vm.update { it.copy(fat = v) } },
+    NumberFieldSpec("Saturated fat", "g", s.saturatedFat) { v -> vm.update { it.copy(saturatedFat = v) } },
+    NumberFieldSpec("Omega-3", "g", s.omega3) { v -> vm.update { it.copy(omega3 = v) } },
+    NumberFieldSpec("Cholesterol", "mg", s.cholesterol) { v -> vm.update { it.copy(cholesterol = v) } },
+    NumberFieldSpec("Sodium", "mg", s.sodium) { v -> vm.update { it.copy(sodium = v) } },
+)
+
+private fun mineralFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(
+    NumberFieldSpec("Calcium", "mg", s.calcium) { v -> vm.update { it.copy(calcium = v) } },
+    NumberFieldSpec("Iron", "mg", s.iron) { v -> vm.update { it.copy(iron = v) } },
+    NumberFieldSpec("Magnesium", "mg", s.magnesium) { v -> vm.update { it.copy(magnesium = v) } },
+    NumberFieldSpec("Potassium", "mg", s.potassium) { v -> vm.update { it.copy(potassium = v) } },
+    NumberFieldSpec("Zinc", "mg", s.zinc) { v -> vm.update { it.copy(zinc = v) } },
+    NumberFieldSpec("Phosphorus", "mg", s.phosphorus) { v -> vm.update { it.copy(phosphorus = v) } },
+    NumberFieldSpec("Selenium", "µg", s.selenium) { v -> vm.update { it.copy(selenium = v) } },
+    NumberFieldSpec("Copper", "mg", s.copper) { v -> vm.update { it.copy(copper = v) } },
+    NumberFieldSpec("Manganese", "mg", s.manganese) { v -> vm.update { it.copy(manganese = v) } },
+)
+
+private fun vitaminFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(
+    NumberFieldSpec("Vitamin A", "µg", s.vitaminA) { v -> vm.update { it.copy(vitaminA = v) } },
+    NumberFieldSpec("Vitamin C", "mg", s.vitaminC) { v -> vm.update { it.copy(vitaminC = v) } },
+    NumberFieldSpec("Vitamin D", "µg", s.vitaminD) { v -> vm.update { it.copy(vitaminD = v) } },
+    NumberFieldSpec("Vitamin E", "mg", s.vitaminE) { v -> vm.update { it.copy(vitaminE = v) } },
+    NumberFieldSpec("Vitamin K", "µg", s.vitaminK) { v -> vm.update { it.copy(vitaminK = v) } },
+    NumberFieldSpec("Vitamin B1 / Thiamin", "mg", s.vitaminB1) { v -> vm.update { it.copy(vitaminB1 = v) } },
+    NumberFieldSpec("Vitamin B2 / Riboflavin", "mg", s.vitaminB2) { v -> vm.update { it.copy(vitaminB2 = v) } },
+    NumberFieldSpec("Vitamin B3 / Niacin", "mg", s.vitaminB3) { v -> vm.update { it.copy(vitaminB3 = v) } },
+    NumberFieldSpec("Vitamin B6", "mg", s.vitaminB6) { v -> vm.update { it.copy(vitaminB6 = v) } },
+    NumberFieldSpec("Vitamin B12", "µg", s.vitaminB12) { v -> vm.update { it.copy(vitaminB12 = v) } },
+    NumberFieldSpec("Folate", "µg", s.folate) { v -> vm.update { it.copy(folate = v) } },
+)
+
+private fun optionalFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(
+    NumberFieldSpec("Soluble fiber", "g", s.solubleFiber) { v -> vm.update { it.copy(solubleFiber = v) } },
+    NumberFieldSpec("Insoluble fiber", "g", s.insolubleFiber) { v -> vm.update { it.copy(insolubleFiber = v) } },
+    NumberFieldSpec("Essential amino acids", "g", s.essentialAminoAcids) { v -> vm.update { it.copy(essentialAminoAcids = v) } },
+    NumberFieldSpec("of which leucine", "g", s.leucine) { v -> vm.update { it.copy(leucine = v) } },
+)

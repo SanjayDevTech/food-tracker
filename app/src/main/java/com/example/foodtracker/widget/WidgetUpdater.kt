@@ -43,7 +43,6 @@ object WidgetUpdater {
         mutex.withLock {
             updateProvider(app, GoalLeftWidgetReceiver::class.java, GoalLeftWidget())
             updateProvider(app, MacrosWidgetReceiver::class.java, MacrosWidget())
-            updateProvider(app, QuickLogWidgetReceiver::class.java, QuickLogWidget())
         }
     }
 

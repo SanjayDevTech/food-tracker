@@ -17,14 +17,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Spacing
 import androidx.compose.foundation.background
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.db.FoodEntity
 import kotlin.math.roundToInt
 
+/**
+ * One food in a list — emoji disc, name, and a brand/kcal/serving sub-line.
+ *
+ * The disc keeps the emoji (design-plan §2): scanning 166 seeded foods, a
+ * glyph is a faster filter than reading the first word of each name. What it
+ * no longer keeps is a per-category tint. There were twelve of them —
+ * `0xFFFFE0B2`, `0xFFB3E5FC`, `0xFFD1C4E9` and so on — pastels picked to sit
+ * on a white card. On `#000000` they are twelve near-white blobs: the loudest
+ * thing in a list whose job is to be scanned, and all of them louder than the
+ * food names they belong to. They also encoded nothing a reader could use —
+ * the emoji already says "fruit", so the tint was a second copy of the same
+ * fact in a code nobody has learned.
+ *
+ * One `surfaceContainerHigh` disc replaces all twelve. It is a holder for the
+ * glyph, not a signal.
+ */
 @Composable
 fun FoodRow(
     food: FoodEntity,
@@ -40,7 +57,7 @@ fun FoodRow(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.gutter, vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val category = FoodCategory.fromName(food.category)
@@ -48,19 +65,19 @@ fun FoodRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(category.bubbleColor()),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = category.emoji(),
-                style = MaterialTheme.typography.titleMedium,
+                style = AppText.titleM,
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.m))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 food.name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = AppText.titleM,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
             )
@@ -69,7 +86,7 @@ fun FoodRow(
                     food.brand?.takeIf { it.isNotBlank() },
                     "${food.servingCalories().roundToInt()} kcal · ${food.servingLabel}",
                 ).joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
+                style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
@@ -91,19 +108,4 @@ private fun FoodCategory.emoji(): String = when (this) {
     FoodCategory.Packaged -> "📦"
     FoodCategory.Custom -> "✏️"
     FoodCategory.Other -> "🍽️"
-}
-
-private fun FoodCategory.bubbleColor(): Color = when (this) {
-    FoodCategory.SouthIndian -> Color(0xFFFFE0B2)
-    FoodCategory.NorthIndian -> Color(0xFFFFCCBC)
-    FoodCategory.Snack -> Color(0xFFFFF59D)
-    FoodCategory.Beverage -> Color(0xFFB3E5FC)
-    FoodCategory.Dairy -> Color(0xFFE1F5FE)
-    FoodCategory.Fruit -> Color(0xFFFFCDD2)
-    FoodCategory.Vegetable -> Color(0xFFC8E6C9)
-    FoodCategory.Grain -> Color(0xFFD7CCC8)
-    FoodCategory.Protein -> Color(0xFFFFE082)
-    FoodCategory.Packaged -> Color(0xFFE0E0E0)
-    FoodCategory.Custom -> Color(0xFFD1C4E9)
-    FoodCategory.Other -> Color(0xFFCFD8DC)
 }

@@ -25,16 +25,42 @@ data class BarcodeUiState(
     val cached: FoodEntity? = null,
     val resolvedSource: BarcodeSource? = null,
     val basis: NutritionBasis = NutritionBasis.Per100g,
-    /**
-     * Serving size the user is about to log (grams). Initialised from the scanned
-     * product but editable on the resolve panel — overrides the source default
-     * when the printed pack disagrees with the contributor data.
-     */
-    val servingGrams: Double = 0.0,
     val notFound: Boolean = false,
     val error: String? = null,
     val isLoading: Boolean = false,
-)
+) {
+    /** True once a scan has produced something to log. */
+    val resolved: Boolean get() = product != null || cached != null
+}
+
+/**
+ * The resolved product as a food the serving sheet can price — design-plan §4.12.
+ *
+ * **This row is deliberately not saved.** It is built in memory, at the user's
+ * currently chosen basis, purely so the standard sheet has a [FoodEntity] to
+ * work from; the insert happens in [BarcodeViewModel.logResolved] when the user
+ * actually commits. Persisting on resolve would put a row in the user's Custom
+ * foods list for every packet they pointed the camera at and then backed out
+ * of, and — because the basis is still editable at that point — would have to
+ * be rewritten on every basis tap.
+ *
+ * The caller must `remember` the result: [FoodEntity] mints a fresh
+ * `clientUuid` on construction, so rebuilding it every recomposition would
+ * hand the sheet a new identity on every frame.
+ */
+fun BarcodeUiState.previewFood(): FoodEntity? = when {
+    product != null -> FoodEntity.fromNutrientsPer100g(
+        name = product.name,
+        brand = product.brand,
+        barcode = product.barcode,
+        category = product.category,
+        n = product.toPerHundredG(basis),
+        servingGrams = product.servingGrams,
+        servingLabel = product.servingLabel,
+        isCustom = true,
+    )
+    else -> cached
+}
 
 class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
 
@@ -63,7 +89,6 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
                             cached = null,
                             resolvedSource = lookup.source,
                             basis = lookup.product.defaultBasis,
-                            servingGrams = lookup.product.servingGrams,
                         )
                     }
                     lookup.cached != null -> _state.update {
@@ -72,7 +97,6 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
                             product = null,
                             cached = lookup.cached,
                             resolvedSource = lookup.source,
-                            servingGrams = lookup.cached.servingGrams,
                         )
                     }
                     else -> _state.update { it.copy(isLoading = false, notFound = true) }
@@ -87,45 +111,49 @@ class BarcodeViewModel(private val repository: FoodRepository) : ViewModel() {
         _state.update { it.copy(basis = basis) }
     }
 
-    /** Override the source's serving size before commit. Clamped to [1, 2000] g. */
-    fun setServingGrams(grams: Double) {
-        val clamped = grams.coerceIn(1.0, 2000.0)
-        _state.update { it.copy(servingGrams = clamped) }
-    }
-
     fun retry() {
         _state.update { BarcodeUiState() }
     }
 
-    fun quickLog(meal: MealType, onDone: () -> Unit) {
+    /**
+     * Commit the scan: save the product at the chosen basis, then log the
+     * portion the serving sheet composed.
+     *
+     * **The portion no longer rewrites the food.** The old flow pushed an
+     * edited serving size back onto the `foods` row and rebuilt its label, so
+     * eating half a packet redefined what a serving of that product *is* for
+     * every future scan and every past entry's label. The pack's serving is a
+     * fact about the pack; how much of it you ate is a fact about the entry,
+     * and it belongs on the log row — which is exactly what the serving sheet
+     * already produces, for packaged food and dosas alike.
+     *
+     * A cached hit is already in the database, so it only gets the log row.
+     */
+    fun logResolved(
+        meal: MealType,
+        grams: Double,
+        servings: Double,
+        servingLabel: String,
+        onDone: () -> Unit,
+    ) {
         val s = _state.value
         viewModelScope.launch {
-            val edited = s.servingGrams.takeIf { it > 0.0 }
             val food = when {
-                s.product != null -> {
-                    // If the user edited the serving, persist it on the food row
-                    // and rebuild the label so future scans/logs show the override.
-                    val labelOverride = edited?.let { g ->
-                        if (g != s.product.servingGrams) "1 serving (${g.toInt()} g)" else null
-                    }
-                    repository.commitBarcodeProduct(
-                        product = s.product,
-                        basis = s.basis,
-                        servingGrams = edited,
-                        servingLabel = labelOverride,
-                    )
-                }
+                s.product != null -> repository.commitBarcodeProduct(
+                    product = s.product,
+                    basis = s.basis,
+                )
                 s.cached != null -> s.cached
                 else -> return@launch
             }
-            val gramsForLog = edited ?: food.servingGrams
             repository.addFoodLog(
                 FoodLogEntity(
                     foodId = food.id,
                     dateEpochDay = DateUtil.todayEpochDay(),
                     mealType = meal.name,
-                    servings = 1.0,
-                    grams = gramsForLog,
+                    servings = servings,
+                    grams = grams,
+                    servingLabel = servingLabel,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )

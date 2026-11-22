@@ -70,7 +70,6 @@ class FoodRepository(
     fun observeAllFoods(): Flow<List<FoodEntity>> = foodDao.observeAll()
     fun searchFoods(query: String): Flow<List<FoodEntity>> = foodDao.search(query)
     fun observeFavouriteFoods(): Flow<List<FoodEntity>> = foodDao.observeFavourites()
-    suspend fun foodById(id: Long): FoodEntity? = foodDao.getById(id)
     suspend fun upsertFood(food: FoodEntity): Long = foodDao.upsert(food)
 
     /**
@@ -369,6 +368,17 @@ class FoodRepository(
 
     suspend fun addFoodLog(entry: FoodLogEntity): Long =
         foodLogDao.insert(entry).also { onWidgetDataChanged() }
+
+    /**
+     * Edit an entry in place. Takes the whole entity rather than a field set
+     * because every edit path — serving, preparation, meal, day — comes from
+     * the serving sheet holding a complete row it has already recomputed.
+     */
+    suspend fun updateFoodLog(entry: FoodLogEntity) {
+        foodLogDao.update(entry)
+        onWidgetDataChanged()
+    }
+
     suspend fun deleteFoodLog(id: Long) {
         foodLogDao.delete(id)
         onWidgetDataChanged()

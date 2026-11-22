@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Carbs battery-fill — green tint at ~40% alpha. Matches WidgetColors.MacroCarbsFill. -->
+<!-- Carbs battery-fill — amber at 60% alpha. Matches WidgetColors.MacroCarbsFill. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#668BC34A" />
+    <solid android:color="#99E3A13C" />
     <corners android:radius="18dp" />
 </shape>

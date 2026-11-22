@@ -83,6 +83,26 @@ class RichFoodsViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RichFoodsState())
 
+    /**
+     * Start on one nutrient, as "Find foods rich in iron" does from a
+     * nutrient's contribution sheet.
+     *
+     * Deliberately a no-op once anything is picked. The screen calls this from
+     * a `LaunchedEffect` keyed on its route argument, which re-runs after
+     * process death and whenever this entry is restored from the back stack —
+     * and a user who cleared the nutrient and picked two others would watch
+     * the original reappear. "Preselect" is a starting position, not a filter
+     * the route keeps enforcing.
+     *
+     * An unknown key (a [NutrientTarget.Limit] field, say, which this screen
+     * refuses to rank) is ignored rather than selected-and-empty.
+     */
+    fun preselect(key: String) {
+        if (selected.value.isNotEmpty()) return
+        if (RichSearchableFields.none { it.key == key }) return
+        selected.value = setOf(key)
+    }
+
     fun toggle(key: String) {
         selected.value = selected.value.let { if (key in it) it - key else it + key }
     }

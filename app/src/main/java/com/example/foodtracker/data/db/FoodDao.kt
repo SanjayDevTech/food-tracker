@@ -237,6 +237,21 @@ interface FoodLogDao {
     @Insert
     suspend fun insert(entry: FoodLogEntity): Long
 
+    /**
+     * Edit a logged entry in place — design-plan §7 phase 7.
+     *
+     * This is the **only** data-layer change in the whole UI rewrite, and it is
+     * not a schema change: [FoodLogEntity] already has every column an edit
+     * touches (`grams`, `servings`, `servingLabel`, `mealType`, `oil`, `style`,
+     * `dateEpochDay`). No Room version bump, no migration.
+     *
+     * Its absence was the biggest behavioural hole in the app: the diary had
+     * `insert` and `delete` but no update, so a wrong serving could only be
+     * fixed by deleting the row and logging the food again.
+     */
+    @Update
+    suspend fun update(entry: FoodLogEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(entries: List<FoodLogEntity>)
 

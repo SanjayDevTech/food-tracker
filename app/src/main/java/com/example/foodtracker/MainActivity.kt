@@ -5,20 +5,20 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.example.foodtracker.ui.AppContainer
 import com.example.foodtracker.ui.LocalAppContainer
 import com.example.foodtracker.ui.NoOpHapticFeedback
 import com.example.foodtracker.ui.navigation.AppNav
-import com.example.foodtracker.ui.theme.ColorPalette
-import com.example.foodtracker.ui.theme.FoodTrackerTheme
-import com.example.foodtracker.ui.theme.ThemeMode
+import com.example.foodtracker.ui.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -35,7 +35,15 @@ class MainActivity : ComponentActivity() {
         // splash theme to the post-splash theme cleanly.
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            // The app is dark-only now (design-plan decision 11), so the bar
+            // icons are pinned light instead of following the system setting.
+            // `SystemBarStyle.dark` means "dark bar background", i.e. light icons.
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
+        WindowCompat.getInsetsController(window, window.decorView)
+            .isAppearanceLightStatusBars = false
         pendingDeepLink.value = DeepLink.fromIntent(intent)
         val app = application as FoodTrackerApp
         // Seeding, reminder re-arming and backup scheduling hang off an actual
@@ -44,15 +52,11 @@ class MainActivity : ComponentActivity() {
         app.initializeForUi()
         val container = AppContainer.from(app)
         setContent {
-            val themeMode by container.profileStore.themeMode
-                .collectAsStateWithLifecycle(initialValue = ThemeMode.System)
-            val palette by container.profileStore.colorPalette
-                .collectAsStateWithLifecycle(initialValue = ColorPalette.Normal)
             val hapticsEnabled by container.profileStore.hapticsEnabled
                 .collectAsStateWithLifecycle(initialValue = true)
             val defaultHaptic = LocalHapticFeedback.current
             val haptic = if (hapticsEnabled) defaultHaptic else NoOpHapticFeedback
-            FoodTrackerTheme(themeMode = themeMode, palette = palette) {
+            AppTheme {
                 CompositionLocalProvider(
                     LocalAppContainer provides container,
                     LocalHapticFeedback provides haptic,
@@ -87,9 +91,9 @@ class MainActivity : ComponentActivity() {
 sealed interface DeepLink {
     /** Open LogFoodScreen with [mealName] preselected (or default meal if null). */
     data class LogMeal(val mealName: String?) : DeepLink
-    /** Open WaterScreen. */
+    /** Open Today with the water sheet raised — water stopped being a page in phase 4. */
     data object OpenWater : DeepLink
-    /** Open WeightScreen. */
+    /** Open Today with the weigh-in sheet raised — same move as water. */
     data object OpenWeight : DeepLink
 
     companion object {

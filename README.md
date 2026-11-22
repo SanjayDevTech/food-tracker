@@ -41,7 +41,7 @@ backup.
 
 ## Stack
 
-Kotlin · Jetpack Compose (Material 3 Expressive) · Room · DataStore ·
+Kotlin · Jetpack Compose (Material 3, dark-only) · Room · DataStore ·
 WorkManager · Glance widgets · CameraX + ML Kit barcode scanning
 
 Single module, MVVM. `data/` holds the Room database, stores and API clients,

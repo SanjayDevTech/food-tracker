@@ -3,64 +3,53 @@ package com.example.foodtracker.ui.screens.onboarding
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import kotlin.math.roundToInt
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,20 +58,66 @@ import com.example.foodtracker.data.AiProvider
 import com.example.foodtracker.data.Goal
 import com.example.foodtracker.data.Sex
 import com.example.foodtracker.data.WeightChangeRate
+import com.example.foodtracker.domain.Bmi
 import com.example.foodtracker.reminder.BatteryOptHelper
 import com.example.foodtracker.reminder.ReminderConfig
 import com.example.foodtracker.reminder.ReminderKind
 import com.example.foodtracker.reminder.rememberBatteryOptExempt
 import com.example.foodtracker.ui.appViewModel
+import com.example.foodtracker.ui.components.BatteryOptCard
+import com.example.foodtracker.ui.components.BmiBar
 import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.components.HapticSlider
 import com.example.foodtracker.ui.components.NumberStepper
 import com.example.foodtracker.ui.components.TimePickerDialog
+import com.example.foodtracker.ui.components.atoms.AppButton
+import com.example.foodtracker.ui.components.atoms.AppDivider
+import com.example.foodtracker.ui.components.atoms.AppTextButton
+import com.example.foodtracker.ui.components.atoms.grouped
+import com.example.foodtracker.ui.components.atoms.ValueText
 import com.example.foodtracker.ui.rememberAppHaptics
-import com.example.foodtracker.ui.screens.settings.BackupCadence
+import com.example.foodtracker.ui.components.atoms.Section
+import com.example.foodtracker.ui.screens.you.BackupCadence
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Sizes
+import com.example.foodtracker.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-private const val PageCount = 5
+/**
+ * First run — design-plan §4.17, five pages cut to three.
+ *
+ * The three that remain are the two that are *required* (there is no usable
+ * calorie target without age, sex, height, weight, activity and goal) and one
+ * that is entirely optional. Backups, reminders and AI used to be a page each:
+ * three full swipes, every one of them skippable, every one of them also in
+ * Settings. They are now three collapsed rows on one page, which removes two
+ * swipes from first run without removing a single control — and makes the fact
+ * that they are optional visible at a glance rather than stated once per page.
+ *
+ * Two things §2 and §8 pin down:
+ *  - **No hero button.** `ButtonHeightHero` (56dp) is gone; the CTA here is the
+ *    same 48dp [AppButton] as everywhere else. A button that is bigger only on
+ *    the first run teaches the wrong size for the one pressed a thousand times
+ *    afterwards.
+ *  - **The privacy tagline is kept word for word** (§8). It stays on page one,
+ *    where it answers the question the page provokes — someone being asked for
+ *    their weight before they have seen the app deserves the answer *then*, not
+ *    two swipes later.
+ *
+ * **Why this screen got the heaviest hand in the editorial pass.** It is the
+ * first thing anyone sees, and until now it was a stack of outlined cards: the
+ * privacy tagline in one, the computed targets in another, three collapsed
+ * set-ups in three more. Direction B's whole character is an oversized figure
+ * against small uppercase labels with rules doing the dividing, and none of
+ * that survives being boxed. So: every block is a [Section] — a standing head,
+ * a hairline under it, content open to the gutter; the one number the first run
+ * exists to produce (the daily calorie target) is rendered at 64sp instead of
+ * as the first of six equal rows; and the page indicator is the words `STEP 2
+ * OF 3` rather than three dots, which says the same thing in type the rest of
+ * the screen already uses.
+ */
+private const val PageCount = 3
 
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
@@ -116,14 +151,6 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            PageDots(
-                count = PageCount,
-                selected = pagerState.currentPage,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, bottom = 8.dp),
-            )
-
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -132,20 +159,13 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 userScrollEnabled = false,
             ) { page ->
                 when (page) {
-                    0 -> BasicsPage(state = state, vm = vm)
+                    0 -> AboutYouPage(state = state, vm = vm)
                     1 -> GoalPage(state = state, vm = vm)
-                    2 -> BackupsPage(
+                    2 -> OptionalPage(
                         state = state,
+                        vm = vm,
                         onPickFolder = { folderLauncher.launch(null) },
-                        onClearFolder = vm::clearBackupFolder,
-                        onCadence = vm::setBackupCadence,
                     )
-                    3 -> RemindersPage(
-                        configs = state.reminders,
-                        onToggle = vm::setReminderEnabled,
-                        onSetTime = vm::setReminderTime,
-                    )
-                    4 -> AiPage(state = state, vm = vm)
                 }
             }
 
@@ -165,7 +185,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = Spacing.gutter, vertical = Spacing.l),
             )
         }
     }
@@ -173,113 +193,86 @@ fun OnboardingScreen(onDone: () -> Unit) {
 
 // ───────────────────────── Page 1: About you ─────────────────────
 
+/**
+ * Everything the calorie maths needs about the body, plus activity.
+ *
+ * Activity level moved here from the old goal page: it describes the person,
+ * not the target, and moving it balances a three-page flow that would otherwise
+ * be short-long-short.
+ */
 @Composable
-private fun BasicsPage(state: OnboardingUiState, vm: OnboardingViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+private fun AboutYouPage(state: OnboardingUiState, vm: OnboardingViewModel) {
+    PageScaffold(
+        step = 1,
+        title = "About you",
+        subtitle = "A few quick details so we can calculate your targets accurately.",
     ) {
-        Text("About you", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "A few quick details so we can calculate your targets accurately.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(Modifier.height(16.dp))
         PrivacyTagline()
 
-        Spacer(Modifier.height(20.dp))
-        OutlinedTextField(
-            value = state.profile.name,
-            onValueChange = vm::setName,
-            label = { Text("Your name (optional)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Your name") {
+            OutlinedTextField(
+                value = state.profile.name,
+                onValueChange = vm::setName,
+                label = { Text("Optional", style = AppText.body) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
-        Spacer(Modifier.height(20.dp))
-        SectionLabel("Sex")
-        ExclusiveButtonGroup(
-            options = Sex.entries,
-            selected = state.profile.sex,
-            onSelect = vm::setSex,
-            modifier = Modifier.fillMaxWidth(),
-            label = { it.displayName },
-        )
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Sex") {
+            ExclusiveButtonGroup(
+                options = Sex.entries,
+                selected = state.profile.sex,
+                onSelect = vm::setSex,
+                modifier = Modifier.fillMaxWidth(),
+                label = { it.displayName },
+            )
+        }
 
-        Spacer(Modifier.height(20.dp))
-        StepperSliderRow(
-            label = "Age",
-            displayValue = "${state.profile.ageYears} yrs",
-            sliderValue = state.profile.ageYears.toFloat(),
-            sliderRange = 10f..90f,
-            granularity = 1f,
-            onSliderChange = { vm.setAge(it.toInt()) },
-            onDecrement = { vm.setAge(state.profile.ageYears - 1) },
-            onIncrement = { vm.setAge(state.profile.ageYears + 1) },
-        )
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Body") {
+            StepperSliderRow(
+                label = "Age",
+                displayValue = "${state.profile.ageYears} yrs",
+                sliderValue = state.profile.ageYears.toFloat(),
+                sliderRange = 10f..90f,
+                granularity = 1f,
+                onSliderChange = { vm.setAge(it.toInt()) },
+                onDecrement = { vm.setAge(state.profile.ageYears - 1) },
+                onIncrement = { vm.setAge(state.profile.ageYears + 1) },
+            )
 
-        Spacer(Modifier.height(8.dp))
-        StepperSliderRow(
-            label = "Height",
-            displayValue = "${state.profile.heightCm} cm",
-            sliderValue = state.profile.heightCm.toFloat(),
-            sliderRange = 120f..220f,
-            granularity = 1f,
-            onSliderChange = { vm.setHeight(it.toInt()) },
-            onDecrement = { vm.setHeight(state.profile.heightCm - 1) },
-            onIncrement = { vm.setHeight(state.profile.heightCm + 1) },
-        )
+            Spacer(Modifier.height(Spacing.s))
+            StepperSliderRow(
+                label = "Height",
+                displayValue = "${state.profile.heightCm} cm",
+                sliderValue = state.profile.heightCm.toFloat(),
+                sliderRange = 120f..220f,
+                granularity = 1f,
+                onSliderChange = { vm.setHeight(it.toInt()) },
+                onDecrement = { vm.setHeight(state.profile.heightCm - 1) },
+                onIncrement = { vm.setHeight(state.profile.heightCm + 1) },
+            )
 
-        Spacer(Modifier.height(8.dp))
-        StepperSliderRow(
-            label = "Weight",
-            displayValue = "%.1f kg".format(state.profile.weightKg),
-            sliderValue = state.profile.weightKg.toFloat(),
-            sliderRange = 18f..200f,
-            granularity = 1f,
-            onSliderChange = { vm.setWeight(it.roundToInt().toDouble()) },
-            onDecrement = { vm.setWeight(state.profile.weightKg - 0.1) },
-            onIncrement = { vm.setWeight(state.profile.weightKg + 0.1) },
-        )
+            Spacer(Modifier.height(Spacing.s))
+            StepperSliderRow(
+                label = "Weight",
+                displayValue = "%.1f kg".format(state.profile.weightKg),
+                sliderValue = state.profile.weightKg.toFloat(),
+                sliderRange = 18f..200f,
+                granularity = 1f,
+                onSliderChange = { vm.setWeight(it.roundToInt().toDouble()) },
+                onDecrement = { vm.setWeight(state.profile.weightKg - 0.1) },
+                onIncrement = { vm.setWeight(state.profile.weightKg + 0.1) },
+            )
+        }
 
-        Spacer(Modifier.height(20.dp))
-        com.example.foodtracker.ui.components.BmiBar(
-            currentBmi = com.example.foodtracker.domain.Bmi.bmi(
-                state.profile.weightKg, state.profile.heightCm,
-            ),
-        )
-
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-// ───────────────────────── Page 2: Your goal ─────────────────────
-
-@Composable
-private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        Text("Your goal", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Pick an activity level and where you want to land. We'll compute calorie and nutrient targets from this.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(Modifier.height(20.dp))
-        SectionLabel("Activity level")
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ActivityLevel.entries.forEach { level ->
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Activity level") {
+            ActivityLevel.entries.forEachIndexed { index, level ->
+                if (index > 0) AppDivider()
                 SelectableRow(
                     label = level.displayName,
                     selected = state.profile.activityLevel == level,
@@ -288,23 +281,37 @@ private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-        SectionLabel("Goal")
-        ExclusiveButtonGroup(
-            options = Goal.entries,
-            selected = state.profile.goal,
-            onSelect = vm::setGoal,
-            modifier = Modifier.fillMaxWidth(),
-            label = { it.displayName },
-        )
+        Spacer(Modifier.height(Spacing.xxl))
+        BmiBar(currentBmi = Bmi.bmi(state.profile.weightKg, state.profile.heightCm))
+    }
+}
+
+// ───────────────────────── Page 2: Your goal ─────────────────────
+
+@Composable
+private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
+    PageScaffold(
+        step = 2,
+        title = "Your goal",
+        subtitle = "Where you want to land. We'll compute calorie and nutrient targets from this.",
+    ) {
+        Section("Goal") {
+            ExclusiveButtonGroup(
+                options = Goal.entries,
+                selected = state.profile.goal,
+                onSelect = vm::setGoal,
+                modifier = Modifier.fillMaxWidth(),
+                label = { it.displayName },
+            )
+        }
 
         if (state.profile.goal != Goal.Maintain) {
-            Spacer(Modifier.height(16.dp))
-            SectionLabel(
+            Spacer(Modifier.height(Spacing.xxl))
+            Section(
                 if (state.profile.goal == Goal.Lose) "How fast to lose?" else "How fast to gain?"
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                WeightChangeRate.entries.forEach { rate ->
+            ) {
+                WeightChangeRate.entries.forEachIndexed { index, rate ->
+                    if (index > 0) AppDivider()
                     SelectableRow(
                         label = rate.displayName,
                         selected = state.profile.weightChangeRate == rate,
@@ -313,13 +320,16 @@ private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Spacing.xxl))
             val goalWeight = state.profile.goalWeightKg ?: state.profile.weightKg
             val goalRange = if (state.profile.goal == Goal.Lose) {
                 18f..state.profile.weightKg.toFloat().coerceAtLeast(18.1f)
             } else {
                 state.profile.weightKg.toFloat().coerceAtMost(199.9f)..200f
             }
+            // No head of its own: the row already carries one in its eyebrow,
+            // and `GOAL WEIGHT` over a rule over `Goal weight 72.0 kg` would
+            // be the same two words twice.
             StepperSliderRow(
                 label = "Goal weight",
                 displayValue = "%.1f kg".format(goalWeight),
@@ -332,124 +342,252 @@ private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
             )
         }
 
-        Spacer(Modifier.height(20.dp))
-        com.example.foodtracker.ui.components.BmiBar(
-            currentBmi = com.example.foodtracker.domain.Bmi.bmi(
-                state.profile.weightKg, state.profile.heightCm,
-            ),
-            goalBmi = state.profile.goalWeightKg?.let {
-                com.example.foodtracker.domain.Bmi.bmi(it, state.profile.heightCm)
-            },
+        Spacer(Modifier.height(Spacing.xxl))
+        BmiBar(
+            currentBmi = Bmi.bmi(state.profile.weightKg, state.profile.heightCm),
+            goalBmi = state.profile.goalWeightKg?.let { Bmi.bmi(it, state.profile.heightCm) },
         )
 
-        Spacer(Modifier.height(24.dp))
-        // Hero card anchoring the page — kept filled for emphasis (matches the
-        // home GoalProgressBanner pattern). Symmetric 20dp corners now instead
-        // of the asymmetric 28/8/28/8 shape so it sits flat with the rest of
-        // the outlined-card design language.
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
+        Spacer(Modifier.height(Spacing.xxl))
+        // The payoff for two pages of questions, so it is the last thing on the
+        // page — and the calorie figure is the whole payoff, so it is rendered
+        // at hero size rather than as the first of six equal rows. Everything
+        // else on this page is a question; this is the answer, and rule 2 says
+        // a screen's one answer is allowed to be 64sp.
+        Section(
+            title = "Your estimated daily targets",
+            trailing = {
                 Text(
-                    "Your estimated daily targets",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    "per day",
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(10.dp))
-                TargetRow("Calories", "${state.previewGoals.calories.toInt()} kcal")
-                TargetRow("Protein", "${state.previewGoals.protein.toInt()} g")
-                TargetRow("Carbs", "${state.previewGoals.carbs.toInt()} g")
-                TargetRow("Fat", "${state.previewGoals.fat.toInt()} g")
-                TargetRow("Fiber", "${state.previewGoals.fiber.toInt()} g")
-                TargetRow("Water", "${state.previewGoals.waterMl} ml")
+            },
+        ) {
+            Text(
+                "Calories".uppercase(),
+                style = AppText.eyebrow,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    grouped(state.previewGoals.calories),
+                    style = AppText.numberXXL,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.width(Spacing.s))
+                Text(
+                    "kcal",
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Spacing.s),
+                )
             }
+            Spacer(Modifier.height(Spacing.l))
+            AppDivider()
+            TargetRow("Protein", state.previewGoals.protein, "g")
+            AppDivider()
+            TargetRow("Carbs", state.previewGoals.carbs, "g")
+            AppDivider()
+            TargetRow("Fat", state.previewGoals.fat, "g")
+            AppDivider()
+            TargetRow("Fiber", state.previewGoals.fiber, "g")
+            AppDivider()
+            TargetRow("Water", state.previewGoals.waterMl.toDouble(), "ml")
         }
-        Spacer(Modifier.height(16.dp))
     }
 }
 
-// ───────────────────────── Page 3: Backups ─────────────────────────
+// ───────────────────────── Page 3: Optional ──────────────────────
+
+/**
+ * The three optional set-ups, collapsed.
+ *
+ * Each row states what it is and what it costs to skip; opening one reveals
+ * exactly the controls its old full page had, minus the page. Nothing is
+ * written unless the user turns it on — see [OnboardingViewModel.finish] — so
+ * a user who swipes straight to "Get started" leaves the reminder store and
+ * the AI prefs untouched on disk.
+ */
+@Composable
+private fun OptionalPage(
+    state: OnboardingUiState,
+    vm: OnboardingViewModel,
+    onPickFolder: () -> Unit,
+) {
+    PageScaffold(
+        step = 3,
+        title = "Optional",
+        subtitle = "Set these up now or skip them — all three live in Settings too.",
+        optional = true,
+    ) {
+        ExpandableRow(
+            title = "Backups",
+            summary = if (state.backupCadence == BackupCadence.Off) "Off" else state.backupCadence.label,
+        ) {
+            BackupsSection(
+                state = state,
+                onPickFolder = onPickFolder,
+                onClearFolder = vm::clearBackupFolder,
+                onCadence = vm::setBackupCadence,
+            )
+        }
+
+        Spacer(Modifier.height(Spacing.xxl))
+        val remindersOn = state.reminders.count { it.enabled }
+        ExpandableRow(
+            title = "Reminders",
+            summary = if (remindersOn == 0) "None" else "$remindersOn on",
+        ) {
+            RemindersSection(
+                configs = state.reminders,
+                onToggle = vm::setReminderEnabled,
+                onSetTime = vm::setReminderTime,
+            )
+        }
+
+        Spacer(Modifier.height(Spacing.xxl))
+        ExpandableRow(
+            title = "AI autofill",
+            summary = if (state.aiEnabled) state.aiProvider.displayName else "Off",
+        ) {
+            AiSection(state = state, vm = vm)
+        }
+
+        Spacer(Modifier.height(Spacing.xxl))
+        Text(
+            "Skip any of these and nothing is written. You can turn them on later in Settings.",
+            style = AppText.bodyS,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * One collapsed optional set-up, as a [Section] whose head is the switchable
+ * part.
+ *
+ * The summary on the right is the whole reason this collapses safely: a head
+ * reading `REMINDERS — None` tells the user what skipping it means without
+ * costing them the tap that opening it would. It sits in the trailing slot,
+ * which is where every section in the app states its summary — so these three
+ * read as the same object as `18 OF 29 ON TRACK` on Today rather than as a
+ * bespoke accordion.
+ *
+ * **The icon disc is gone.** A 36dp tinted circle holding a cloud, a bell and a
+ * sparkle is decoration in the friendly register §0 refused (rule 4 on emoji is
+ * the same argument), and it was spending the accent on chrome, which rule 3
+ * rules out. Three words in a row do not need three pictures to be told apart.
+ *
+ * Only the head is clickable: the content holds switches, a segmented control
+ * and an API-key field, and a stray tap near any of them must not fold the
+ * section away.
+ */
+@Composable
+private fun ExpandableRow(
+    title: String,
+    summary: String,
+    content: @Composable () -> Unit,
+) {
+    var expanded by rememberSaveable(title) { mutableStateOf(false) }
+    val haptics = rememberAppHaptics()
+    val chevron by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "chevron",
+    )
+    Column(Modifier.fillMaxWidth()) {
+        Section(
+            title = title,
+            modifier = Modifier
+                .clickable {
+                    haptics.light()
+                    expanded = !expanded
+                }
+                .heightIn(min = Sizes.touchTarget),
+            trailing = {
+                Text(
+                    summary,
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(Spacing.s))
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.rotate(chevron),
+                )
+            },
+        ) {
+            // Section lays 16dp under its rule; the body below starts there.
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column { content() }
+        }
+    }
+}
 
 @Composable
-private fun BackupsPage(
+private fun BackupsSection(
     state: OnboardingUiState,
     onPickFolder: () -> Unit,
     onClearFolder: () -> Unit,
     onCadence: (BackupCadence) -> Unit,
 ) {
     val haptics = rememberAppHaptics()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        PageHeader(title = "Keep your data safe", optional = true)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Snapshots are plain JSON. Pick a folder you sync (Drive, Dropbox, photos) — " +
-                "or leave it on the default Downloads/FoodTracker. You can change this anytime.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Text(
+        "Snapshots are plain JSON. Pick a folder you sync (Drive, Dropbox, photos) — " +
+            "or leave it on the default Downloads/FoodTracker. You can change this anytime.",
+        style = AppText.bodyS,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
-        Spacer(Modifier.height(20.dp))
-        SectionLabel("Backup folder")
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(18.dp),
-                )
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Spacer(Modifier.height(Spacing.xxl))
+    Section("Backup folder") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 Icons.Default.Folder,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Spacing.m))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     state.backupFolderLabel ?: "Downloads/FoodTracker (default)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = AppText.body,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
                 Text(
                     if (state.backupFolderLabel == null) "Tap Choose to pick any folder"
                     else "Selected — backups will land here",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AppText.bodyS,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = {
-                haptics.light()
-                onPickFolder()
-            }) {
-                Text(if (state.backupFolderLabel == null) "Choose" else "Change")
-            }
+            AppTextButton(
+                text = if (state.backupFolderLabel == null) "Choose" else "Change",
+                onClick = {
+                    haptics.light()
+                    onPickFolder()
+                },
+            )
             if (state.backupFolderLabel != null) {
-                TextButton(onClick = onClearFolder) { Text("Reset") }
+                AppTextButton(text = "Reset", onClick = onClearFolder)
             }
-        }
+    }
+    }
 
-        Spacer(Modifier.height(20.dp))
-        SectionLabel("Recurring backup")
+    Spacer(Modifier.height(Spacing.xxl))
+    Section("Recurring backup") {
         Text(
-            "Runs in the background only when you turn it on. You can change this anytime in Profile › Data.",
-            style = MaterialTheme.typography.bodySmall,
+            "Runs in the background only when you turn it on.",
+            style = AppText.bodyS,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.s))
         ExclusiveButtonGroup(
             options = BackupCadence.entries,
             selected = state.backupCadence,
@@ -457,14 +595,11 @@ private fun BackupsPage(
             modifier = Modifier.fillMaxWidth(),
             label = { it.label },
         )
-        Spacer(Modifier.height(16.dp))
     }
 }
 
-// ───────────────────────── Page 4: Reminders ─────────────────────
-
 @Composable
-private fun RemindersPage(
+private fun RemindersSection(
     configs: List<ReminderConfig>,
     onToggle: (ReminderKind, Boolean) -> Unit,
     onSetTime: (ReminderKind, Int, Int) -> Unit,
@@ -486,70 +621,71 @@ private fun RemindersPage(
 
     var editingKind by remember { mutableStateOf<ReminderKind?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        PageHeader(title = "Daily reminders", optional = true)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Turn on the ones you want — meals, water, weigh-in. Skip them all if you'd rather log when you remember. " +
-                "Times use inexact alarms so they're battery-friendly.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Text(
+        "Turn on the ones you want — meals, water, weigh-in. Skip them all if you'd rather " +
+            "log when you remember.",
+        style = AppText.bodyS,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
-        if (!notificationsGranted) {
-            Spacer(Modifier.height(16.dp))
-            NotificationsBlockedCard(
-                onAllow = {
+    if (!notificationsGranted) {
+        Spacer(Modifier.height(Spacing.xxl))
+        // Same shape as the Reminders screen's own warning: the state is one
+        // word in the head's trailing slot, in the error colour, which on black
+        // is louder than any box drawn around it.
+        Section(
+            title = "Notifications",
+            trailing = {
+                Text(
+                    "Blocked",
+                    style = AppText.eyebrow,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            },
+        ) {
+            Text(
+                "We need notification permission to fire the reminders you set.",
+                style = AppText.bodyS,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(Spacing.s))
+            AppButton(
+                text = "Allow notifications",
+                onClick = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 },
             )
         }
+    }
 
-        Spacer(Modifier.height(16.dp))
-        // All reminder rows grouped inside one outlined-card section with
-        // dividers between them — same pattern as the main Reminders screen
-        // (no more N stacked individual cards).
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(18.dp),
-                )
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-        ) {
-            configs.forEachIndexed { index, config ->
-                if (index > 0) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                    )
-                }
-                ReminderRow(
-                    config = config,
-                    onToggle = { onToggle(config.kind, it) },
-                    onEditTime = { editingKind = config.kind },
-                )
-            }
-        }
-
-        val batteryExempt by rememberBatteryOptExempt()
-        val anyReminderEnabled = configs.any { it.enabled }
-        if (anyReminderEnabled && !batteryExempt) {
-            Spacer(Modifier.height(16.dp))
-            BatteryOptOutlinedCard(
-                onOpenSettings = { BatteryOptHelper.openSettings(context) },
+    Spacer(Modifier.height(Spacing.xxl))
+    Section(
+        title = "Daily reminders",
+        trailing = {
+            val on = configs.count { it.enabled }
+            Text(
+                if (on == 0) "All off" else "$on on",
+                style = AppText.bodyS,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    ) {
+        configs.forEachIndexed { index, config ->
+            if (index > 0) AppDivider()
+            ReminderRow(
+                config = config,
+                onToggle = { onToggle(config.kind, it) },
+                onEditTime = { editingKind = config.kind },
             )
         }
-        Spacer(Modifier.height(16.dp))
+    }
+
+    val batteryExempt by rememberBatteryOptExempt()
+    if (configs.any { it.enabled } && !batteryExempt) {
+        Spacer(Modifier.height(Spacing.xxl))
+        BatteryOptCard(onOpenSettings = { BatteryOptHelper.openSettings(context) })
     }
 
     editingKind?.let { kind ->
@@ -568,69 +704,15 @@ private fun RemindersPage(
     }
 }
 
-@Composable
-private fun NotificationsBlockedCard(onAllow: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.error,
-                shape = RoundedCornerShape(18.dp),
-            )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Text(
-            "Allow notifications",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.error,
-        )
-        Text(
-            "We need notification permission to fire the reminders you set.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = onAllow) { Text("Allow notifications") }
-    }
-}
-
-@Composable
-private fun BatteryOptOutlinedCard(onOpenSettings: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.tertiary,
-                shape = RoundedCornerShape(18.dp),
-            )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Text(
-            "Make reminders reliable",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.tertiary,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Android's battery saver can delay reminders by minutes or hours — especially on OEM " +
-                "skins (Xiaomi / Oppo / Vivo / Realme / Samsung). Allow this app to ignore battery " +
-                "optimisation so reminders fire on time.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onOpenSettings) {
-            Text("Open battery settings")
-        }
-    }
-}
-
+/**
+ * One reminder, identical in shape to the row on the Reminders screen: eyebrow
+ * label left, the time at number weight on the right, the switch last. The two
+ * lists are the same list in two places, and they used to look nothing alike —
+ * this one stacked the time under the title as a small primary link, which both
+ * hid the figure and spent the accent on an affordance (rule 3).
+ *
+ * The whole row opens the picker now, rather than a line of 13sp text.
+ */
 @Composable
 private fun ReminderRow(
     config: ReminderConfig,
@@ -638,24 +720,26 @@ private fun ReminderRow(
     onEditTime: () -> Unit,
 ) {
     val haptics = rememberAppHaptics()
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .clickable(onClick = onEditTime)
+            .padding(vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                config.kind.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(Modifier.height(4.dp))
-            AssistChip(
-                onClick = onEditTime,
-                label = { Text(config.timeLabel()) },
-            )
-        }
+        Text(
+            config.kind.title.uppercase(),
+            style = AppText.eyebrow,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            config.timeLabel(),
+            style = AppText.numberL,
+            color = if (config.enabled) scheme.onSurface else scheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(Spacing.m))
         Switch(
             checked = config.enabled,
             onCheckedChange = {
@@ -666,8 +750,6 @@ private fun ReminderRow(
     }
 }
 
-// ───────────────────────── Page 5: AI autofill ───────────────────
-
 /**
  * Optional, and off unless the user turns it on. Mirrors the AI section in
  * Settings rather than adding a second way to configure the same thing — the
@@ -677,53 +759,46 @@ private fun ReminderRow(
  * Nothing is written unless the toggle is on; see OnboardingViewModel.finish.
  */
 @Composable
-private fun AiPage(state: OnboardingUiState, vm: OnboardingViewModel) {
+private fun AiSection(state: OnboardingUiState, vm: OnboardingViewModel) {
     val haptics = rememberAppHaptics()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-    ) {
-        PageHeader(title = "AI nutrition autofill", optional = true)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Adding a food by hand means typing in every nutrient. An AI can fill them " +
-                "from the name instead. You bring your own API key, only the food name is " +
-                "sent, and you can set this up later in Settings.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Text(
+        "Adding a food by hand means typing in every nutrient. An AI can fill them " +
+            "from the name instead. You bring your own API key, only the food name is " +
+            "sent, and you can set this up later in Settings.",
+        style = AppText.bodyS,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
-        Spacer(Modifier.height(20.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Enable AI autofill",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    "Needs an API key from your chosen provider.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = state.aiEnabled,
-                onCheckedChange = {
-                    haptics.light()
-                    vm.setAiEnabled(it)
-                },
+    Spacer(Modifier.height(Spacing.xxl))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Enable AI autofill".uppercase(),
+                style = AppText.eyebrow,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                "Needs an API key from your chosen provider.",
+                style = AppText.bodyS,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Switch(
+            checked = state.aiEnabled,
+            onCheckedChange = {
+                haptics.light()
+                vm.setAiEnabled(it)
+            },
+        )
+    }
 
-        if (state.aiEnabled) {
-            Spacer(Modifier.height(20.dp))
-            SectionLabel("Provider")
+    if (state.aiEnabled) {
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Provider") {
             ExclusiveButtonGroup(
                 options = AiProvider.entries,
                 selected = state.aiProvider,
@@ -731,9 +806,10 @@ private fun AiPage(state: OnboardingUiState, vm: OnboardingViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 label = { it.displayName },
             )
+        }
 
-            Spacer(Modifier.height(16.dp))
-            SectionLabel("Model")
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Model") {
             ExclusiveButtonGroup(
                 options = state.aiProvider.models,
                 selected = state.aiModel,
@@ -742,47 +818,114 @@ private fun AiPage(state: OnboardingUiState, vm: OnboardingViewModel) {
                 fillWidth = false,
                 label = { it.label },
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(
                 "${state.aiProvider.defaultModel.label} is the cheapest and accurate enough " +
                     "for most foods — leave it selected to save money.",
-                style = MaterialTheme.typography.bodySmall,
+                style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("API key") {
             OutlinedTextField(
                 value = state.aiApiKey,
                 onValueChange = vm::setAiApiKey,
-                label = { Text("${state.aiProvider.displayName} API key") },
+                label = { Text("${state.aiProvider.displayName} API key", style = AppText.body) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             Text(
                 "Your key stays on this device and is kept out of cloud backup.",
-                style = MaterialTheme.typography.bodySmall,
+                style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val uriHandler = LocalUriHandler.current
             Text(
                 "Get a ${state.aiProvider.displayName} API key at ${state.aiProvider.keyHint} ↗",
-                style = MaterialTheme.typography.bodySmall,
+                style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.primary,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier
-                    .padding(top = 2.dp)
+                    .padding(top = Spacing.xs)
                     .clickable { uriHandler.openUri(state.aiProvider.keyUrl) },
             )
         }
-
-        Spacer(Modifier.height(24.dp))
     }
 }
 
-// ───────────────────────── Bottom nav + dots ─────────────────────
+// ───────────────────────── Page chrome ───────────────────────────
 
+/**
+ * Step eyebrow, title, one-line subtitle, a rule, and a scrolling body.
+ *
+ * Every page had its own copy of this, with its own padding and its own
+ * heading style. Three pages is few enough that the duplication was survivable
+ * and many enough that it had already drifted — `PageHeader` on two pages and a
+ * bare `Text` on the other two.
+ *
+ * **The dots are now words.** `STEP 1 OF 3` is the same fact three circles were
+ * encoding, in the uppercase tracked micro-label this direction is built on,
+ * and it answers the question the dots only gestured at — a dot row tells you
+ * *where* you are but never *how many more*, which on a first run is the thing
+ * someone wants to know before they start typing. [optional] prints the page's
+ * standing in the same line rather than as a filled badge beside the title:
+ * rule 3 keeps the accent for data, and "this page can be skipped" is not data.
+ *
+ * The rule under the subtitle is the page's own head rule — the same device
+ * every [Section] below it uses, at the top of the hierarchy rather than inside
+ * it.
+ */
+@Composable
+private fun PageScaffold(
+    step: Int,
+    title: String,
+    subtitle: String,
+    optional: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.gutter, vertical = Spacing.s),
+    ) {
+        Text(
+            if (optional) "Step $step of $PageCount · Optional".uppercase()
+            else "Step $step of $PageCount".uppercase(),
+            style = AppText.eyebrow,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Spacing.s))
+        Text(
+            title,
+            style = AppText.numberL,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            subtitle,
+            style = AppText.body,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Spacing.l))
+        AppDivider()
+        Spacer(Modifier.height(Spacing.xxl))
+        content()
+        Spacer(Modifier.height(Spacing.xxl))
+    }
+}
+
+/**
+ * Back on the left, the one forward action on the right.
+ *
+ * The forward button is the standard 48dp [AppButton] — §2 deleted the 56dp
+ * hero height, and with it the trailing arrow icon, which [AppButton] has no
+ * slot for and which said nothing the word "Continue" did not.
+ */
 @Composable
 private fun BottomNav(
     pageIndex: Int,
@@ -797,52 +940,28 @@ private fun BottomNav(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (pageIndex > 0) {
-            TextButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Back")
-            }
+            AppTextButton(text = "Back", onClick = onBack)
         } else {
             Spacer(Modifier.width(1.dp))
         }
         Spacer(Modifier.weight(1f))
-        Button(
+        AppButton(
+            text = if (isLast) "Get started" else "Continue",
             onClick = onContinue,
-            modifier = Modifier.height(48.dp),
-            shape = RoundedCornerShape(24.dp),
-        ) {
-            Text(if (isLast) "Get started" else "Continue")
-            Spacer(Modifier.width(6.dp))
-            Icon(Icons.Default.ArrowForward, contentDescription = null)
-        }
-    }
-}
-
-@Composable
-private fun PageDots(count: Int, selected: Int, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(count) { i ->
-            val isActive = i == selected
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(if (isActive) 10.dp else 8.dp)
-                    .background(
-                        color = if (isActive) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outlineVariant,
-                        shape = CircleShape,
-                    ),
-            )
-        }
+        )
     }
 }
 
 // ───────────────────────── Shared row helpers ───────────────────
 
+/**
+ * A labelled value with a stepper, over the slider that changes it.
+ *
+ * The label is an eyebrow rather than body text for the same reason every other
+ * label in the app is (rule 2): the stepper beside it is showing a number, and
+ * two pieces of 15sp type on one line make the reader decide which of them is
+ * the answer. Uppercase and small, it stops competing.
+ */
 @Composable
 private fun StepperSliderRow(
     label: String,
@@ -860,8 +979,9 @@ private fun StepperSliderRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                label,
-                style = MaterialTheme.typography.titleSmall,
+                label.uppercase(),
+                style = AppText.eyebrow,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
             NumberStepper(
@@ -883,155 +1003,117 @@ private fun StepperSliderRow(
 
 /**
  * First-screen reassurance: the app is local-first and only touches the network
- * for barcode lookups. Kept filled for hero emphasis (same pattern as the home
- * GoalProgressBanner). Corners normalized to a symmetric 20dp shape so it
- * lines up with the rest of the outlined-card layout language.
+ * for barcode lookups.
+ *
+ * **The copy is kept word for word** (§8) — this is a privacy claim, and the
+ * restyle has no standing to reword one. Only the container changed, and this
+ * time it changed to nothing: the filled `primaryContainer` hero became an
+ * outlined card in the first pass, which was still a box, and a box is what
+ * made two sentences of reassurance read as a notice the user is expected to
+ * dismiss.
+ *
+ * What it is now is the house shape with a headline where the eyebrow usually
+ * goes — the two lines of the tagline are the standing head, the hairline under
+ * them is the rule, and the two claims are the content. That is rule 1's
+ * anatomy exactly; the head is simply allowed to be a sentence here, because
+ * the sentence *is* the point of the block.
+ *
+ * The two tinted icon discs are gone with the card (rule 3: the accent is for
+ * data, not for decoration), and the headline drops to `onSurface` for the same
+ * reason — on black, 28sp of type is emphasis enough without colouring it.
  */
 @Composable
 private fun PrivacyTagline() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "Yours alone.\nOn this device.",
+            style = AppText.numberL,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(Spacing.m))
+        AppDivider()
+        Spacer(Modifier.height(Spacing.l))
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
             Text(
-                "Yours alone.\nOn this device.",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                "Nothing is uploaded. Your profile, logs, and weight history stay in this app.",
+                style = AppText.bodyS,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            PrivacyLine(
-                icon = Icons.Default.CloudOff,
-                text = "Nothing is uploaded. Your profile, logs, and weight history stay in this app.",
-            )
-            PrivacyLine(
-                icon = Icons.Default.QrCodeScanner,
-                text = "The internet is used only when you scan a barcode — to fetch the product from OpenFoodFacts / USDA.",
+            Text(
+                "The internet is used only when you scan a barcode — to fetch the product from OpenFoodFacts / USDA.",
+                style = AppText.bodyS,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
-}
-
-@Composable
-private fun PrivacyLine(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(34.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-        Spacer(Modifier.width(14.dp))
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun PageHeader(title: String, optional: Boolean = false) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        if (optional) {
-            Spacer(Modifier.width(10.dp))
-            OptionalBadge()
-        }
-    }
-}
-
-@Composable
-private fun OptionalBadge() {
-    Surface(
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        shape = RoundedCornerShape(50),
-    ) {
-        Text(
-            "Optional",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-        )
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(bottom = 6.dp),
-    )
 }
 
 /**
- * Full-width selectable row, outlined-card style. Unselected → 1dp
- * `outlineVariant` border. Selected → 1.5dp `primary` border + trailing
- * check + primary-toned label so the choice reads at a glance without
- * needing a filled background fight.
+ * Full-width selectable row: the label, and a check when it is the chosen one.
+ *
+ * **It is no longer a box.** Four activity levels drawn as four outlined
+ * rounded rectangles, inside a card, inside a page, is three nested boundaries
+ * for one question — and the selected state was a *fourth* line, a 1.5dp
+ * primary border, which on black reads as a lit-up button rather than as a
+ * chosen option. House rule 1 again: these rows live inside a [Section] that
+ * already draws a rule under its head, and the caller divides them with
+ * hairlines, so the box was drawing a boundary the list already had.
+ *
+ * Selection is now what rule 3 asks for in place of a filled or outlined shape:
+ * an accent-coloured label at semibold, and the check that was always the real
+ * signal. The row keeps its 48dp minimum, because the tap target is the row
+ * whether or not anything is drawn around it.
  */
 @Composable
 private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    val borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-    val borderWidth = if (selected) 1.5.dp else 1.dp
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .heightIn(min = Sizes.touchTarget)
+            .padding(vertical = Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.bodyLarge,
+            style = AppText.body,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            color = if (selected) colors.primary else colors.onSurface,
             modifier = Modifier.weight(1f),
         )
         if (selected) {
             Icon(
                 Icons.Default.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = colors.primary,
                 modifier = Modifier.size(20.dp),
             )
         }
     }
 }
 
+/**
+ * One computed target: eyebrow left, number right, like every other row in the
+ * app (rule 2). The label was `body` and the number `numberM`, which is two
+ * sizes of normal text arguing about which one matters; at eyebrow weight the
+ * label stops competing and the figure wins without being made bigger.
+ */
 @Composable
-private fun TargetRow(label: String, value: String) {
+private fun TargetRow(label: String, value: Double, unit: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            label.uppercase(),
+            style = AppText.eyebrow,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        ValueText(value, unit)
     }
 }
 

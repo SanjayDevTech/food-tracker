@@ -10,7 +10,6 @@ import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.WaterLogEntity
 import com.example.foodtracker.data.db.WeightLogEntity
-import com.example.foodtracker.ui.theme.ThemeMode
 import kotlinx.serialization.Serializable
 
 /**
@@ -54,7 +53,13 @@ data class ProfileSnapshot(
     val goal: String = Goal.Maintain.name,
     val weightChangeRate: String = WeightChangeRate.Standard.name,
     val hapticsEnabled: Boolean = true,
-    val themeMode: String = ThemeMode.System.name,
+    /**
+     * Dead since the app went dark-only, but still written and still read back
+     * into nothing. The field stays because the backup format is explicitly out
+     * of scope for the UI rewrite: dropping it would make every new export
+     * unreadable by an older build for no benefit.
+     */
+    val themeMode: String = LEGACY_THEME_MODE,
     val goalWeightKg: Double? = null,
     /** Added after SCHEMA_VERSION 2. Defaulted, so older payloads still load. */
     val trainingMix: Double? = null,
@@ -73,7 +78,10 @@ data class ProfileSnapshot(
     )
 
     companion object {
-        fun from(profile: UserProfile, haptics: Boolean, theme: ThemeMode) = ProfileSnapshot(
+        /** Kept for the dead [themeMode] field — see its docstring. */
+        const val LEGACY_THEME_MODE = "System"
+
+        fun from(profile: UserProfile, haptics: Boolean) = ProfileSnapshot(
             name = profile.name,
             ageYears = profile.ageYears,
             sex = profile.sex.name,
@@ -83,7 +91,6 @@ data class ProfileSnapshot(
             goal = profile.goal.name,
             weightChangeRate = profile.weightChangeRate.name,
             hapticsEnabled = haptics,
-            themeMode = theme.name,
             goalWeightKg = profile.goalWeightKg,
             trainingMix = profile.trainingMix,
         )

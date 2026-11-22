@@ -8,7 +8,6 @@ import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.data.UserProfile
-import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.util.DateUtil
 import kotlinx.coroutines.flow.Flow
@@ -43,7 +42,6 @@ data class WidgetSnapshot(
     val profile: UserProfile,
     val goals: NutrientGoals,
     val consumed: Nutrients,
-    val recent: List<FoodEntity>,
 ) {
     val caloriesConsumed: Double get() = consumed.calories
     val caloriesLeft: Double get() = goals.calories - caloriesConsumed
@@ -70,23 +68,20 @@ object WidgetData {
             app.profileStore.isOnboarded,
             app.profileStore.profile,
             app.repository.observeLogForDay(today),
-            app.repository.observeRecentFoods(limit = 12),
-        ) { onboarded, profile, logs, recent ->
+        ) { onboarded, profile, logs ->
             val consumed = logs.fold(Nutrients.Zero) { acc, row -> acc + row.nutrients() }
             // Debug-only: this line carries the user's intake, and there is no
             // reason for it to reach logcat on a shipped build.
             if (BuildConfig.DEBUG) Log.d(
                 "WidgetData",
                 "flow emit today=$today onboarded=$onboarded logs=${logs.size} " +
-                    "consumed.kcal=${consumed.calories.toInt()} " +
-                    "recent=${recent.size}",
+                    "consumed.kcal=${consumed.calories.toInt()}",
             )
             WidgetSnapshot(
                 onboarded = onboarded,
                 profile = profile,
                 goals = GoalCalculator.goalsFor(profile),
                 consumed = consumed,
-                recent = recent,
             )
         }.flowOn(Dispatchers.IO)
     }

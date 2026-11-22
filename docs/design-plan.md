@@ -1,5 +1,28 @@
 # Design plan — Food Tracker UI/UX rewrite
 
+> **Superseded in part — read `docs/ui-house-rules.md` first.**
+>
+> All eight phases below shipped. The result still read as the old app, because
+> §1's thesis describes a look the app *already had*: a black canvas, hairline
+> outlined cards and a mint accent. §0's faults were real but they were **code**
+> faults — six card implementations, three meters, unthemed hex — and collapsing
+> six cards into one makes the screen look like whichever one you standardised
+> on. An editorial pass followed, taking the layout to what reference shot 4
+> actually specifies. Where this document and the house rules disagree, the
+> house rules win. Known conflicts:
+>
+> | § | Says | Now |
+> |---|---|---|
+> | §3, §4.1 | `CalorieHero` keeps a ring | No ring. Shot 4 has none — rings came from shots 1/5/9, the rejected Direction A. An oversized numeral over a thin rule. |
+> | §4.1, §4.2, §4.3 | Screens are stacks of bordered cards | No cards. A standing head with a rule under it; content open to the gutter. |
+> | §4.2 | Chart insight is a sentence in body text | A number with an eyebrow label. |
+> | §4.2 | Trailing action sits in the card header | The head's trailing slot holds the section's figure; actions moved to the foot. |
+> | §4.3 | `You` rows use shot 9's icon-circle anatomy | No discs, no icons — shot 9 is Direction A. Label / value / chevron. |
+> | §4.1, §4.3 | Emoji on meal rows, stat tiles, settings rows | Gone. The food picker's per-category emoji stay (§8). |
+> | §1, §2 | Selected chips and segments fill with `primaryContainer` | The accent means "on track" and belongs to data. Selection is a rule or a label at full strength. |
+> | §5 | All-nutrients is a full-height bottom sheet | A page. A sheet that raises another sheet has no back convention; leaf pages hide the bar, so the objection there doesn't apply. |
+> | §4.7 | "28 nutrients" | 29. `AllNutrientFields` has 30 entries; minus calories that is 29. |
+
 ## 0. Preliminaries
 
 ### Reference shots — seen 2026-11-22

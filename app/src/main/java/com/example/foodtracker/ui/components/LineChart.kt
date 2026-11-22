@@ -6,23 +6,66 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Spacing
 
 data class LinePoint(val label: String, val value: Double)
 
+/**
+ * Room under the plot for one line of axis labels.
+ *
+ * `bodyS` has an 18sp line box and the labels are drawn [Spacing.xs] below the
+ * baseline, so this is exactly what that costs. It was a bare 22dp chosen
+ * against a 10sp label that no longer exists.
+ */
+/** The plot itself, above [AXIS_HEIGHT]. */
+private val CHART_HEIGHT = 180.dp
+
+private val AXIS_HEIGHT = 22.dp
+
+/**
+ * A line over time, with an optional dashed goal — design-plan §2.
+ *
+ * **The drawing model is deliberately unchanged**: auto-scaled bounds expanded
+ * to keep the reference line in view, 10% headroom so the path never grazes an
+ * edge, a three-step grid, and sparse x-labels. That was all correct; §2 asked
+ * for three cosmetic changes and nothing else.
+ *
+ * Two of them are here:
+ *
+ *  - **A 12%→0% gradient under the path.** On `#000000` a 3dp stroke on an
+ *    empty field has nothing to sit on, and a run of five charts down Trends
+ *    reads as five floating threads. The wash gives each line a body without
+ *    adding a fill: it is the line's own hue at 12% at the top of the plot,
+ *    gone by the baseline, so it never competes with the stroke and never turns
+ *    the card into a filled surface, which §1 forbids.
+ *  - **Dot radius 3.5dp → 3dp.** At 3.5 the dots on a 30-day series touched
+ *    each other and the line read as a dotted chain.
+ *
+ * The third — theming the goal line — was already done: it is
+ * `colorScheme.tertiary`, the one colour in the app that means "a number you
+ * set yourself".
+ *
+ * **The editorial pass changed the labels only.** Both the x-axis labels and
+ * the goal caption were a hand-rolled `TextStyle(fontSize = 10.sp)` — the one
+ * piece of type in the app that was on no scale at all, two sizes below
+ * anything else on the page and the reason the charts read as diagrams rather
+ * than as part of the document. They are [AppText.bodyS] now, which is what
+ * `MacroStackedBars` already used for its axis and what house rule 2 calls a
+ * caption. Nothing about the plotted series moved.
+ */
 @Composable
 fun LineChart(
     points: List<LinePoint>,
@@ -45,8 +88,13 @@ fun LineChart(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
-                .padding(top = 8.dp, bottom = 22.dp, start = 8.dp, end = 8.dp),
+                .height(CHART_HEIGHT)
+                .padding(
+                    top = Spacing.s,
+                    bottom = AXIS_HEIGHT,
+                    start = Spacing.s,
+                    end = Spacing.s,
+                ),
         ) {
             if (points.isEmpty()) return@Canvas
             val values = points.map { it.value }
@@ -94,11 +142,11 @@ fun LineChart(
                 if (referenceLabel != null) {
                     val layout = measurer.measure(
                         AnnotatedString(referenceLabel),
-                        style = TextStyle(fontSize = 10.sp, color = referenceColor),
+                        style = AppText.bodyS.copy(color = referenceColor),
                     )
                     // Right-align so it doesn't collide with the leftmost data point.
-                    val labelX = (w - layout.size.width - 4.dp.toPx()).coerceAtLeast(0f)
-                    val labelY = (refY - layout.size.height - 2.dp.toPx()).coerceAtLeast(0f)
+                    val labelX = (w - layout.size.width - Spacing.xs.toPx()).coerceAtLeast(0f)
+                    val labelY = (refY - layout.size.height - Spacing.xs.toPx()).coerceAtLeast(0f)
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(labelX, labelY),
@@ -112,6 +160,26 @@ fun LineChart(
                 val y = toPx(point.value)
                 if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
+
+            // The wash goes down first so the stroke stays the sharpest thing
+            // on the chart. It is the same path, closed down to the baseline.
+            if (points.size > 1) {
+                val fill = Path().apply {
+                    addPath(path)
+                    lineTo(points.lastIndex * stepX, h)
+                    lineTo(0f, h)
+                    close()
+                }
+                drawPath(
+                    path = fill,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(lineColor.copy(alpha = 0.12f), Color.Transparent),
+                        startY = 0f,
+                        endY = h,
+                    ),
+                )
+            }
+
             drawPath(
                 path = path,
                 color = lineColor,
@@ -122,17 +190,17 @@ fun LineChart(
             points.forEachIndexed { index, point ->
                 val x = index * stepX
                 val y = toPx(point.value)
-                drawCircle(color = lineColor, radius = 3.5.dp.toPx(), center = Offset(x, y))
+                drawCircle(color = lineColor, radius = 3.dp.toPx(), center = Offset(x, y))
 
                 if (index == 0 || index == points.lastIndex || (points.size > 6 && index % (points.size / 4) == 0)) {
                     val layout = measurer.measure(
                         AnnotatedString(point.label),
-                        style = TextStyle(fontSize = 10.sp, color = onSurfaceVariant),
+                        style = AppText.bodyS.copy(color = onSurfaceVariant),
                     )
                     val labelX = (x - layout.size.width / 2f).coerceIn(0f, w - layout.size.width)
                     drawText(
                         textLayoutResult = layout,
-                        topLeft = Offset(labelX, h + 4.dp.toPx()),
+                        topLeft = Offset(labelX, h + Spacing.xs.toPx()),
                     )
                 }
             }

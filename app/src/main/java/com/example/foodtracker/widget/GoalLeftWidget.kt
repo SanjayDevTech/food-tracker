@@ -35,7 +35,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Goal-left widget — M3 Expressive. The card itself is the progress bar: the
+ * Goal-left widget. The card itself is the progress bar: the
  * left portion (% consumed) is filled with the bright `primary` tint, the
  * right portion stays `primaryContainer`. Reads like a battery filling up.
  *

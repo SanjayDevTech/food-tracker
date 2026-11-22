@@ -1,144 +1,75 @@
 package com.example.foodtracker.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-
-private val LightColors = lightColorScheme(
-    primary = MintPrimaryDeep,
-    onPrimary = Color.White,
-    primaryContainer = MintPrimaryContainerLight,
-    onPrimaryContainer = MintOnPrimaryContainerLight,
-    secondary = MintSecondaryDeep,
-    onSecondary = Color.White,
-    secondaryContainer = MintSecondaryContainerLight,
-    onSecondaryContainer = MintOnSecondaryContainerLight,
-    tertiary = GoldTertiaryDeep,
-    onTertiary = Color.White,
-    tertiaryContainer = MintPrimaryContainerLight,
-    onTertiaryContainer = MintOnPrimaryContainerLight,
-    error = ErrorRed,
-    errorContainer = ErrorContainer,
-    background = SurfaceLight,
-    onBackground = OnSurfaceLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
-    outline = OutlineLight,
-)
-
-// AMOLED-optimised dark scheme. Mint-teal accents on pitch-black backgrounds —
-// the surfaceContainer family supplies a subtle cool lift for cards without
-// burning OLED pixels.
-private val AmoledColors = darkColorScheme(
-    primary = MintPrimary,
-    onPrimary = MintOnPrimary,
-    primaryContainer = MintPrimaryContainer,
-    onPrimaryContainer = MintOnPrimaryContainer,
-    secondary = MintSecondary,
-    onSecondary = MintOnSecondary,
-    secondaryContainer = MintSecondaryContainer,
-    onSecondaryContainer = MintOnSecondaryContainer,
-    tertiary = GoldTertiary,
-    onTertiary = GoldOnTertiary,
-    tertiaryContainer = GoldTertiaryContainer,
-    onTertiaryContainer = GoldOnTertiaryContainer,
-    error = ErrorRedBright,
-    onError = Color(0xFF4F0017),
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = OnErrorContainerDark,
-
-    background = AmoledBlack,
-    onBackground = AmoledOnSurface,
-    surface = AmoledBlack,
-    onSurface = AmoledOnSurface,
-    surfaceVariant = AmoledSurfaceVariant,
-    onSurfaceVariant = AmoledOnSurfaceVariant,
-    surfaceTint = MintPrimary,
-
-    surfaceBright = AmoledSurfaceContainerHighest,
-    surfaceDim = AmoledBlack,
-    surfaceContainerLowest = AmoledSurfaceContainerLowest,
-    surfaceContainerLow = AmoledSurfaceContainerLow,
-    surfaceContainer = AmoledSurfaceContainer,
-    surfaceContainerHigh = AmoledSurfaceContainerHigh,
-    surfaceContainerHighest = AmoledSurfaceContainerHighest,
-
-    outline = AmoledOutline,
-    outlineVariant = AmoledOutlineVariant,
-
-    inverseSurface = AmoledOnSurface,
-    inverseOnSurface = AmoledBlack,
-    inversePrimary = MintPrimaryDeep,
-
-    scrim = Color(0xFF000000),
-)
 
 /**
- * Make a wallpaper-derived dynamic scheme AMOLED-safe without erasing the
- * wallpaper hue from the cards. Material You's dynamic dark scheme already
- * gives us darker-than-default container tones tinted to the user's wallpaper
- * (e.g. mauve cards if the wallpaper is purple). We keep those tones and only
- * drop the page background to true `#000000` so OLED pixels actually turn off.
+ * The app theme — design-plan §1, phase 1.
  *
- * What we override:
- *   - `background` / `surface`             → pure black (the canvas)
- *   - `surfaceContainerLowest` / `surfaceDim` → pure black (the lowest tier)
+ * One scheme, always dark, no arguments. What used to be here:
  *
- * What we deliberately keep from the dynamic scheme:
- *   - `surfaceContainerLow / Container / High / Highest` — these are the
- *     wallpaper-tinted lifts that make cards visible. Overriding them was the
- *     original bug; it forced a fixed mint tint regardless of wallpaper.
- *   - `surfaceBright` — used by elevated chrome; comes hue-coordinated.
- *   - `outline` / `outlineVariant` / `surfaceVariant` — already calibrated.
+ *  - `MaterialExpressiveTheme`, which installed the expressive motion scheme
+ *    (spring overshoot, shape-morph on press). Removed with the rest of
+ *    Expressive; the plan's motion table bans both.
+ *  - A light scheme and an `isSystemInDarkTheme()` branch. Decision 11 dropped
+ *    light mode: one palette to author, one to verify, and every later phase
+ *    gets checked once instead of twice.
+ *  - `dynamicLight/DarkColorScheme` plus `withAmoledSurfaces()`, which existed
+ *    to make wallpaper-derived colour OLED-safe. A wallpaper cannot be held to
+ *    the contrast ratios §1 is built on, so dynamic colour is gone.
+ *
+ * `ColorPalette` and `ThemeMode` went with them. Their DataStore keys are left
+ * in place and simply unread — no migration, and a downgrade still finds them.
  */
-private fun ColorScheme.withAmoledSurfaces(): ColorScheme = copy(
-    background = AmoledBlack,
-    surface = AmoledBlack,
-    surfaceContainerLowest = AmoledBlack,
-    surfaceDim = AmoledBlack,
+private val AppColors = darkColorScheme(
+    primary = AppPrimary,
+    onPrimary = AppOnPrimary,
+    primaryContainer = AppPrimaryContainer,
+    onPrimaryContainer = AppOnPrimaryContainer,
+    secondary = AppPrimary,
+    onSecondary = AppOnPrimary,
+    secondaryContainer = AppPrimaryContainer,
+    onSecondaryContainer = AppOnPrimaryContainer,
+    tertiary = AppTertiary,
+    onTertiary = AppOnTertiary,
+    tertiaryContainer = AppTertiaryContainer,
+    onTertiaryContainer = AppOnTertiaryContainer,
+    error = AppError,
+    onError = AppOnError,
+    errorContainer = AppErrorContainer,
+    onErrorContainer = AppOnErrorContainer,
+
+    background = AppBlack,
+    onBackground = AppOnSurface,
+    surface = AppBlack,
+    onSurface = AppOnSurface,
+    surfaceVariant = AppSurfaceHigh,
+    onSurfaceVariant = AppOnSurfaceVariant,
+    surfaceTint = AppPrimary,
+
+    surfaceBright = AppSurfaceHighest,
+    surfaceDim = AppBlack,
+    surfaceContainerLowest = AppBlack,
+    surfaceContainerLow = AppSurfaceLow,
+    surfaceContainer = AppSurface,
+    surfaceContainerHigh = AppSurfaceHigh,
+    surfaceContainerHighest = AppSurfaceHighest,
+
+    outline = AppOutline,
+    outlineVariant = AppOutlineVariant,
+
+    inverseSurface = AppOnSurface,
+    inverseOnSurface = AppBlack,
+    inversePrimary = AppPrimaryDeep,
+
+    scrim = AppBlack,
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun FoodTrackerTheme(
-    themeMode: ThemeMode = ThemeMode.System,
-    palette: ColorPalette = ColorPalette.Normal,
-    content: @Composable () -> Unit,
-) {
-    val context = LocalContext.current
-    val supportsDynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val systemDark = isSystemInDarkTheme()
-
-    val darkTheme = when (themeMode) {
-        ThemeMode.System -> systemDark
-        ThemeMode.Light -> false
-        ThemeMode.Dark -> true
-    }
-    val useDynamic = palette == ColorPalette.Dynamic && supportsDynamic
-
-    val colorScheme = when {
-        darkTheme && useDynamic -> dynamicDarkColorScheme(context).withAmoledSurfaces()
-        darkTheme -> AmoledColors
-        useDynamic -> dynamicLightColorScheme(context)
-        else -> LightColors
-    }
-
-    // M3 Expressive: installs the expressive MotionScheme + shape/typography
-    // tokens. Components throughout the app pick these up via composition
-    // locals — chip groups, sliders, motion specs feel snappier and rounder.
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
+fun AppTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = AppColors,
         typography = Typography,
         content = content,
     )

@@ -3,12 +3,17 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Brand mint family — kept in sync with ui/theme/Color.kt -->
-    <color name="mint_primary">#FF5FE0CC</color>
-    <color name="mint_primary_container">#FF15403A</color>
+    <!-- Brand accent — kept in sync with ui/theme/Color.kt. These two feed the
+         adaptive launcher icon (ic_launcher_foreground / _background), so the
+         icon moves with the palette instead of stranding the old mint-teal on
+         the home screen. Deep green, per design-plan open question 9. -->
+    <color name="mint_primary">#FF63D2B0</color>
+    <color name="mint_primary_container">#FF123A2F</color>
 
-    <!-- Window + splash background. We use the same mint container in both
-         light and dark variants so launch never flashes white. -->
-    <color name="launcher_background">#FF15403A</color>
-    <color name="splash_background">#FF15403A</color>
+    <!-- Window + splash background. Black, because the app's canvas is black:
+         anything else is a flash of a colour the app does not contain. There is
+         no values-night override any more — the app is dark-only, so one table
+         is correct in both system modes. -->
+    <color name="launcher_background">#FF000000</color>
+    <color name="splash_background">#FF000000</color>
 </resources>

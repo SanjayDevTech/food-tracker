@@ -1,6 +1,5 @@
 package com.example.foodtracker.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,8 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.example.foodtracker.ui.components.atoms.AppDivider
+import com.example.foodtracker.ui.components.atoms.Section
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Spacing
 
 /** One line of a sub-breakdown: a component name and its formatted amount. */
 data class NutrientSubRow(val label: String, val value: String)
@@ -24,7 +27,16 @@ data class NutrientSubRow(val label: String, val value: String)
  * tap target. These are detail you open when curious, not numbers to hit. They
  * sit behind a tap rather than beside the bar on the home screen, so the day's
  * scoreboard stays the same length for someone who never looks at them.
- * Indentation and [labelMedium] on [onSurfaceVariant] is the whole design.
+ *
+ * **Indentation is now a standing head.** The block used to be pushed 12dp
+ * right so it would read as subordinate to the total above it, which is the
+ * trick a page reaches for when it has nothing else to show hierarchy with; it
+ * also put these rows on a left margin no other line in the sheet shares. A
+ * head with a rule under it ([Section], house rule 1) says the same thing in
+ * the sheet's own vocabulary, says *what* the rows are while it is at it, and
+ * lets them sit on the one margin — and each row then reads label-left /
+ * number-right like every other row in the app (rule 2), with the label as an
+ * eyebrow so the figure is the louder half of the line.
  *
  * [note] carries the honest caveat about coverage. A day's sub-total is only
  * summed from the foods that happen to have a breakdown, so without it the
@@ -37,38 +49,39 @@ fun NutrientSubRows(
     modifier: Modifier = Modifier,
 ) {
     if (rows.isEmpty()) return
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            // Indented under the sheet's heading, with air above so it reads
-            // as its own block rather than a second line of the total.
-            .padding(start = 14.dp, top = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
+    Column(modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(Spacing.xxl))
+        Section("Breakdown") {
+            rows.forEachIndexed { index, row ->
+                if (index > 0) AppDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = Spacing.s),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        row.label.uppercase(),
+                        style = AppText.eyebrow,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        row.value,
+                        style = AppText.numberM,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+            if (note != null) {
+                AppDivider()
                 Text(
-                    row.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    row.value,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    note,
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = Spacing.s),
                 )
             }
-        }
-        if (note != null) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                note,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
         }
     }
 }

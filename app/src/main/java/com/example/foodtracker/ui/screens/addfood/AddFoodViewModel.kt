@@ -219,53 +219,6 @@ class AddFoodViewModel(
         _state.update { it.copy(barcode = barcode, category = FoodCategory.Packaged) }
     }
 
-    fun seedFromBarcodeFood(food: FoodEntity) {
-        _state.update {
-            AddFoodFormState(
-                name = food.name,
-                brand = food.brand ?: "",
-                category = FoodCategory.fromName(food.category),
-                servingGrams = food.servingGrams.takeIf { it > 0 }?.toString() ?: "100",
-                servingLabel = food.servingLabel,
-                servingVariants = food.servingVariants,
-                calories = food.calories.formatField(),
-                carbs = food.carbs.formatField(),
-                sugar = food.sugar.formatField(),
-                fiber = food.fiber.formatField(),
-                protein = food.protein.formatField(),
-                fat = food.fat.formatField(),
-                saturatedFat = food.saturatedFat.formatField(),
-                omega3 = food.omega3.formatField(),
-                sodium = food.sodium.formatField(),
-                cholesterol = food.cholesterol.formatField(),
-                calcium = food.calcium.formatField(),
-                iron = food.iron.formatField(),
-                magnesium = food.magnesium.formatField(),
-                potassium = food.potassium.formatField(),
-                zinc = food.zinc.formatField(),
-                phosphorus = food.phosphorus.formatField(),
-                selenium = food.selenium.formatField(),
-                copper = food.copper.formatField(),
-                manganese = food.manganese.formatField(),
-                vitaminA = food.vitaminA.formatField(),
-                vitaminC = food.vitaminC.formatField(),
-                vitaminD = food.vitaminD.formatField(),
-                vitaminE = food.vitaminE.formatField(),
-                vitaminK = food.vitaminK.formatField(),
-                vitaminB12 = food.vitaminB12.formatField(),
-                folate = food.folate.formatField(),
-                vitaminB1 = food.vitaminB1.formatField(),
-                vitaminB2 = food.vitaminB2.formatField(),
-                vitaminB3 = food.vitaminB3.formatField(),
-                vitaminB6 = food.vitaminB6.formatField(),
-                solubleFiber = food.solubleFiber.formatField(),
-                insolubleFiber = food.insolubleFiber.formatField(),
-                essentialAminoAcids = food.essentialAminoAcids.formatField(),
-                leucine = food.leucine.formatField(),
-            )
-        }
-    }
-
     fun save() {
         val s = _state.value
         if (s.name.isBlank()) return

@@ -22,7 +22,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class LogTab { Search, Favourites, Recent, Frequent, Custom }
+/**
+ * Which set of foods the picker is showing — design-plan §4.4, decision 2.
+ *
+ * **Four tabs, not five.** `Recent` and `Frequent` merged into [Often]: on a
+ * repetitive diet the two lists are ~80% identical, so they were two tabs
+ * showing the same dozen foods in a slightly different order, and the user had
+ * to guess which order they wanted before they could look. `Search` is gone
+ * too — it was a tab *and* a field, which meant the field only filtered that
+ * one tab and searching your own favourites was impossible. One mental model
+ * now: the tab picks the set, the field narrows it.
+ */
+enum class LogTab { Often, Favourites, All, Custom }
 
 /** Sub-filter inside the Custom tab — choose between active and soft-deleted rows. */
 enum class CustomFilter { Visible, Hidden }
@@ -31,11 +42,10 @@ enum class OnlineSearchPhase { Idle, Loading, Empty, Error }
 
 data class LogUiState(
     val query: String = "",
-    val tab: LogTab = LogTab.Search,
-    val results: List<FoodEntity> = emptyList(),
+    val tab: LogTab = LogTab.Often,
+    val often: List<FoodEntity> = emptyList(),
     val favourites: List<FoodEntity> = emptyList(),
-    val recent: List<FoodEntity> = emptyList(),
-    val frequent: List<FoodEntity> = emptyList(),
+    val all: List<FoodEntity> = emptyList(),
     val customVisible: List<FoodEntity> = emptyList(),
     val customHidden: List<FoodEntity> = emptyList(),
     val customFilter: CustomFilter = CustomFilter.Visible,
@@ -47,7 +57,34 @@ data class LogUiState(
     val selectedStyle: StyleOption? = null,
     val onlineResults: List<OnlineSearchResult> = emptyList(),
     val onlinePhase: OnlineSearchPhase = OnlineSearchPhase.Idle,
-)
+) {
+    /** The list the active tab is showing, so the screen does not re-derive it. */
+    val visibleList: List<FoodEntity>
+        get() = when (tab) {
+            LogTab.Often -> often
+            LogTab.Favourites -> favourites
+            LogTab.All -> all
+            LogTab.Custom -> if (customFilter == CustomFilter.Hidden) customHidden else customVisible
+        }
+}
+
+/**
+ * Matches the DAO's `search` predicate — name or brand, substring,
+ * case-insensitive.
+ *
+ * The four short lists are filtered here rather than in SQL because they are
+ * already in memory and at most a few dozen rows: a round trip to Room per
+ * keystroke, per tab, to re-filter twelve recent foods would be slower than the
+ * filter. Only the All tab, which is the whole 166-row catalogue and is
+ * `LIMIT 100` in SQL, stays a query.
+ */
+private fun List<FoodEntity>.matching(query: String): List<FoodEntity> {
+    if (query.isBlank()) return this
+    val q = query.trim()
+    return filter {
+        it.name.contains(q, ignoreCase = true) || it.brand?.contains(q, ignoreCase = true) == true
+    }
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LogFoodViewModel(
@@ -57,7 +94,7 @@ class LogFoodViewModel(
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
-    private val _tab = MutableStateFlow(LogTab.Search)
+    private val _tab = MutableStateFlow(LogTab.Often)
     private val _customFilter = MutableStateFlow(CustomFilter.Visible)
     private val _mealType = MutableStateFlow(initialMeal)
     private val _selected = MutableStateFlow<FoodEntity?>(null)
@@ -69,7 +106,7 @@ class LogFoodViewModel(
     private val _onlineResults = MutableStateFlow<List<OnlineSearchResult>>(emptyList())
     private val _onlinePhase = MutableStateFlow(OnlineSearchPhase.Idle)
 
-    private val resultsFlow = _query.flatMapLatest { q ->
+    private val allFlow = _query.flatMapLatest { q ->
         if (q.isBlank()) repository.observeAllFoods() else repository.searchFoods(q)
     }
     private val favouritesFlow = repository.observeFavouriteFoods()
@@ -78,18 +115,32 @@ class LogFoodViewModel(
     private val customVisibleFlow = repository.observeCustomVisibleFoods()
     private val customHiddenFlow = repository.observeCustomHiddenFoods()
 
-    private data class Quick(
+    /**
+     * Recent and frequent, merged — decision 2.
+     *
+     * Recency leads. What you ate an hour ago is the single best predictor of
+     * what you are about to log (the same meal two days running, the second
+     * idli, the coffee that follows lunch), and a food you eat often but ate
+     * this morning is already near the top of recents anyway. The frequents
+     * then fill in behind, de-duplicated by id, so a staple you last had a
+     * fortnight ago is still one tap away without pushing today's food down.
+     */
+    private val oftenFlow = combine(recentFlow, frequentFlow) { recent, frequent ->
+        val seen = recent.mapTo(mutableSetOf()) { it.id }
+        recent + frequent.filterNot { it.id in seen }
+    }
+
+    private data class Lists(
+        val often: List<FoodEntity>,
         val favourites: List<FoodEntity>,
-        val recent: List<FoodEntity>,
-        val frequent: List<FoodEntity>,
         val customVisible: List<FoodEntity>,
         val customHidden: List<FoodEntity>,
     )
 
-    private val quickFlow = combine(
-        favouritesFlow, recentFlow, frequentFlow, customVisibleFlow, customHiddenFlow,
-    ) { f, r, fq, cv, ch ->
-        Quick(f, r, fq, cv, ch)
+    private val listsFlow = combine(
+        oftenFlow, favouritesFlow, customVisibleFlow, customHiddenFlow,
+    ) { often, favourites, customVisible, customHidden ->
+        Lists(often, favourites, customVisible, customHidden)
     }
 
     private data class Selection(
@@ -138,20 +189,22 @@ class LogFoodViewModel(
 
     val state: StateFlow<LogUiState> = combine(
         headFlow,
-        resultsFlow,
-        quickFlow,
+        allFlow,
+        listsFlow,
         selectionFlow,
         onlineFlow,
-    ) { head, results, quick, sel, online ->
+    ) { head, all, lists, sel, online ->
+        // The query narrows every tab, not just one. The All tab is already
+        // filtered by SQL; the rest are filtered here against the same
+        // predicate so "dos" means the same thing on every tab.
         LogUiState(
             query = head.query,
             tab = head.tab,
-            results = results,
-            favourites = quick.favourites,
-            recent = quick.recent,
-            frequent = quick.frequent,
-            customVisible = quick.customVisible,
-            customHidden = quick.customHidden,
+            often = lists.often.matching(head.query),
+            favourites = lists.favourites.matching(head.query),
+            all = all,
+            customVisible = lists.customVisible.matching(head.query),
+            customHidden = lists.customHidden.matching(head.query),
             customFilter = head.customFilter,
             mealType = head.meal,
             selected = sel.food,
@@ -166,15 +219,22 @@ class LogFoodViewModel(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         // First frame uses the constructor's initial meal — otherwise the
-        // picker briefly shows Breakfast (the data-class default) before the
+        // title briefly reads Breakfast (the data-class default) before the
         // combine flow's first emission lands, producing a visible "morph"
         // when the user opened Log Food from a non-Breakfast meal row.
         LogUiState(mealType = initialMeal),
     )
 
+    /**
+     * Typing no longer moves the user to another tab.
+     *
+     * It used to force a jump to the Search tab, which is what made "search my
+     * favourites" impossible: the moment you typed, you were not on favourites
+     * any more. The tab is the user's choice about *which set*; the query is
+     * their choice about *which rows*, and the two are independent.
+     */
     fun setQuery(q: String) {
         _query.update { q }
-        if (q.isNotBlank() && _tab.value != LogTab.Search) _tab.update { LogTab.Search }
         // Any new keystroke invalidates the previous online search.
         if (_onlinePhase.value != OnlineSearchPhase.Idle) {
             _onlineResults.update { emptyList() }
@@ -275,31 +335,6 @@ class LogFoodViewModel(
         if (!food.isCustom || !food.isHidden) return
         viewModelScope.launch {
             repository.restoreCustomFood(food.id)
-        }
-    }
-
-    /**
-     * One-tap re-log: the food's default serving at 1 serving, prepared the way
-     * this user last had it. Re-logging a dosa they always take as a ghee roast
-     * must not quietly hand them a plain one.
-     */
-    fun quickLog(food: FoodEntity, onDone: () -> Unit = {}) {
-        val variant = food.variantsOrDefault().firstOrNull() ?: ServingVariant.Default
-        viewModelScope.launch {
-            repository.addFoodLog(
-                FoodLogEntity(
-                    foodId = food.id,
-                    dateEpochDay = DateUtil.todayEpochDay(),
-                    mealType = _mealType.value.name,
-                    servings = 1.0,
-                    grams = variant.grams,
-                    servingLabel = variant.label,
-                    oil = food.preselectedOil().name.takeIf { food.usesCookingOil() },
-                    style = food.preselectedStyle()?.label?.takeIf { food.hasStyleAxis() },
-                    loggedAtMillis = System.currentTimeMillis(),
-                )
-            )
-            onDone()
         }
     }
 

@@ -1,47 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget color tokens — DAY variant. Each entry maps to a system_accent1 /
-  system_neutral{1,2} reference so the values track Material You wallpaper
-  extraction on Android 12+. Live widgets read these same tokens via
-  GlanceTheme.colors.*, so the static preview drawables and the live render
-  use identical hues.
+  Widget color tokens — THE value table for both the live Glance widgets
+  (via `WidgetColors`) and the static preview drawables/layouts, so the
+  picker preview and the placed widget render identical hues.
 
-  Naming mirrors the Material 3 role tokens — surface / primaryContainer /
-  onPrimary etc. — for easy cross-reference with the Glance code.
+  These used to be `@android:color/system_accent1_*` / `system_neutral*`
+  references, i.e. Material You colours extracted from the user's wallpaper.
+  That was the right call when the app itself was wallpaper-themed; it is the
+  wrong one now. Open question 1 settled it: the app is one fixed dark palette,
+  and a widget that follows the wallpaper instead puts two visual languages
+  side by side on the same home screen. The wallpaper also cannot be held to
+  the contrast ratios §1 is built on — `system_accent1_700` behind
+  `system_accent1_100` is whatever the wallpaper makes of it.
+
+  Values mirror `ui/theme/Color.kt` and must be kept in sync with it; the role
+  names below map one-to-one onto the Material roles in `Theme.kt`. There is no
+  `values-night` variant any more — the app is dark-only (decision 11), so a
+  second table would only be a copy of this one.
 -->
 <resources>
-    <!-- Background surface — neutral container the widget sits on. -->
-    <color name="widget_surface">@android:color/system_neutral2_100</color>
-    <color name="widget_on_surface">@android:color/system_neutral1_900</color>
-    <color name="widget_on_surface_muted">@android:color/system_neutral2_700</color>
+    <!-- Background surface — `surfaceVariant` / AppSurfaceHigh. Deliberately
+         NOT the app's #000000 canvas: a widget is a card on someone's
+         wallpaper and needs an edge, which in-app comes from a hairline the
+         widget has no way to draw. -->
+    <color name="widget_surface">#FF141312</color>
+    <color name="widget_on_surface">#FFEFE9E0</color>
+    <color name="widget_on_surface_muted">#FFA79E92</color>
 
     <!-- Filled tonal surfaces — meal pills, the unfilled portion of GoalLeft. -->
-    <color name="widget_primary_container">@android:color/system_accent1_100</color>
-    <color name="widget_on_primary_container">@android:color/system_accent1_900</color>
+    <color name="widget_primary_container">#FF123A2F</color>
+    <color name="widget_on_primary_container">#FFB3EEDC</color>
 
     <!-- Strong call-to-action — the FAB, fully-saturated accents. -->
-    <color name="widget_primary">@android:color/system_accent1_600</color>
-    <color name="widget_on_primary">@android:color/system_accent1_0</color>
+    <color name="widget_primary">#FF63D2B0</color>
+    <color name="widget_on_primary">#FF00251B</color>
 
-    <!-- Battery fill — slightly stronger than primaryContainer so it reads as
-         a level indicator rather than blending in. -->
-    <color name="widget_primary_subtle">@android:color/system_accent1_200</color>
+    <!-- Battery fill — AppPrimaryDeep, the one step between primaryContainer
+         and primary. Was a flat 33%-black/white overlay, which on the new
+         container reads as dirt rather than as a level. Solid instead of an
+         alpha blend because the fill sits under the big number: a translucent
+         fill changes that number's contrast as the day fills up. -->
+    <color name="widget_primary_subtle">#FF1F6F5C</color>
 
-    <!-- Meal pill — needs to clearly lift off surfaceVariant. In light mode
-         the standard `system_accent1_100` is fine; the night variant is
-         where we deviate (see values-night/colors_widget.xml). -->
-    <color name="widget_pill">@android:color/system_accent1_100</color>
-    <color name="widget_on_pill">@android:color/system_accent1_900</color>
+    <!-- Meal pill — primaryContainer. The old night-mode deviation to a
+         brighter `system_accent1_300` existed because the wallpaper-derived
+         pill and the surface could land one step apart and collapse into each
+         other. That cannot happen now: the mint #123A2F is separated from the
+         neutral #141312 surface by hue, not only by a tone step the wallpaper
+         chose. -->
 
-    <!-- Recent food chip — tonal lift from the widget surface, neutral so it
-         doesn't fight with the meal pills for attention. -->
-    <color name="widget_chip">@android:color/system_neutral1_50</color>
-    <color name="widget_on_chip">@android:color/system_neutral1_900</color>
+    <!-- Recent food chip — neutral lift (surfaceContainerHighest), so it
+         doesn't fight the meal pills for attention. -->
 
-    <!-- Success / "just logged" tap feedback — Material You tertiary
-         (`system_accent3`) is the wallpaper-extracted complementary accent,
-         so it always contrasts visibly against the surface/primary even if
-         the user's primary is green. -->
-    <color name="widget_success">@android:color/system_accent3_600</color>
-    <color name="widget_on_success">@android:color/system_accent3_0</color>
+    <!-- Success / "just logged" tap feedback — `tertiary`. Was Material You
+         `system_accent3`, picked as the wallpaper's complementary accent so it
+         could never collide with the primary; tertiary is that same role in
+         the fixed palette, and amber against mint is unmistakably not the
+         resting state. -->
 </resources>

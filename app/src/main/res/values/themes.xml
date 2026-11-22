@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App theme. Compose owns the visual style so this is intentionally
-         minimal; only system-chrome attributes live here. -->
-    <style name="Theme.FoodTracker" parent="android:Theme.Material.Light.NoActionBar">
+         minimal; only system-chrome attributes live here.
+
+         Dark parent and `windowLightStatusBar=false` are pinned rather than
+         left to a values-night override: the app no longer follows the system
+         setting (design-plan decision 11), so a light variant would only ever
+         be wrong. The matching values-night copies of this file and colors.xml
+         were deleted for the same reason. -->
+    <style name="Theme.FoodTracker" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/launcher_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <!-- Splash theme using AndroidX core-splashscreen. The system shows this

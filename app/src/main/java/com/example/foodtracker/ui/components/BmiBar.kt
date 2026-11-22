@@ -19,24 +19,40 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.foodtracker.domain.Bmi
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.BmiNormal
+import com.example.foodtracker.ui.theme.BmiObese
+import com.example.foodtracker.ui.theme.BmiOverweight
+import com.example.foodtracker.ui.theme.BmiUnderweight
+import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.abs
-
-private val UnderweightColor = Color(0xFF4FC3F7) // blue
-private val NormalColor      = Color(0xFF66BB6A) // green
-private val OverweightColor  = Color(0xFFFFB74D) // amber
-private val ObeseColor       = Color(0xFFEF5350) // red
 
 /**
  * Horizontal coloured band showing BMI categories with a triangular marker
  * for the user's current BMI and (optionally) one for their goal weight's
  * BMI. Used in the onboarding Basics page and the profile screen.
  *
- * Markers use theme tokens (onSurface for Now, primary for Goal) so they
- * stay legible against both the AMOLED black background and the light surface.
+ * The four band colours are the `Bmi*` tokens from `theme/Color.kt` — the same
+ * clinical blue/green/amber/red reading the convention expects (these are
+ * medical categories, not brand colour), re-derived against black rather than
+ * flipped from the Material 300/400 tones they started as, which glared on
+ * `#000000`. Markers use theme tokens: `onSurface` for Now, `primary` for Goal.
+ *
+ * **The caption is now a row like every other row.** It used to be one
+ * `labelLarge` sentence — `BMI 23.4 · Normal` — with the goal hung off the far
+ * end, which made the single most interesting number on the profile screen the
+ * same size as the words around it. Rule 2 says the number is the loud half, so
+ * the reading splits: an eyebrow and the category name on the left, the figure
+ * itself at [AppText.numberL] on the right, and the goal as the caption trailing
+ * it. That is the same label-left / number-right rhythm as Today's stat rows,
+ * which is the point — one rhythm down the page.
+ *
+ * The band, the markers and the scale labels are unchanged in substance; only
+ * their gaps moved onto the `Spacing.*` scale (rule 5) and the labels onto the
+ * eyebrow style, which is what the band's numeric ticks were imitating with a
+ * raw `10.sp` anyway.
  */
 @Composable
 fun BmiBar(
@@ -52,26 +68,40 @@ fun BmiBar(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
         ) {
-            Text(
-                "BMI ${"%.1f".format(currentBmi)} · ${cat.label}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            if (goalBmi != null) {
-                val delta = goalBmi - currentBmi
-                val arrow = if (delta > 0) "↑" else if (delta < 0) "↓" else "→"
+            Column(Modifier.weight(1f)) {
                 Text(
-                    "Goal $arrow ${"%.1f".format(goalBmi)}",
-                    style = MaterialTheme.typography.labelMedium,
+                    "BMI",
+                    style = AppText.eyebrow,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Spacing.xs))
+                Text(
+                    cat.label,
+                    style = AppText.bodyS,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Spacer(Modifier.width(Spacing.m))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "%.1f".format(currentBmi),
+                    style = AppText.numberL,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (goalBmi != null) {
+                    val delta = goalBmi - currentBmi
+                    val arrow = if (delta > 0) "↑" else if (delta < 0) "↓" else "→"
+                    Text(
+                        "$goalLabel $arrow ${"%.1f".format(goalBmi)}",
+                        style = AppText.bodyS,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Spacing.m))
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -86,10 +116,10 @@ fun BmiBar(
 
             // Coloured bands.
             val bands = listOf(
-                UnderweightColor to fracFor(Bmi.UNDERWEIGHT_MAX),
-                NormalColor      to fracFor(Bmi.NORMAL_MAX),
-                OverweightColor  to fracFor(Bmi.OVERWEIGHT_MAX),
-                ObeseColor       to 1f,
+                BmiUnderweight to fracFor(Bmi.UNDERWEIGHT_MAX),
+                BmiNormal      to fracFor(Bmi.NORMAL_MAX),
+                BmiOverweight  to fracFor(Bmi.OVERWEIGHT_MAX),
+                BmiObese       to 1f,
             )
             var prev = 0f
             bands.forEach { (color, end) ->
@@ -119,7 +149,7 @@ fun BmiBar(
                 drawMarker(goalBmi, goalMarkerFill)
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             BandLabel("15")
             BandLabel("18.5")
@@ -128,10 +158,10 @@ fun BmiBar(
             BandLabel("40")
         }
         if (goalBmi != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.m))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.l),
             ) {
                 LegendMarker(currentLabel, currentMarkerFill)
                 LegendMarker(goalLabel, goalMarkerFill)
@@ -140,11 +170,12 @@ fun BmiBar(
     }
 }
 
+/** A tick on the scale. Eyebrow, because that is what an 11sp tracked numeral is. */
 @Composable
 private fun BandLabel(text: String) {
     Text(
         text,
-        fontSize = 10.sp,
+        style = AppText.eyebrow,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -163,10 +194,10 @@ private fun LegendMarker(label: String, fill: Color) {
                 drawPath(path, fill)
             }
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(Spacing.s))
         Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
+            label.uppercase(),
+            style = AppText.eyebrow,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

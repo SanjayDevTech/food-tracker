@@ -173,6 +173,11 @@ private fun MacroChip(
     numberSp: androidx.compose.ui.unit.TextUnit,
     modifier: GlanceModifier,
 ) {
+    // Text here is [WidgetColors.OnSurface], not OnPrimaryContainer: the chip
+    // is a macro tint over the widget surface, never a primary container, and
+    // the mint-era `onPrimaryContainer` only ever passed contrast by accident.
+    // Against the carbs fill — the lightest of the three — it was ~3.9:1 at
+    // 10sp, under AA; the plain foreground clears it on all three macros.
     val fillFraction = (row.current / max(1.0, row.goal)).coerceIn(0.0, 1.0).toFloat()
     val fillWidthDp = (chipWidthDp * fillFraction).dp
 
@@ -205,7 +210,7 @@ private fun MacroChip(
             Text(
                 text = if (useFullLabel) row.label else row.short,
                 style = TextStyle(
-                    color = WidgetColors.OnPrimaryContainer,
+                    color = WidgetColors.OnSurface,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 ),
@@ -215,7 +220,7 @@ private fun MacroChip(
                 Text(
                     text = "${row.current.roundToInt()}",
                     style = TextStyle(
-                        color = WidgetColors.OnPrimaryContainer,
+                        color = WidgetColors.OnSurface,
                         fontSize = numberSp,
                         fontWeight = FontWeight.Bold,
                     ),
@@ -224,7 +229,7 @@ private fun MacroChip(
                 Text(
                     text = "g",
                     style = TextStyle(
-                        color = WidgetColors.OnPrimaryContainer,
+                        color = WidgetColors.OnSurface,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                     ),
@@ -235,7 +240,7 @@ private fun MacroChip(
                 Text(
                     text = "of ${row.goal.roundToInt()}",
                     style = TextStyle(
-                        color = WidgetColors.OnPrimaryContainer,
+                        color = WidgetColors.OnSurface,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                     ),

@@ -77,7 +77,6 @@ class BackupManager(
     suspend fun buildSnapshot(): BackupPayload = withContext(Dispatchers.IO) {
         val profile = profileStore.profile.first()
         val haptics = profileStore.hapticsEnabled.first()
-        val theme = profileStore.themeMode.first()
         val foodDao = database.foodDao()
         val foodLogDao = database.foodLogDao()
 
@@ -97,7 +96,7 @@ class BackupManager(
         BackupPayload(
             createdAtMillis = System.currentTimeMillis(),
             appVersion = BuildConfig.VERSION_NAME,
-            profile = ProfileSnapshot.from(profile, haptics, theme),
+            profile = ProfileSnapshot.from(profile, haptics),
             customFoods = customs.map(FoodSnapshot::from),
             foodLog = foodLogSnaps,
             waterLog = database.waterLogDao().getAll().map(WaterLogSnapshot::from),
@@ -519,9 +518,8 @@ class BackupManager(
         // on Home directly after a restore.
         profileStore.save(payload.profile.toUserProfile(), markOnboarded = true)
         profileStore.setHapticsEnabled(payload.profile.hapticsEnabled)
-        profileStore.setThemeMode(
-            com.example.foodtracker.ui.theme.ThemeMode.fromName(payload.profile.themeMode)
-        )
+        // payload.profile.themeMode is deliberately dropped: the app is
+        // dark-only, so there is no mode for a restore to put back.
         // No explicit widget refresh needed here: the profileStore.save() above
         // runs after all log/activity rows are restored and fires its
         // onProfileChanged hook → WidgetUpdater.updateAll with the final data.
