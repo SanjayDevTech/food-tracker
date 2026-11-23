@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * Everything the **You** page and its three sheets read — design-plan §4.3.
+ * Everything the **You** page and its three sheets read.
  *
  * This is the old `SettingsViewModel` with the profile half of `ProfileViewModel`
  * folded back in and the backup machinery lifted out. The shape follows the

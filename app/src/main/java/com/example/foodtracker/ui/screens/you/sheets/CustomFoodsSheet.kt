@@ -29,7 +29,7 @@ import com.example.foodtracker.ui.theme.Elevation
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Custom foods — design-plan §4.3, §5: "a count and one destructive action".
+ * Custom foods: a count and one destructive action.
  *
  * The count is the point. Deleting every food you added by hand is irreversible
  * in one of its two forms, and the old Settings screen offered the button with
@@ -107,7 +107,7 @@ fun CustomFoodsSheet(
 }
 
 /**
- * Kept verbatim from the Settings screen it came from. §4.15's note that the
+ * Kept verbatim from the Settings screen it came from. The note that the
  * destructive confirms are "correctly worded and correctly scary" applies here
  * too: the two options are genuinely different outcomes, and the dialog is the
  * only place that explains which one changes historical daily totals.

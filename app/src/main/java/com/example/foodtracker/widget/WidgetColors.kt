@@ -20,7 +20,7 @@ import com.example.foodtracker.ui.theme.MacroProtein
  * palette (decision 11), so a wallpaper-themed widget puts two visual languages
  * next to each other on one home screen, and the hour it costs to stop that is
  * cheaper than living with it. The contrast argument is the stronger half: a
- * wallpaper cannot be held to the ratios §1 is built on, so `primaryContainer`
+ * wallpaper cannot be held to the ratios the palette is built on, so `primaryContainer`
  * behind `onPrimaryContainer` was legible by convention rather than by
  * construction.
  *

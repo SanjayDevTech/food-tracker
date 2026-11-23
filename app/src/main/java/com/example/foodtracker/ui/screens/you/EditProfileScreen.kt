@@ -51,7 +51,7 @@ import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.roundToInt
 
 /**
- * Edit profile & goals — design-plan §4.16, rebuilt against
+ * Edit profile & goals, rebuilt against
  * `docs/ui-house-rules.md`.
  *
  * A page that is always editing, replacing the top-bar edit/cancel/save

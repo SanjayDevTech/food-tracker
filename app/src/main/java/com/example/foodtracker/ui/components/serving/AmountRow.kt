@@ -37,7 +37,7 @@ private const val GRAMS_SLIDER_MIN = 5f
 private const val GRAMS_SLIDER_MAX = 500f
 
 /**
- * *How much* — design-plan §4.5 and §6.3.
+ * *How much*.
  *
  * Three controls, in the order the hand reaches for them: the variant pills
  * (which serving are we counting), a `[−] value [+]` row, and a slider.

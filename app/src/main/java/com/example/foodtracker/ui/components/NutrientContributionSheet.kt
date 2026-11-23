@@ -48,13 +48,13 @@ import kotlin.math.roundToInt
 /**
  * "Where did today's iron come from?" — the sheet behind a tap on any nutrient.
  *
- * Lifted out of `HomeScreen.kt` in phase 5 of docs/design-plan.md. It was
- * private to a 1 176-line screen that no longer exists, and §4.7 reaches it
+ * Lifted out of `HomeScreen.kt` during the rewrite. It was
+ * private to a 1 176-line screen that no longer exists, and the all-nutrients page reaches it
  * from the all-nutrients sheet as well as from Today, so it had to become a
  * component.
  *
  * Three changes from the version inside Home: the rows are rebuilt on the
- * [Meter] atom instead of a fourth hand-rolled `Box` pair; §6 adds the
+ * [Meter] atom instead of a fourth hand-rolled `Box` pair; house rule 6 adds the
  * [onFindRichFoods] call to action — a shortfall you cannot act on is just bad
  * news, and the app already knows which foods are rich in it; and it is now a
  * *page* rather than a sheet of its own, so arriving from the all-nutrients

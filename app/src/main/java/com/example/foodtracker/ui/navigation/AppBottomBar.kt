@@ -23,7 +23,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Elevation
 
 /**
- * The three bar destinations — design-plan §5.
+ * The three bar destinations.
  *
  * Why three and not four: logging is an *action*, not a place, so it is the
  * FAB on Today. Why a bar at all: four of the old app's screens — Stats, Rich
@@ -49,7 +49,7 @@ fun NavDestination?.barDestination(): BarDestination? = when {
 }
 
 /**
- * Structure is a hairline, not elevation (§1), so the bar draws its own top
+ * Structure is a hairline, not elevation, so the bar draws its own top
  * border and sits on `background` — `NavigationBar`'s default container is a
  * tonal surface, which on a black canvas reads as a grey slab.
  */

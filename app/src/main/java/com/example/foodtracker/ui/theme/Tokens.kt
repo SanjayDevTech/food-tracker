@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 
 /**
- * Layout tokens — design-plan §1 spacing, radii and the three surviving heights.
+ * Layout tokens — spacing, radii and the three surviving heights.
  *
  * Replaces `Dimens`, which carried five radii (16/18/20/22/28) and three
  * different card paddings. Six implementations of the same card is what that
@@ -55,7 +55,7 @@ object Radius {
     val pill = 999.dp
 }
 
-/** The three heights that survived. The 56dp "hero" button did not — §2. */
+/** The three heights that survived. The 56dp "hero" button did not. */
 object Sizes {
     val button = 48.dp
     val iconButton = 48.dp

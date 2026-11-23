@@ -30,18 +30,18 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * `[−] value [+]` — design-plan §2's `Stepper` row.
+ * `[−] value [+]` — the stepper row.
  *
  * Pair it with a slider, which is how every caller uses it: the slider takes
  * the coarse swing and the stepper lands the last quarter-serving, because a
  * drag cannot reliably hit 1.25 on a 412dp screen and fourteen taps to cross a
  * range is nobody's idea of a control.
  *
- * Three changes from the version this replaces, all from §2. The buttons grow
+ * Three changes from the version this replaces. The buttons grow
  * 32→36dp, which brings the pair back above the size a thumb can hit without
  * aiming. The tonal `secondaryContainer` fill becomes an outline: on `#000000`
- * a tonal fill is the only lift on the surface and reads as elevation, which §1
- * bans outright. And the value is drawn by [ValueText] — the whole point of
+ * a tonal fill is the only lift on the surface and reads as elevation, which
+ * the house rules ban outright. And the value is drawn by [ValueText] — the whole point of
  * that atom is that `2 740 mg` and `0.4 µg` cannot share one `"%.1f"`.
  *
  * The editorial pass finishes that job. `OutlinedIconButton`'s defaults were

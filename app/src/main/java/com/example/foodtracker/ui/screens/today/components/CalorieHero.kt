@@ -37,12 +37,11 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * The day's calories — reference shot 4, which §0 called "effectively a visual
- * spec for the thesis in §1 already".
+ * The day's calories — reference shot 4, the shot the look was taken from.
  *
  * **The ring is gone.** It came from shots 1, 5 and 9 — Direction A, the one
- * §0 rejected — and it was the single loudest piece of Direction A's anatomy
- * left on the main screen. Shot 4, the direction actually chosen, draws this as
+ * the app rejected — and it was the single loudest piece of that anatomy left
+ * on the main screen. Shot 4, the direction actually chosen, draws this as
  * an oversized tabular numeral over a thin rule with two labelled columns
  * underneath, and that is what this is now.
  *

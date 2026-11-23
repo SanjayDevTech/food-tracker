@@ -31,7 +31,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * The nutrient molecules — design-plan §3 and §6.
+ * The nutrient molecules.
  *
  * One reading rendered three ways, because 29 nutrients is too many for any
  * single presentation: a [StatusCell] when you only want to know whether today

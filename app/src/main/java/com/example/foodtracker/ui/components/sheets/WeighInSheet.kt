@@ -81,7 +81,7 @@ fun signedKgText(deltaKg: Double): String {
 }
 
 /**
- * Logging a weigh-in — design-plan §4.9.
+ * Logging a weigh-in.
  *
  * **Why a sheet and not a page.** Decision 6 split `WeightScreen` down the
  * middle: everything you *read* (the trend, the history) went to Trends beside
@@ -89,8 +89,8 @@ fun signedKgText(deltaKg: Double): String {
  * became this. A full route for a single value meant a push, a back arrow and a
  * back-stack entry for an interaction that is over in two seconds.
  *
- * **Why a ruler.** The original was a decimal `OutlinedTextField`; §4.9
- * downgraded that to a stepper plus a slider, and §0 then adopted the ruler
+ * **Why a ruler.** The original was a decimal `OutlinedTextField`; the rewrite
+ * downgraded that to a stepper plus a slider, and then adopted the ruler
  * from reference shot 3 instead. The argument for all three is the same and the
  * ruler wins it outright: you weigh within about a kilo of last time, so the
  * useful range is tiny and *local*. A keyboard makes you type an absolute
@@ -361,7 +361,7 @@ private fun WeightRuler(
             }
 
             // The cursor is drawn last and in `primary` — it is the one thing on
-            // the ruler that is not data, and the only fill §1 would allow here.
+            // the ruler that is not data, and the only fill the rules would allow here.
             drawLine(
                 color = cursorColor,
                 start = Offset(centerX, 0f),

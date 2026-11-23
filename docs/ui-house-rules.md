@@ -1,10 +1,10 @@
 # UI house rules — the editorial pass
 
-Written after the phase 1–8 rewrite shipped and still read as the old app. The
-plan's §1 described a look the old app *already had* (black canvas, hairline
+Written after the rewrite shipped and still read as the old app. The plan it
+followed described a look the old app *already had* (black canvas, hairline
 outlined cards, mint accent), so following it faithfully produced a tidier
-version of the same thing. These rules are the difference, derived from
-reference shot 4 — the one §0 actually chose.
+version of the same thing. These rules are the difference, derived from the
+reference shot the app's direction was actually chosen from.
 
 Today (`ui/screens/today/`) is the reference implementation. Match it.
 
@@ -55,10 +55,10 @@ adjacent *different* thing. If in doubt, don't use it.
 
 ## 4. No emoji
 
-§0 adopted Direction B, whose reference shots carry none. Per-category food
-emoji in the picker are the one exception the plan kept (§8) — they earn their
-place scanning 166 foods. Everywhere else — meal rows, stat rows, settings rows,
-section headers — they are decoration in the friendly register the plan refused.
+The app's chosen direction carries none. Per-category food emoji in the picker
+are the one exception — they earn their place scanning 167 foods. Everywhere
+else — meal rows, stat rows, settings rows, section headers — they are
+decoration in the friendly register the app refused.
 
 ## 5. Spacing
 

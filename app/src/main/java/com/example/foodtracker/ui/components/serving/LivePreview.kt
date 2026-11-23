@@ -46,9 +46,9 @@ private val BaseKeys = listOf("calories", "carbs", "protein", "fat", "fiber", "s
 private val PrepKeys = listOf("saturatedFat", "vitaminE")
 
 /**
- * *What's in it* — design-plan §4.5, plus the behavioural addition in §6.3.
+ * *What's in it*, plus the preparation-change flag.
  *
- * A two-column grid rather than a list, for the same reason §4.7's all-nutrient
+ * A two-column grid rather than a list, for the same reason the all-nutrient
  * sheet is: eight half-width cells are four rows, and eight full-width rows
  * would push the footer off a 412×915 screen on a food with a preparation axis.
  *
@@ -63,7 +63,7 @@ private val PrepKeys = listOf("saturatedFat", "vitaminE")
  * The delta says *what moved*, never whether that is good: more vitamin E is
  * good and more saturated fat is not, and this component has no goals in hand
  * to tell them apart. Colouring it as a verdict would be a guess printed as a
- * fact — the status palette in §1 is reserved for readings measured against a
+ * fact — the status palette is reserved for readings measured against a
  * real target.
  *
  * @param previous the pre-tap figures, or null when nothing is being flagged.

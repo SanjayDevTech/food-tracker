@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Which set of foods the picker is showing — design-plan §4.4, decision 2.
+ * Which set of foods the picker is showing.
  *
  * **Four tabs, not five.** `Recent` and `Frequent` merged into [Often]: on a
  * repetitive diet the two lists are ~80% identical, so they were two tabs

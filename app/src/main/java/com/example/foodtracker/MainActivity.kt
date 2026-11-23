@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            // The app is dark-only now (design-plan decision 11), so the bar
+            // The app is dark-only now, so the bar
             // icons are pinned light instead of following the system setting.
             // `SystemBarStyle.dark` means "dark bar background", i.e. light icons.
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

@@ -28,7 +28,7 @@ data class EditProfileUiState(
 }
 
 /**
- * The Edit profile & goals page — design-plan §4.16.
+ * The Edit profile & goals page.
  *
  * This is the old `ProfileViewModel` with its `editing` flag removed. The flag
  * existed because the profile screen was one layout in two modes, and the
@@ -42,7 +42,7 @@ data class EditProfileUiState(
  * how [EditProfileUiState.dirty] can be a plain `!=` rather than a flag the
  * setters have to remember to raise.
  *
- * Goals are computed for *both* profiles because §4.16's live preview shows
+ * Goals are computed for *both* profiles because the live preview shows
  * `Calories 2 100 → 2 040`: you used to have to save, back out and find the
  * Daily targets card to see what moving the activity slider had done.
  * [GoalCalculator.goalsFor] is pure, so the second call is free.

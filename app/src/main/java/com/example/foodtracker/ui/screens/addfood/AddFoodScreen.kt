@@ -63,7 +63,7 @@ import com.example.foodtracker.ui.theme.Sizes
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Add or edit a custom food — design-plan §4.11.
+ * Add or edit a custom food.
  *
  * The form carries 34 fields because the app tracks 29 nutrients and refuses to
  * pretend otherwise. What changed is that it no longer *shows* 34 at once.
@@ -82,13 +82,13 @@ import com.example.foodtracker.ui.theme.Spacing
  *    the cost is literal: the border, its corner radius and its 16dp of inner
  *    padding each pushed the fields further from the screen's one left margin,
  *    so no two labels on the page started at the same x.
- *  - **Two-column compact fields.** §4.11: half the page height for the same
+ *  - **Two-column compact fields.** Half the page height for the same
  *    fields. See `NumberFieldGrid`.
  *  - **The AI action moved beside Name**, where its one input is. It used to
  *    sit as a full-width button halfway down the scroll — below the fields it
  *    exists to spare you typing.
  *
- * Out of scope here (§8): the autofill itself, [AddFoodViewModel], the network
+ * Out of scope here: the autofill itself, [AddFoodViewModel], the network
  * clients, and [AiProgressDialog], which is kept exactly as it was.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -311,8 +311,8 @@ private fun BasicsSection(
 
         Spacer(Modifier.height(Spacing.xxl))
         Section("Category") {
-            // One wrapped row of pills, not four segmented controls stacked
-            // (§2). The categories are a flat set with no order; a segmented
+            // One wrapped row of pills, not four segmented controls stacked.
+            // The categories are a flat set with no order; a segmented
             // control claims an order and forced three-per-row columns that cut
             // "South Indian" in half.
             FlowRow(

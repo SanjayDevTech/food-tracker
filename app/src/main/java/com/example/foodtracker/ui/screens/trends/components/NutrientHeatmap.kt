@@ -43,7 +43,7 @@ private val MIN_CELL = 4.dp
 private val MAX_CELL = 10.dp
 
 /**
- * Nutrients down, days across — design-plan §3 and §4.2.
+ * Nutrients down, days across.
  *
  * **This is the section the thirty-micronutrient database is for.** Every other
  * surface in the app reads a single day, and a single day of B12 is noise: you

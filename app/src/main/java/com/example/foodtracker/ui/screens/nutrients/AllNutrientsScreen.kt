@@ -39,7 +39,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Every tracked nutrient for one day — design-plan §4.7, as a page.
+ * Every tracked nutrient for one day, as a page.
  *
  * **Why this stopped being a bottom sheet.** It was one, and tapping a nutrient
  * raised a second sheet over it. Sheet-over-sheet has no convention: whichever

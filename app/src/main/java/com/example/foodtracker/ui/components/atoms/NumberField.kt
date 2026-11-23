@@ -21,7 +21,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Decimal entry — design-plan §2, the `NumberField` row ("promote").
+ * Decimal entry.
  *
  * This was a private helper at the bottom of `AddFoodScreen`, called 34 times
  * in a single column. Promoting it is not tidying: the whole reason the
@@ -89,10 +89,10 @@ fun NumberField(
 }
 
 /**
- * The box itself. Hairline outline in both states — §1 gives a text field no
+ * The box itself. Hairline outline in both states — the house rules give a text field no
  * fill, so the only thing that changes on focus is the outline's colour.
  *
- * The value renders in [AppText.numberM]: this is a number, and §1's thesis is
+ * The value renders in [AppText.numberM]: this is a number, and house rule 2's thesis is
  * that numbers are the loud thing. The unit rides along as a suffix in the
  * quiet colour so the two never get confused for one value.
  */
@@ -137,7 +137,7 @@ private fun NumericBox(
  * One field in a [NumberFieldGrid], as data.
  *
  * Declaring the fields as a list rather than as 34 call sites is what makes the
- * accordion counters in §4.11 possible at all: "9 fields · 0 filled" is
+ * accordion counters on Add food possible at all: "9 fields · 0 filled" is
  * [filledCount] over the same list the section renders, so the header cannot
  * drift out of step with its contents the way two hand-maintained lists would.
  */
@@ -154,7 +154,7 @@ val List<NumberFieldSpec>.filledCount: Int
     get() = count { it.value.isNotBlank() }
 
 /**
- * Two columns of [compact][NumberField] fields — §4.11's "two-column compact
+ * Two columns of [compact][NumberField] fields — the "two-column compact
  * number fields halve the page height".
  *
  * Rows are bottom-aligned, which is the detail that makes the grid read as a

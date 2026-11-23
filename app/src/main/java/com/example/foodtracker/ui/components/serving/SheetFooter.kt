@@ -34,7 +34,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * The pinned bottom of the serving sheet — design-plan §4.5 and §4.6.
+ * The pinned bottom of the serving sheet.
  *
  * One line: where it goes, then the thing you came to do. The meal picker is a
  * dropdown chip here rather than the full-width 4-way segmented control it used
@@ -48,7 +48,7 @@ import com.example.foodtracker.ui.theme.Spacing
  * being opened.
  *
  * [onDelete] renders the destructive row underneath. It is a text row, not a
- * second button: §4.6 puts remove and save in the same footer, and two
+ * second button: editing puts remove and save in the same footer, and two
  * equally-weighted buttons there is how a user deletes an entry they meant to
  * correct. The button you came for keeps the filled slot; removal is
  * deliberately quieter, and it is undoable from the snackbar either way.

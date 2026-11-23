@@ -46,7 +46,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Six switches and two system-permission blocks — design-plan §4.13, a restyle
+ * Six switches and two system-permission blocks, a restyle
  * and nothing more.
  *
  * **What the editorial pass changed.** The structure was already one card of
@@ -63,11 +63,11 @@ import com.example.foodtracker.ui.theme.Spacing
  * not: each one carries a time, which is the thing anyone comes to this screen
  * to find, and the six times are already six different two-digit numbers down
  * the right-hand edge. The disc was buying scanability that the data gives for
- * free, in the friendly register §0 refused, and at the cost of 48dp of the
+ * free, in the friendly register the app refused, and at the cost of 48dp of the
  * row's width — so the row now reads as every settings row in the app does:
  * label on the left, value on the right, its control at the end.
  *
- * Scheduling is out of scope (§8): `ReminderScheduler`, `ReminderReceiver`,
+ * Scheduling is out of scope here: `ReminderScheduler`, `ReminderReceiver`,
  * `BatteryOptHelper` and `ReminderStore` are untouched, and every callback here
  * goes to the same [RemindersViewModel] method it did before.
  */

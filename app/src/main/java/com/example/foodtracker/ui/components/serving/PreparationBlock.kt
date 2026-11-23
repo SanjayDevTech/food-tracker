@@ -25,7 +25,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * *How it's made* — design-plan §4.5 change 3 and §6.3.
+ * *How it's made*.
  *
  * Two axes, one heading. They used to be two titled sections, "Cooked in" and
  * "Made with", which read as two separate decisions when they are one: *how was

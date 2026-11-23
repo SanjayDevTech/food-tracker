@@ -20,7 +20,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Number formatting — design-plan §2, the `ValueText` row.
+ * Number formatting.
  *
  * One rounding rule for the whole app. This is what kills the ~40 ad-hoc
  * `"%.1f".format(x)` call sites, which between them produced `1.0 ×` servings,

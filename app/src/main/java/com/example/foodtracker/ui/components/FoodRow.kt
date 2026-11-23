@@ -29,7 +29,7 @@ import kotlin.math.roundToInt
 /**
  * One food in a list — emoji disc, name, and a brand/kcal/serving sub-line.
  *
- * The disc keeps the emoji (design-plan §2): scanning 166 seeded foods, a
+ * The disc keeps the emoji: scanning 166 seeded foods, a
  * glyph is a faster filter than reading the first word of each name. What it
  * no longer keeps is a per-category tint. There were twelve of them —
  * `0xFFFFE0B2`, `0xFFB3E5FC`, `0xFFD1C4E9` and so on — pastels picked to sit

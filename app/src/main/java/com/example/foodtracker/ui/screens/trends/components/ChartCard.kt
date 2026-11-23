@@ -22,7 +22,7 @@ import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
-/** How long a chart takes to swap when the range changes — §1's generic 200ms. */
+/** How long a chart takes to swap when the range changes — the generic 200ms. */
 private const val RANGE_FADE_MS = 200
 
 /**
@@ -84,7 +84,7 @@ data class ChartInsight(
  *
  * **The card is gone.** This used to wrap everything in an `AppCard` — a 20dp
  * rounded hairline box — and five of them stacked down the page was the exact
- * Direction A anatomy the editorial pass exists to remove (house rules §1). The
+ * Direction A anatomy the editorial pass exists to remove (house rule 1). The
  * section is a `Section` now: an uppercase head with the summary figure on its
  * baseline, a hairline **under the head**, then the content, open to the page.
  * The border is not replaced by a gap — house rule 1 is explicit that 32dp of
@@ -96,7 +96,7 @@ data class ChartInsight(
  * data: both size themselves to whatever width they are handed.
  *
  * The name survives the card because the call sites, the ViewModel's docstrings
- * and design-plan §4.2 all talk about Trends in cards; what changed is the
+ * and the rewrite all talk about Trends in cards; what changed is the
  * anatomy, not what a reader of this screen calls each block.
  *
  * Five things it still standardises, each of which was being decided per screen
@@ -108,7 +108,7 @@ data class ChartInsight(
  *    "2 981 kcal" and "18 of 29 on track".
  *  - **The reading.** [insight] is the loud line under the rule: the verdict
  *    the summary figure earns, set as a number rather than as prose.
- *  - **Empty.** [empty] is the §4.2 rule in one parameter: under two points, a
+ *  - **Empty.** [empty] is the rule in one parameter: under two points, a
  *    section keeps its head and shows a single muted line instead of its chart.
  *    Sections degrade one by one — a fortnight of weigh-ins with no water
  *    logged should cost you the water chart and nothing else — and that only
@@ -116,7 +116,7 @@ data class ChartInsight(
  *  - **Loading.** There isn't one. A range change recomputes off a Room flow
  *    that is already warm; a spinner would flash for two frames and leave the
  *    page jumping. [crossfadeKey] dissolves the chart through the change
- *    instead (§4.2: "keep the previous chart on screen and crossfade. No
+ *    instead: keep the previous chart on screen and crossfade. No
  *    spinner"). Both layers of the fade draw the *new* series rather than one
  *    drawing the old one — holding a second copy of a 365-point series alive
  *    purely to fade it out is not worth the frame it would buy, and what the

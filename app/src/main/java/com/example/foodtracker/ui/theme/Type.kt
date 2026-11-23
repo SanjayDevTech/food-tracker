@@ -7,10 +7,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * The type scale — design-plan §1.
+ * The type scale.
  *
- * Nine styles, all on `FontFamily.Default`: open question 7 refused a bundled
- * font because the repo had just shipped "Trim the APK" and Inter costs ~300KB
+ * Nine styles, all on `FontFamily.Default`: a bundled font was refused because
+ * the repo had just shipped "Trim the APK" and Inter costs ~300KB
  * of it back. Every numeric style instead carries `fontFeatureSettings = "tnum"`,
  * which is what actually matters — tabular figures stop the digits jittering as
  * a meter or ring animates its value.

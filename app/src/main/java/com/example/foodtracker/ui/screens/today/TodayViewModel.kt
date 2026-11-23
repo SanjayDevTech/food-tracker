@@ -36,8 +36,8 @@ data class TodayUiState(
      * False only for the synthetic first emission.
      *
      * That emission is built from a **default** [UserProfile], so its goals are
-     * not the user's — a 2 468 kcal target that belongs to nobody. The plan
-     * (§4.1) is right that this screen should not have a spinner, but rendering
+     * not the user's — a 2 468 kcal target that belongs to nobody. The plan is
+     * right that this screen should not have a spinner, but rendering
      * fabricated numbers as though they were real is worse than rendering none:
      * the figures are plausible, so there is nothing to tell the reader they
      * are about to change. The screen shows its structure with em-dashes until
@@ -155,7 +155,7 @@ class TodayViewModel(
     }
 
     /**
-     * Commit an edit made in the serving sheet — design-plan §6.2.
+     * Commit an edit made in the serving sheet.
      *
      * The sheet hands back a complete row because it has already recomputed
      * grams, servings and the preparation variant together; splitting that into

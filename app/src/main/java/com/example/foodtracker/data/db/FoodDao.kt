@@ -238,7 +238,7 @@ interface FoodLogDao {
     suspend fun insert(entry: FoodLogEntity): Long
 
     /**
-     * Edit a logged entry in place — design-plan §7 phase 7.
+     * Edit a logged entry in place.
      *
      * This is the **only** data-layer change in the whole UI rewrite, and it is
      * not a schema change: [FoodLogEntity] already has every column an edit

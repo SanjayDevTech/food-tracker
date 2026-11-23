@@ -21,7 +21,7 @@ import kotlin.math.roundToInt
  * `granularity = 1f` ticks per integer unit (age, height). Use a smaller
  * value (e.g. `0.1f`) for finer feedback on weight-style sliders.
  *
- * Design-plan §2 keeps this component as it is and changes only the track
+ * The editorial pass kept this component as it is and changed only the track
  * colours: the inactive half becomes the same `outlineVariant` hairline colour
  * every meter in the app uses for its track, so an unfilled slider and an
  * unfilled meter are the same grey. Material's default inactive track is a

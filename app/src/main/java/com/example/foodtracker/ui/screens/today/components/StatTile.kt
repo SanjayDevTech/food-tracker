@@ -17,7 +17,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Water and weight — design-plan §3, rebuilt as rows rather than tiles.
+ * Water and weight, rebuilt as rows rather than tiles.
  *
  * They used to be two outlined cards side by side. Two boxes holding one number
  * each is the Direction A anatomy the rewrite is supposed to be leaving: the

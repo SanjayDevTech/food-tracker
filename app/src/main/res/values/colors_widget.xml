@@ -10,7 +10,7 @@
   wrong one now. Open question 1 settled it: the app is one fixed dark palette,
   and a widget that follows the wallpaper instead puts two visual languages
   side by side on the same home screen. The wallpaper also cannot be held to
-  the contrast ratios §1 is built on — `system_accent1_700` behind
+  the contrast ratios the palette is built on — `system_accent1_700` behind
   `system_accent1_100` is whatever the wallpaper makes of it.
 
   Values mirror `ui/theme/Color.kt` and must be kept in sync with it; the role

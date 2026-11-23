@@ -47,10 +47,10 @@ data class DataBackupUiState(
 }
 
 /**
- * The Data & backup page — design-plan §4.15.
+ * The Data & backup page.
  *
  * This is the backup half of the old `SettingsViewModel`, moved rather than
- * rewritten: every method below is the one that shipped, because §8 puts
+ * rewritten: every method below is the one that shipped, because the rewrite put
  * [BackupManager], `BackupPayload`, `BackupWorker` and [BackupScheduler]
  * explicitly out of scope. Only the screen around them changed.
  *

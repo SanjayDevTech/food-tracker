@@ -30,14 +30,14 @@ import com.example.foodtracker.ui.theme.Spacing
 private val MinHeight = 40.dp
 
 /**
- * The chip — design-plan §2's `Pill` row, revised again by the editorial pass.
+ * The chip, revised by the editorial pass.
  *
  * **Why it is hand-rolled.** It used to wrap Material's `FilterChip`, which
  * brings a 32dp height, an 8dp corner, a tonal `secondaryContainer` fill when
  * selected and a border whose colour is derived from the chip's own token set.
- * That is four fights with §1 and §2 for a control that is a rounded rectangle
+ * That is four fights with the house rules for a control that is a rounded rectangle
  * with two states, and on `#000000` the tonal fill in particular reads as a
- * lift — which §1 bans.
+ * lift — which the house rules ban.
  *
  * **Why the selected state is monochrome now.** It was a filled
  * `primaryContainer` block, and house rule 3 is that the accent is for data,
@@ -55,12 +55,12 @@ private val MinHeight = 40.dp
  * its 2dp rule — a chip cannot wear a rule under it inside a scrolling row, but
  * a brightened edge says the same thing in the same language.
  *
- * **The corner comes down to [Radius.md].** §6 reserves `Radius.pill` for the
+ * **The corner comes down to [Radius.md].** House rule 6 reserves `Radius.pill` for the
  * FAB and primary buttons; a chip is neither, and a 999dp corner is most of
  * what made these read as the old app's filter pills. Callers that genuinely
  * need another shape still pass one.
  *
- * **The haptic stays, and the name with it.** §2 calls the tick a good idea and
+ * **The haptic stays, and the name with it.** The tick is a good idea and
  * keeps it; the name survives because this is called from six places and a
  * rename would be a diff across files other hands are in.
  *
@@ -68,7 +68,7 @@ private val MinHeight = 40.dp
  * of selection: its callers include toggles where tapping the selected chip
  * turns it off, and a dead tap on a live control feels broken.
  *
- * [MinHeight] is 40dp rather than §2's 48dp touch target, deliberately. These
+ * [MinHeight] is 40dp rather than the 48dp touch target, deliberately. These
  * sit in dense horizontally-scrolling rows — four serving variants, four oils —
  * where 48dp each would cost a third of the serving sheet's scrollable middle,
  * and 40dp is already well above the 32dp Material gives a chip.

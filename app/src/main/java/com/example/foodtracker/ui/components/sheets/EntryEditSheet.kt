@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Edit a logged entry — design-plan §4.6 and §6.2.
+ * Edit a logged entry.
  *
  * **This closes the biggest behavioural hole in the app.** Before it, the diary
  * row offered delete and nothing else: a wrong serving meant deleting the row

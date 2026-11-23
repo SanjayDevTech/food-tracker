@@ -3,7 +3,7 @@ package com.example.foodtracker.ui.navigation
 import kotlinx.serialization.Serializable
 
 /**
- * Every destination — design-plan §5. Eleven in-app plus onboarding, down from
+ * Every destination. Eleven in-app plus onboarding, down from
  * thirteen flat pages with no bar.
  *
  * What left: `WaterRoute` and `WeightRoute` became bottom sheets (a whole route
@@ -57,7 +57,7 @@ data class RichFoodsRoute(val nutrientKey: String? = null)
  * sheet raised over a page is an ordinary transition, where a sheet raised over
  * another sheet has no convention at all.
  *
- * §5 argued against a page here on the grounds that it "would want a bar slot
+ * The rewrite argued against a page here on the grounds that it "would want a bar slot
  * it doesn't deserve" — but leaf pages hide the bottom bar in this nav graph,
  * so it never asks for one.
  *

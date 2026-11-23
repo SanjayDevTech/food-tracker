@@ -15,11 +15,11 @@ import com.example.foodtracker.ui.theme.MacroWater
 import com.example.foodtracker.ui.theme.StatusOver
 
 /**
- * How a nutrient is drawn — design-plan §2 (`NutrientColor` → `NutrientVisuals`).
+ * How a nutrient is drawn (`NutrientColor` → `NutrientVisuals`).
  *
  * Two questions, one file: *which nutrient is this* ([color]) and *how is the
  * day going for it* ([NutrientStatus.color]). The rename is because every new
- * surface in §4 needs the second one, and only the charts need the first.
+ * surface needs the second one, and only the charts need the first.
  */
 
 /**

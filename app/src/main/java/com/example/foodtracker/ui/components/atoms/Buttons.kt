@@ -20,7 +20,7 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Sizes
 
 /**
- * Actions — design-plan §2.
+ * Actions.
  *
  * Height is 48dp, down from the old 52, and the 56dp `ButtonHeightHero` is
  * gone: onboarding now uses the same button as everywhere else, because a CTA
@@ -28,7 +28,7 @@ import com.example.foodtracker.ui.theme.Sizes
  * the user will press a thousand times afterwards.
  *
  * All three are pill-shaped and carry **zero elevation**. The filled variant is
- * one of the five fills §1 allows in the whole app.
+ * one of the five fills the house rules allow in the whole app.
  *
  * The 48dp is a **minimum, not a height**. These were the only three controls in
  * the app pinned to an exact `height()` — every other one (`HapticFilterChip`,
@@ -119,7 +119,7 @@ fun AppTextButton(
 
 /**
  * The one spinner. Replaces the Expressive `LoadingIndicator`, which was a
- * shape-morphing animation — banned by §1's motion table and, being
+ * shape-morphing animation — banned by the motion rules and, being
  * experimental, one of the APIs phase 1 had to remove anyway.
  */
 @Composable

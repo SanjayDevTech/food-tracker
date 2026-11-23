@@ -43,7 +43,7 @@ import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.round
 
 /**
- * The molecules the You slice is built from — design-plan §3, rebuilt against
+ * The molecules the You slice is built from, rebuilt against
  * `docs/ui-house-rules.md`.
  *
  * They live beside the three screens rather than in `ui/components/` because
@@ -89,7 +89,7 @@ private val SETTING_VALUE_MAX = 180.dp
 // ---- Profile --------------------------------------------------------------
 
 /**
- * Who the user is — design-plan §4.3, restated as a masthead under a rule.
+ * Who the user is, restated as a masthead under a rule.
  *
  * The card, the avatar disc and the emoji inside it are all gone. The disc was
  * `IconCircle` with a `primaryContainer` fill, which house rule 3 does not
@@ -258,7 +258,7 @@ fun weeksLabel(weeks: Double): String {
  * these on the whole page and they are the only numbers in the profile block.
  * At 18sp against an 11sp label the pair read as two sizes of small text; at
  * 28sp it reads as a figure with a caption, which is the whole character of the
- * direction §0 chose.
+ * direction the app chose.
  *
  * [maxLines] defaults to 1 because a wrapped numeral is a layout bug, not a
  * long value — the caller raises it only for the activity phrase.
@@ -318,7 +318,7 @@ enum class TargetEmphasis { Headline, Dense }
 
 /**
  * `CALORIES — 2 100 kcal`, or `Calories  2 100 → 2 040 kcal` when [previous]
- * differs — the live preview on the edit page (§4.16).
+ * differs — the live preview on the edit page.
  *
  * Label left, number right, every time: house rule 2's row rhythm, and the same
  * one `StatRow` uses on Today. A [TargetEmphasis.Headline] row carries an
@@ -456,9 +456,9 @@ fun SeeAllTargetsRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
 /**
  * Label, value, chevron, on a rule.
  *
- * **This is a deliberate departure from design-plan §4.3**, which adopted
+ * **This is a deliberate departure from the original sketch**, which adopted
  * reference shot 9's icon-circle row anatomy. Shot 9 is a Direction A shot, and
- * §0 chose Direction B; the circles came in through a sketch rather than
+ * the app chose Direction B; the circles came in through a sketch rather than
  * through the direction. Two things are wrong with them here. A 36dp
  * `surfaceContainerHigh` disc per row is six filled shapes in a column that
  * house rule 1 has just stripped of its enclosing outline — the discs become
@@ -469,7 +469,7 @@ fun SeeAllTargetsRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
  *
  * So the leading column goes, and the row becomes what a settings list actually
  * is: a name, its current state, and an arrow saying there is more. The value
- * on the right is the part worth keeping from §4.3's reasoning — it is what
+ * on the right is the part worth keeping from that reasoning — it is what
  * makes a list of rows better than the wall of inline controls it replaced,
  * because you can read the state of all six settings without opening any.
  */

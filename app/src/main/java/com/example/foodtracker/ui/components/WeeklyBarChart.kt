@@ -32,7 +32,7 @@ private val AXIS_HEIGHT = 22.dp
  * Seven bars, a three-step grid, and an optional dashed goal line.
  *
  * The goal line used to be a literal `0xFFE85D2D` — the terracotta that the
- * palette dropped (open question 9), and a hue that appears nowhere else in
+ * palette dropped, and a hue that appears nowhere else in
  * the app now. It is `primary` instead: the goal is the one thing on this
  * chart you are aiming at, and `primary` is what "at goal" means everywhere
  * else (the calorie ring, every nutrient meter). The bars keep their caller-

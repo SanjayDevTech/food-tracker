@@ -5,7 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 /**
- * The app theme — design-plan §1, phase 1.
+ * The app theme.
  *
  * One scheme, always dark, no arguments. What used to be here:
  *
@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
  *    gets checked once instead of twice.
  *  - `dynamicLight/DarkColorScheme` plus `withAmoledSurfaces()`, which existed
  *    to make wallpaper-derived colour OLED-safe. A wallpaper cannot be held to
- *    the contrast ratios §1 is built on, so dynamic colour is gone.
+ *    the contrast ratios the palette is built on, so dynamic colour is gone.
  *
  * `ColorPalette` and `ThemeMode` went with them. Their DataStore keys are left
  * in place and simply unread — no migration, and a downgrade still finds them.

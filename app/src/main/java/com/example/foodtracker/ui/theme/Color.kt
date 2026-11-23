@@ -3,7 +3,7 @@ package com.example.foodtracker.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The palette — design-plan §1, "a black instrument panel".
+ * The palette — "a black instrument panel".
  *
  * ONE scheme. There is no light table and no dynamic table: decision 11 in the
  * plan dropped light mode outright, which is what removed the dual-palette
@@ -30,7 +30,7 @@ val AppOutline = Color(0xFF36312B)
 val AppOutlineVariant = Color(0xFF201D1A)
 
 // ---- Accent ---------------------------------------------------------------
-// Deep green (open question 9). Terracotta was rejected because it collides
+// Deep green. Terracotta was rejected because it collides
 // with the `over limit` hue, which has to be orange-red.
 
 val AppPrimary = Color(0xFF63D2B0)

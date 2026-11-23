@@ -62,7 +62,7 @@ import java.util.Locale
 enum class TodaySheet { Water, Weight }
 
 /**
- * Today — docs/design-plan.md §4.1. The first bottom-bar destination.
+ * Today. The first bottom-bar destination.
  *
  * The screen itself is deliberately thin: a scaffold, a `LazyColumn` of five
  * blocks, and the modals those blocks open. Everything with an opinion lives in
@@ -123,7 +123,7 @@ fun TodayScreen(
         snackbarHost = {
             // Material's default snackbar uses the *inverse* scheme, which on a
             // black canvas is a cream slab — the loudest surface in the app, for
-            // its least important message. §1 allows five fills and this is not
+            // its least important message. The rules allow five fills and this is not
             // one of them, so it gets the same hairline-on-near-black treatment
             // as every other container.
             SnackbarHost(snackbars) { data ->
@@ -144,7 +144,7 @@ fun TodayScreen(
                 containerColor = scheme.primary,
                 contentColor = scheme.onPrimary,
                 shape = RoundedCornerShape(Radius.pill),
-                // §1 bans elevation everywhere, the FAB included. All four
+                // House rule 6 bans elevation everywhere, the FAB included. All four
                 // states, not just the default — leaving focused/hovered at
                 // their 6dp defaults keeps a lift behind on a plugged-in phone.
                 elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),

@@ -29,7 +29,7 @@ import com.example.foodtracker.ui.components.color
 import com.example.foodtracker.ui.theme.Elevation
 
 /**
- * Progress primitives — design-plan §2.
+ * Progress primitives.
  *
  * [Meter] replaces three near-identical implementations: `NutrientBar`'s inner
  * `Box` pair, `HomeScreen.ContributionRow`'s and `RichFoodsScreen`'s
@@ -37,7 +37,7 @@ import com.example.foodtracker.ui.theme.Elevation
  * drew its track as a hardcoded `0x22000000` — 13% black, invisible on a black
  * canvas.
  *
- * Both animate over 450ms and interpolate the *value*, per §1's motion table,
+ * Both animate over 450ms and interpolate the *value*, per the motion rules,
  * which is why the numbers beside them carry `tnum`: the digits would otherwise
  * jitter for the whole animation.
  */

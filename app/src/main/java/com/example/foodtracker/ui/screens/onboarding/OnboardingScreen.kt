@@ -85,7 +85,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * First run — design-plan §4.17, five pages cut to three.
+ * First run, five pages cut to three.
  *
  * The three that remain are the two that are *required* (there is no usable
  * calorie target without age, sex, height, weight, activity and goal) and one
@@ -95,12 +95,12 @@ import kotlin.math.roundToInt
  * swipes from first run without removing a single control — and makes the fact
  * that they are optional visible at a glance rather than stated once per page.
  *
- * Two things §2 and §8 pin down:
+ * Two things the rewrite pinned down:
  *  - **No hero button.** `ButtonHeightHero` (56dp) is gone; the CTA here is the
  *    same 48dp [AppButton] as everywhere else. A button that is bigger only on
  *    the first run teaches the wrong size for the one pressed a thousand times
  *    afterwards.
- *  - **The privacy tagline is kept word for word** (§8). It stays on page one,
+ *  - **The privacy tagline is kept word for word.** It stays on page one,
  *    where it answers the question the page provokes — someone being asked for
  *    their weight before they have seen the app deserves the answer *then*, not
  *    two swipes later.
@@ -476,7 +476,7 @@ private fun OptionalPage(
  * bespoke accordion.
  *
  * **The icon disc is gone.** A 36dp tinted circle holding a cloud, a bell and a
- * sparkle is decoration in the friendly register §0 refused (rule 4 on emoji is
+ * sparkle is decoration in the friendly register the app refused (rule 4 on emoji is
  * the same argument), and it was spending the accent on chrome, which rule 3
  * rules out. Three words in a row do not need three pictures to be told apart.
  *
@@ -922,7 +922,7 @@ private fun PageScaffold(
 /**
  * Back on the left, the one forward action on the right.
  *
- * The forward button is the standard 48dp [AppButton] — §2 deleted the 56dp
+ * The forward button is the standard 48dp [AppButton] — the rewrite deleted the 56dp
  * hero height, and with it the trailing arrow icon, which [AppButton] has no
  * slot for and which said nothing the word "Continue" did not.
  */
@@ -1005,7 +1005,7 @@ private fun StepperSliderRow(
  * First-screen reassurance: the app is local-first and only touches the network
  * for barcode lookups.
  *
- * **The copy is kept word for word** (§8) — this is a privacy claim, and the
+ * **The copy is kept word for word** — this is a privacy claim, and the
  * restyle has no standing to reword one. Only the container changed, and this
  * time it changed to nothing: the filled `primaryContainer` hero became an
  * outlined card in the first pass, which was still a box, and a box is what

@@ -34,7 +34,7 @@ data class BarcodeUiState(
 }
 
 /**
- * The resolved product as a food the serving sheet can price — design-plan §4.12.
+ * The resolved product as a food the serving sheet can price.
  *
  * **This row is deliberately not saved.** It is built in memory, at the user's
  * currently chosen basis, purely so the standard sheet has a [FoodEntity] to

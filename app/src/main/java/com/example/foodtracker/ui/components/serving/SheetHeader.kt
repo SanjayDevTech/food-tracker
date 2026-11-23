@@ -27,11 +27,11 @@ import com.example.foodtracker.ui.theme.MacroFat
 import com.example.foodtracker.ui.theme.MacroProtein
 import com.example.foodtracker.ui.theme.Spacing
 
-/** Motion token from §1 — the same 450ms every meter and ring in the app uses. */
+/** Motion token — the same 450ms every meter and ring in the app uses. */
 private const val ANIM_MS = 450
 
 /**
- * The pinned top of the serving sheet — design-plan §4.5.
+ * The pinned top of the serving sheet.
  *
  * Name, optional brand, optional provenance line, and the live readout. The
  * readout is the reason this is pinned rather than scrolled: it is the answer

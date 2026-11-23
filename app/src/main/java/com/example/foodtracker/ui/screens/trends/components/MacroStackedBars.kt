@@ -42,8 +42,7 @@ private val CHART_HEIGHT = 150.dp
 private val AXIS_HEIGHT = 18.dp
 
 /**
- * Macros as a stacked column per day — design-plan §0 (adopted from reference
- * shots 1 and 9) and §4.2.
+ * Macros as a stacked column per day, adopted from reference shots 1 and 9.
  *
  * **What it replaces and why.** The macros card used to be four sparkline rows,
  * one per macro, each on its own invisible y-axis. Four rows answer "was my
@@ -97,7 +96,7 @@ fun MacroStackedBars(
             val chartH = size.height - AXIS_HEIGHT.toPx()
             val maxTotal = bars.maxOf { it.total }.coerceAtLeast(1.0)
 
-            // A baseline and one midline. §1 wants structure from hairlines, and
+            // A baseline and one midline. Structure comes from hairlines, and
             // two lines is as much grid as a bar chart needs to be read against.
             listOf(0f, 0.5f, 1f).forEach { f ->
                 val y = chartH * f

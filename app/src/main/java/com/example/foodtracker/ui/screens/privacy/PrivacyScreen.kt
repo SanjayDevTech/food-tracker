@@ -49,7 +49,7 @@ import com.example.foodtracker.ui.theme.Spacing
  * reassurances, and leaving them out would make the rest less true.
  *
  * **Every string on this screen is byte-identical to the version before the
- * restyle, and must stay that way** (design-plan §4.14 and §8). This page
+ * restyle, and must stay that way**. This page
  * enumerates exactly which three network calls the app makes; a word changed
  * here is a privacy claim changed, and a restyle has no business doing that.
  * The editorial pass therefore moved nothing but containers, type and spacing:

@@ -61,15 +61,15 @@ val ServingVariant.isCustomGrams: Boolean get() = label.startsWith(CUSTOM_GRAMS_
 fun customGramsVariant(grams: Double): ServingVariant =
     ServingVariant("$CUSTOM_GRAMS_PREFIX${grams.toInt()} g", grams)
 
-/** How long a preparation change stays flagged in the preview. §6.3. */
+/** How long a preparation change stays flagged in the preview. */
 private const val FLASH_MS = 2_000L
 
 /**
- * The serving sheet — design-plan §4.5, the densest surface in the app.
+ * The serving sheet, the densest surface in the app.
  *
  * It answers three questions about one food — *how much*, *how it's made*, and
  * *where does it go* — and it is the only place those are asked. Logging a
- * dosa, fixing yesterday's dosa (§4.6) and logging a scanned packet (§4.12) are
+ * dosa, fixing yesterday's dosa and logging a scanned packet are
  * the same decision with different starting values, so they are the same sheet;
  * the barcode screen's bespoke serving editor and meal chips were ~200 lines
  * re-asking "how much" in a second dialect.

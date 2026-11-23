@@ -68,7 +68,7 @@ import kotlin.math.roundToInt
  * the short version is that results are ordered by how much of the user's own
  * daily goal one serving covers, never filtered by a threshold.
  *
- * Design-plan §4.10 keeps almost all of this screen and changes two things:
+ * The rewrite kept almost all of this screen and changed two things:
  *
  *  - **The picker collapses.** It used to be a permanently open card holding a
  *    segmented control and up to eleven chips, which on a 412×915 phone pushed
@@ -394,7 +394,7 @@ private fun RichFoodRow(result: RichFood, fields: List<NutrientField>) {
  * fiber outranking 18 g of protein only makes sense once you can see that the
  * first fills 46% of its goal and the second 20% of its own.
  *
- * Rebuilt on the [Meter] atom (§3), which deletes the third hand-rolled
+ * Rebuilt on the [Meter] atom, which deletes the third hand-rolled
  * `Box`-in-a-`Box` bar in the app. The meter keeps the *nutrient's* hue rather
  * than taking a status colour: this is a ranking of foods, not a report on the
  * day, and nothing here has been eaten yet.

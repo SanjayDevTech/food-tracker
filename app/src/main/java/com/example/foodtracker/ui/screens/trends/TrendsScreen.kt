@@ -53,10 +53,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Trends — design-plan §4.2, re-cut against the UI house rules.
+ * Trends, re-cut against the UI house rules.
  *
  * **It is a destination, not a page.** Trends is one of the three bottom-bar
- * tabs (open question 3), so it renders no back arrow and no bar of its own:
+ * tabs, so it renders no back arrow and no bar of its own:
  * the host `Scaffold` in `AppNav` owns both, and a second `Scaffold` here would
  * double the insets and put a back arrow on a peer destination, which is
  * exactly the thing a bottom bar means you no longer need.
@@ -75,7 +75,7 @@ import kotlin.math.roundToInt
  *
  * **What the editorial pass changed here, and why.** The five charts used to
  * sit in five `AppCard`s 16dp apart — a stack of rounded hairline boxes, which
- * is the Direction A anatomy §0 rejected and the reason the rewrite still read
+ * is the Direction A anatomy the app rejected and the reason the rewrite still read
  * as the old app. They are `Section`s now: a standing head with its summary
  * figure on the baseline, a hairline under the head, then the reading and the
  * chart, open to the 16dp gutter. The charts got the 32dp of width the card

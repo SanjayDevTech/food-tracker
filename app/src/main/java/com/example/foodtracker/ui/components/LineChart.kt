@@ -36,11 +36,11 @@ private val CHART_HEIGHT = 180.dp
 private val AXIS_HEIGHT = 22.dp
 
 /**
- * A line over time, with an optional dashed goal — design-plan §2.
+ * A line over time, with an optional dashed goal.
  *
  * **The drawing model is deliberately unchanged**: auto-scaled bounds expanded
  * to keep the reference line in view, 10% headroom so the path never grazes an
- * edge, a three-step grid, and sparse x-labels. That was all correct; §2 asked
+ * edge, a three-step grid, and sparse x-labels. That was all correct; the pass asked
  * for three cosmetic changes and nothing else.
  *
  * Two of them are here:
@@ -50,7 +50,7 @@ private val AXIS_HEIGHT = 22.dp
  *    reads as five floating threads. The wash gives each line a body without
  *    adding a fill: it is the line's own hue at 12% at the top of the plot,
  *    gone by the baseline, so it never competes with the stroke and never turns
- *    the card into a filled surface, which §1 forbids.
+ *    the card into a filled surface, which the house rules forbid.
  *  - **Dot radius 3.5dp → 3dp.** At 3.5 the dots on a 30-day series touched
  *    each other and the line read as a dotted chain.
  *

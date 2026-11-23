@@ -121,7 +121,7 @@ class ProfileStore(
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.HAPTICS_ENABLED] ?: true }
 
     // THEME_MODE and COLOR_PALETTE are no longer read. The app is dark-only
-    // (design-plan decision 11), so there is nothing left for them to select.
+    // dark-only, so there is nothing left for them to select.
     // The keys stay in the DataStore deliberately: clearing them would be a
     // migration for no gain, and leaving them means a downgrade still finds
     // whatever the user last chose.

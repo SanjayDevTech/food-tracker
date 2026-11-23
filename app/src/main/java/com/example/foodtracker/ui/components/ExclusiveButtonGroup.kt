@@ -28,17 +28,17 @@ import com.example.foodtracker.ui.theme.Spacing
  * Single-select segmented control — a row of mutually exclusive segments.
  *
  * **Why this is hand-rolled.** It used to be `ButtonGroup { toggleableItem(…) }`
- * from Material 3 Expressive. Expressive is gone from the app (design-plan §0
- * hard constraints, §1 motion table), and with it that pair: `ButtonGroup`
- * brought the connected-corner shape-morph on press, which §1 bans outright,
- * and both APIs are behind `ExperimentalMaterial3ExpressiveApi`. The stock M3
+ * from Material 3 Expressive. Expressive is gone from the app, and with it that
+ * pair: `ButtonGroup` brought the connected-corner shape-morph on press, which
+ * the motion rules ban outright, and both APIs are behind
+ * `ExperimentalMaterial3ExpressiveApi`. The stock M3
  * alternative, `SingleChoiceSegmentedButtonRow`, is not a drop-in either — it
  * hard-codes a check icon in the selected segment, its own 40dp height and a
- * border on *every* segment, which is three fights with §1 and §2 for a control
- * that is a `Row` of five properties. So: `Row` + `Surface`, per §2's
+ * border on *every* segment, which is three fights with the house rules for a
+ * control that is a `Row` of five properties. So: `Row` + `Surface`, per the
  * `SegmentedControl` row.
  *
- * The look, straight off §1/§2:
+ * The look:
  *  - [Radius.md] on every segment, and **zero elevation** — neither tonal nor
  *    shadow. Structure comes from the hairline, not from a lift.
  *  - Selected: transparent still, with the edge and the label at `onSurface`.
@@ -50,7 +50,7 @@ import com.example.foodtracker.ui.theme.Spacing
  *  - [AppText.label] for the text and a [Sizes.touchTarget] minimum height, so
  *    the segment is a legal tap target however short its label is.
  *
- * **The haptic stays.** §2 calls the tick out as worth keeping: this is a
+ * **The haptic stays.** The tick is worth keeping: this is a
  * discrete tap on a tap target, so it fires [rememberAppHaptics]`.light()`, and
  * only on an actual change of selection. Re-tapping the selected segment is a
  * no-op — no tick, no [onSelect] — which is what the Expressive version did

@@ -53,7 +53,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Logging water — design-plan §4.8.
+ * Logging water.
  *
  * **Why this stopped being a screen.** `WaterScreen` was a full route reached
  * from Today, and two thirds of it was history you never came for: you open
@@ -61,7 +61,7 @@ import java.util.Locale
  * bar are all overhead on a one-tap action, and the back stack entry meant the
  * system back button walked you through hydration on the way out of the app.
  * The entry half is a sheet; the *chart* half moved to Trends' water card,
- * beside the other charts, where a week of totals is actually read (§4.2).
+ * beside the other charts, where a week of totals is actually read.
  *
  * **Why the sheet owns its own `ModalBottomSheet`.** The alternative — exposing
  * the content and making every caller wrap it — spreads the container colour,
@@ -70,7 +70,7 @@ import java.util.Locale
  * own only *whether* the sheet is open; they pass [onDismiss] and nothing else.
  *
  * The totals, goal and entry list all come from [WaterViewModel], unchanged
- * from the screen it replaces — only its package moved (§7 phase 4).
+ * from the screen it replaces — only its package moved.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -131,7 +131,7 @@ fun WaterSheet(onDismiss: () -> Unit) {
             Spacer(Modifier.height(Spacing.s))
             if (state.entries.isEmpty()) {
                 Text(
-                    // Kept verbatim from the screen (§4.8) — it is the one empty
+                    // Kept verbatim from the screen it replaces — it is the one empty
                     // state in the app that sounds like a person wrote it.
                     "No water logged yet. Stay hydrated 💧",
                     style = AppText.body,

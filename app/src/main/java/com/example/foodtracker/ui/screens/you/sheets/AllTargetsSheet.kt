@@ -13,7 +13,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Every daily target the profile produces — design-plan §4.3 / §4.16.
+ * Every daily target the profile produces.
  *
  * Read-only on purpose. The numbers are derived from the profile by
  * [com.example.foodtracker.domain.GoalCalculator], so the way to change one is

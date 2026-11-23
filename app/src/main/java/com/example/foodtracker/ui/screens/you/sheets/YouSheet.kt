@@ -23,7 +23,7 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * The chrome every You sheet shares — design-plan §5.
+ * The chrome every You sheet shares.
  *
  * Three of the six App rows open a sheet rather than a page, because each is a
  * drill-down from one row of one section: a read-only list, a toggle with two
@@ -32,7 +32,7 @@ import com.example.foodtracker.ui.theme.Spacing
  * get you out of somewhere you did not really go.
  *
  * Fixed here so the three cannot drift: `surfaceContainer` fill (sheets are one
- * of the five surfaces §1 lets fill), [Radius.sheet] top corners only, title in
+ * of the five surfaces the rules let fill), [Radius.sheet] top corners only, title in
  * [AppText.titleL] over a hairline, and the content scrolls with the navigation
  * bar inset applied — a sheet that ends under the gesture bar eats its own last
  * row.

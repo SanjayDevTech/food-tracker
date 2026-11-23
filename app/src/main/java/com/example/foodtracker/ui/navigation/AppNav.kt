@@ -178,7 +178,7 @@ fun AppNav(
 }
 
 /**
- * Switch bar tabs — design-plan §5, "Back-stack behaviour".
+ * Switch bar tabs, and the back-stack behaviour that goes with it.
  *
  * The three are **peers**, not a stack: `popUpTo(startDestination)` with
  * `saveState`/`restoreState` means Today → Trends → You → back lands on Today
@@ -255,7 +255,7 @@ private val navPredictivePopExit:
     AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> ExitTransition = { navPopExit() }
 
 /**
- * Fade-through for bar switches — §1's motion table. Peers do not slide: a
+ * Fade-through for bar switches, per the motion rules. Peers do not slide: a
  * slide says "deeper" or "back", and Trends is neither of those from Today.
  * 90ms out, then 210ms in, so the outgoing screen is gone before the incoming
  * one starts and the two never cross-dissolve into mud.
@@ -290,7 +290,7 @@ private fun NavGraphBuilder.graph(
     }
     composable<TrendsRoute> {
         // Trends hosts the same two sheets Today does. They are modals, not
-        // routes (§5): a whole back-stack entry for four water buttons was
+        // routes: a whole back-stack entry for four water buttons was
         // over-provisioned, and the weigh-in sheet is one number and a toggle.
         var sheet by rememberSaveable { mutableStateOf<TodaySheet?>(null) }
         TrendsScreen(

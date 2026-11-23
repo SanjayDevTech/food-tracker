@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * The window every card on Trends summarises — design-plan §4.2.
+ * The window every card on Trends summarises.
  *
  * Four stops, labelled the way the control shows them (`7d`, not `Week`): the
  * segmented control is four cells wide on a 412dp screen, and "3 months" does
@@ -108,7 +108,7 @@ data class TrendsUiState(
 }
 
 /**
- * Trends — design-plan §4.2. Was `ProgressViewModel`.
+ * Trends. Was `ProgressViewModel`.
  *
  * It gained two things in the rename. The **macro bars**, which fold the day's
  * log into carbs/protein/fat so the chart can stack them instead of running

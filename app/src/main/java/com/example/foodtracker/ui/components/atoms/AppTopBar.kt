@@ -17,14 +17,14 @@ import androidx.compose.ui.Modifier
 import com.example.foodtracker.ui.theme.AppText
 
 /**
- * The app's top bar — design-plan §2.
+ * The app's top bar.
  *
  * Two things it does that the stock `TopAppBar` does not:
  *
  *  - `containerColor` **and** `scrolledContainerColor` are both `background`.
  *    Material's default lifts the bar to a tinted surface once content scrolls
  *    under it, which on a black canvas reads as a grey band appearing out of
- *    nowhere. §1 bans elevation, and that tint is elevation by another name.
+ *    nowhere. House rule 6 bans elevation, and that tint is elevation by another name.
  *  - The title is [AppText.titleL] with an optional second line, so a screen
  *    that needs a date or a count under its name does not have to hand-roll a
  *    `Column` into the title slot the way Today used to.

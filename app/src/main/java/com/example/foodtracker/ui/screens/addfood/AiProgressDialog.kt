@@ -56,7 +56,7 @@ import androidx.compose.ui.window.DialogProperties
  * a two-node "Look up → Verify" tracker so the user sees where the (sometimes
  * slow) request is.
  *
- * Design-plan §8 put this out of the rewrite's scope, so it kept a 28dp corner
+ * The rewrite put this out of scope, so it kept a 28dp corner
  * off the radius scale, a 6dp tonal elevation against house rule 6's zero, six
  * raw gaps off the spacing scale, and an accent-filled icon disc — house rule
  * 3's exact prohibition. The animation is the part that earned its exemption,

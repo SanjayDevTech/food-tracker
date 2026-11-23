@@ -32,7 +32,7 @@ import java.util.Locale
 private const val DAYS_BACK = 21
 
 /**
- * The date picker on Today — design-plan §3, independently confirmed by
+ * The date picker on Today, independently confirmed by
  * reference shot 5.
  *
  * Replaces `InlineDayPicker`'s `[◀ Today ▶]` pill, which had the problem that

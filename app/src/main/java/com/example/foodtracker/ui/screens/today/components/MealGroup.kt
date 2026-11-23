@@ -47,7 +47,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * The day's diary — design-plan §3 and §4.1.
+ * The day's diary.
  *
  * One section with four rows rather than four cards. The reasoning in the original
  * `MealsSection` docstring was right and is kept: on a normal day two or three
@@ -81,7 +81,7 @@ fun MealsSection(
     var expanded by rememberSaveable { mutableStateOf(activeMeal.name) }
     // No enclosing card. The meals are the longest block on the screen, and a
     // border around a list that already has rules between its rows is a second
-    // boundary doing the first one's job — §1's structure is hairlines, not
+    // boundary doing the first one's job — structure is hairlines, not
     // boxes, and a box drawn around rules reads as Direction A's card stack.
     Section(
         title = "Meals",
@@ -124,7 +124,7 @@ private fun MealGroup(
 ) {
     val scheme = MaterialTheme.colorScheme
     val kcal = rows.sumOf { it.nutrients().calories }
-    // The "now" row is one of the five fills §1 allows, at 35% so it reads as a
+    // The "now" row is one of the five fills the rules allow, at 35% so it reads as a
     // highlight rather than as a selected state. Composited against the canvas
     // rather than left translucent because the entry rows below need an opaque
     // colour to cover the swipe backdrop with — a 35% row would let the delete
@@ -141,7 +141,7 @@ private fun MealGroup(
                 .padding(top = Spacing.m, bottom = Spacing.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // No emoji. §0 adopted Direction B, whose shots carry none; the
+            // No emoji. The app adopted Direction B, whose shots carry none; the
             // glyphs are the friendly register the plan explicitly refused, and
             // on a four-row list they are decoration rather than wayfinding.
             Text(

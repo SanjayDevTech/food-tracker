@@ -26,7 +26,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Optional AI nutrition autofill — design-plan §4.3, §5.
+ * Optional AI nutrition autofill.
  *
  * A toggle, a provider picker, a model picker and a key field: four controls
  * that used to sit inline in a 662-line Settings wall, where the key field was

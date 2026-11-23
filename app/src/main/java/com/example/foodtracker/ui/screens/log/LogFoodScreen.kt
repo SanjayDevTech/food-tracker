@@ -72,7 +72,7 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * The log picker — design-plan §4.4.
+ * The log picker.
  *
  * The constraint on this screen was that it mostly works and should survive;
  * three things changed, each with a reason.
@@ -514,7 +514,7 @@ private fun countCaption(size: Int): String =
     if (size == 1) "1 food" else "$size foods"
 
 /**
- * The pinned online-search bar — design-plan §3's `OnlineSearchSection` row.
+ * The pinned online-search bar.
  *
  * It lives here, across the bottom, instead of at the end of the results list,
  * because the moment you need it is the moment the local list has failed you —
@@ -523,7 +523,7 @@ private fun countCaption(size: Int): String =
  *
  * The three loading phases stay exactly as they were; only their home changed.
  * The spinner is the app's [Spinner], not Material's `LoadingIndicator`, which
- * was a shape-morphing animation §1 bans.
+ * was a shape-morphing animation the motion rules ban.
  */
 @Composable
 private fun OnlineSearchBar(
@@ -637,7 +637,7 @@ private fun AddCustomFoodRow(onClick: () -> Unit) {
 }
 
 /**
- * The per-tab empty copy, which §4.4 keeps verbatim — it is well written and
+ * The per-tab empty copy, kept verbatim — it is well written and
  * each line says what *this* tab fills up with. Only its container changed: the
  * shared [EmptyState] atom instead of a bespoke centred box.
  */
@@ -786,7 +786,7 @@ private fun HiddenCustomFoodSheet(
 }
 
 /**
- * Icon + title + subtitle — §3's `ChoiceRow`, renamed from `DeleteOptionRow`
+ * Icon + title + subtitle — the shared `ChoiceRow`, renamed from `DeleteOptionRow`
  * because both of the sheets above offer a non-destructive option too, and a
  * name that says "delete" on the Restore row was a small lie in a place where
  * the user is deciding whether to lose data.

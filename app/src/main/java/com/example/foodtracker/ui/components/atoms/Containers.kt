@@ -31,7 +31,7 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Containers — design-plan §2.
+ * Containers.
  *
  * [AppCard] is the one container in the app. It replaces six implementations of
  * the same idea: `SectionCard` (22dp, `OutlinedCard`), `FormSection` (18dp,

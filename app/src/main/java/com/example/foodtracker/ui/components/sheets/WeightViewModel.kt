@@ -25,12 +25,12 @@ const val MAX_WEIGHT_KG = 400.0
 const val WEIGHT_STEP_KG = 0.1
 
 /**
- * State behind the weigh-in sheet — design-plan §4.9.
+ * State behind the weigh-in sheet.
  *
  * **The draft is a `Double`, not a `String`.** It used to be the raw text of an
  * `OutlinedTextField(keyboardType = Decimal)`, which meant the ViewModel owned a
  * character filter, a `toDoubleOrNull()` on every read and a state that could
- * be `"7."`. §4.9 replaced the keyboard with a ruler — you weigh within a kilo
+ * be `"7."`. The rewrite replaced the keyboard with a ruler — you weigh within a kilo
  * of last time, so a numeric keypad is the wrong instrument — and a ruler can
  * only ever produce a real number in range. The parsing problem is gone, and
  * with it the filter.
@@ -60,7 +60,7 @@ data class WeightUiState(
  * The weigh-in half of what used to be `WeightScreen`.
  *
  * The chart and the history are **not** here any more: they moved to Trends'
- * weight card (§9 decision 6), so this ViewModel answers one question — what
+ * weight card, so this ViewModel answers one question — what
  * number is being saved, and does it go to the profile too. It still reads the
  * recent log, because the only sane starting point for the ruler is the last
  * weigh-in.

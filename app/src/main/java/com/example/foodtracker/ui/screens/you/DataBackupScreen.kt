@@ -51,7 +51,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Data & backup — design-plan §4.15, rebuilt against `docs/ui-house-rules.md`.
+ * Data & backup, rebuilt against `docs/ui-house-rules.md`.
  *
  * Merges three sections of the old Settings wall onto a page of their own:
  * backup folder / cadence / snapshots, export & import, and the compact log
@@ -61,10 +61,10 @@ import java.util.Locale
  * the database, which is not something to scroll past on the way to the haptics
  * switch.
  *
- * **Nothing under this screen changed.** §8 puts `BackupManager`,
+ * **Nothing under this screen changed.** The rewrite put `BackupManager`,
  * `BackupPayload`, `BackupWorker` and `BackupScheduler` out of scope, and
  * [DataBackupViewModel] is the old `SettingsViewModel`'s backup half moved
- * verbatim. The restore and import confirmations are kept word for word: §4.15
+ * verbatim. The restore and import confirmations are kept word for word: they
  * calls them "correctly worded and correctly scary", and they guard the two
  * actions in the app that can destroy a diary. This pass is presentation only
  * and touched none of it.
@@ -75,7 +75,7 @@ import java.util.Locale
  * *inside* an outlined card — a border drawn around rows that already had
  * rules, which is the exact second boundary the rule exists to delete.
  *
- * One deviation from §4.15's sketch, which draws automatic backup as a single
+ * One deviation from the original sketch, which draws automatic backup as a single
  * `[●]` switch: the stored value has three states (off / daily / weekly) and a
  * switch cannot say "weekly". The segmented control stays.
  */

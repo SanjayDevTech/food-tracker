@@ -23,7 +23,7 @@ data class WaterUiState(
 )
 
 /**
- * State behind the water sheet — design-plan §4.8.
+ * State behind the water sheet.
  *
  * Unchanged in substance from the `WaterScreen` it was written for, with one
  * subtraction: the seven-day totals are gone. That series was the screen's

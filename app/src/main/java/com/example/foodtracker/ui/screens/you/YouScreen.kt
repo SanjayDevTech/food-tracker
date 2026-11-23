@@ -29,7 +29,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * You — design-plan §4.3, rebuilt against `docs/ui-house-rules.md`.
+ * You, rebuilt against `docs/ui-house-rules.md`.
  * The third bottom-bar destination.
  *
  * Merges the old `ProfileScreen` and `SettingsScreen`. Settings rendered every
@@ -51,8 +51,8 @@ import com.example.foodtracker.ui.theme.Spacing
  * whitespace cannot say where a section *ended*. The rule says it in 1dp, so
  * the gap could come down rather than up.
  *
- * **The row anatomy changed with them.** §4.3 adopted reference shot 9's
- * icon-circle row; shot 9 is Direction A and §0 chose Direction B. See
+ * **The row anatomy changed with them.** The sketch adopted reference shot 9's
+ * icon-circle row; shot 9 is Direction A and the app chose Direction B. See
  * [SettingRow] for the full argument — in short, once the enclosing card goes,
  * six tinted discs are the only filled shapes left in the column and they take
  * over as the page's structure.
@@ -67,7 +67,7 @@ import com.example.foodtracker.ui.theme.Spacing
  *
  * The goal meter is the old Today banner: it used to be a filled
  * `tertiaryContainer` card at the top of the diary, costing the one screen that
- * most needs vertical room. Goal context belongs beside the goal (§3), and as a
+ * most needs vertical room. Goal context belongs beside the goal, and as a
  * progress reading it is the one place on this page house rule 3 lets the
  * accent appear.
  */

@@ -191,7 +191,7 @@ data class NutrientField(
 }
 
 /**
- * What a single nutrient reading means today — design-plan §3 / §4.1.
+ * What a single nutrient reading means today.
  *
  * [Headroom] is the state the app used to get wrong. A [NutrientTarget.Limit]
  * field sitting at 40% of its cap is a good day, and drawing it on the same
@@ -200,7 +200,7 @@ data class NutrientField(
  * [Unmet] / [Partial] / [Met] split at 80%, not 100%: RDAs sit roughly 2 SD
  * above average requirement so they cover 97.5% of people, which puts the EAR —
  * the number that is genuinely adequate — near 80%. Holding the strip to 100%
- * makes it cry wolf over trivial shortfalls (open question 4). No time
+ * makes it cry wolf over trivial shortfalls. No time
  * weighting, deliberately: the strip must mean the same thing whenever you look
  * at it, not soften because it is only 10am.
  */
@@ -209,7 +209,7 @@ enum class NutrientStatus { Unmet, Partial, Met, Headroom, Over, FarOver, Untrac
 /**
  * True when a reading counts toward the "n of 29 on track" tally.
  *
- * A limit under its cap is a pass (open question 5) — staying under sodium
+ * A limit under its cap is a pass — staying under sodium
  * genuinely is on track, and it makes the denominator match the strip directly
  * above it instead of silently dropping four cells.
  *

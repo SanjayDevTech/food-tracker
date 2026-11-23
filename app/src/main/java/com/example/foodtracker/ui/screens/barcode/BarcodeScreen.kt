@@ -72,15 +72,15 @@ import com.example.foodtracker.ui.theme.Spacing
 import java.time.LocalTime
 
 /**
- * Barcode scanning — design-plan §4.12.
+ * Barcode scanning.
  *
  * **What changed is everything above the camera, and nothing below it.** The
- * CameraX + ML Kit pipeline and `BarcodeScannerView` are out of scope (§8) and
+ * CameraX + ML Kit pipeline and `BarcodeScannerView` are out of scope and
  * untouched. What went is the ~200 lines of bespoke panel that sat on top: a
  * serving editor with its own stepper, slider and "will log" line, a 4-way
  * "Add to:" meal row, and an `Add 180 g to Lunch` button — a second dialect for
  * a question the app already has one answer to. A scanned packet now goes into
- * the same serving sheet a dosa does (§4.5), so logging it is the same three
+ * the same serving sheet a dosa does, so logging it is the same three
  * gestures.
  *
  * The one thing the sheet cannot know is which published basis to trust, so
@@ -89,7 +89,7 @@ import java.time.LocalTime
  * contributors paste the only number they can see into the per-100 g slot —
  * that the user, who is holding the pack, has to be able to say.
  *
- * The camera keeps running through the lookup (§4.12's loading note): the
+ * The camera keeps running through the lookup: the
  * progress line is a small bar at the bottom rather than a spinner over the
  * whole preview, so a mis-scan does not mean waiting for a dead screen.
  */
@@ -298,7 +298,7 @@ private fun ScannerOverlay() {
 }
 
 /**
- * Two lines in a bar, not a spinner over the preview — §4.12's loading note.
+ * Two lines in a bar, not a spinner over the preview.
  *
  * It was a `surfaceContainerHigh` slab. A panel floating over camera output
  * does need to be opaque — that is the one thing the viewfinder scrims and this
