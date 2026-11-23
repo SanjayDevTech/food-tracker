@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.foodtracker.data.NutrientGoals
+import com.example.foodtracker.ui.components.atoms.AppSheet
 import com.example.foodtracker.ui.screens.you.TARGET_COUNT
 import com.example.foodtracker.ui.screens.you.TargetList
 import com.example.foodtracker.ui.theme.AppText
@@ -32,7 +33,7 @@ import com.example.foodtracker.ui.theme.Spacing
  */
 @Composable
 fun AllTargetsSheet(goals: NutrientGoals, onDismiss: () -> Unit) {
-    YouSheet(title = "All $TARGET_COUNT targets", onDismiss = onDismiss) {
+    AppSheet(title = "All $TARGET_COUNT targets", onDismiss = onDismiss) {
         Text(
             "Worked out from your age, sex, height, weight, activity and goal. " +
                 "Change those and every number here moves.",

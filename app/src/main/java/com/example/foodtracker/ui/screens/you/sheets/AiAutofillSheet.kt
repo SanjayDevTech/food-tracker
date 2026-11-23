@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import com.example.foodtracker.data.AiModel
 import com.example.foodtracker.data.AiProvider
 import com.example.foodtracker.ui.components.ExclusiveButtonGroup
+import com.example.foodtracker.ui.components.atoms.AppSheet
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
@@ -64,7 +65,7 @@ fun AiAutofillSheet(
     onDismiss: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    YouSheet(title = "AI autofill", onDismiss = onDismiss) {
+    AppSheet(title = "AI autofill", onDismiss = onDismiss) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Enable AI autofill", style = AppText.body, color = scheme.onSurface)
@@ -80,7 +81,7 @@ fun AiAutofillSheet(
             Switch(checked = enabled, onCheckedChange = onEnabledChange)
         }
 
-        if (!enabled) return@YouSheet
+        if (!enabled) return@AppSheet
 
         Spacer(Modifier.height(Spacing.xxl))
         Section(

@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.foodtracker.ui.components.atoms.AppSheet
 import com.example.foodtracker.ui.components.atoms.AppTextButton
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.screens.you.StatBlock
@@ -57,7 +58,7 @@ fun CustomFoodsSheet(
     val haptics = rememberAppHaptics()
     var confirming by remember { mutableStateOf(false) }
 
-    YouSheet(title = "Custom foods", onDismiss = onDismiss) {
+    AppSheet(title = "Custom foods", onDismiss = onDismiss) {
         StatBlock(
             label = "Saved",
             value = count.toDouble(),

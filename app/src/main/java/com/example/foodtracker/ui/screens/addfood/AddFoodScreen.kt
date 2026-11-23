@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.foodtracker.data.AiLog
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.NutritionBasis
 import com.example.foodtracker.data.ServingVariant
@@ -102,6 +103,8 @@ fun AddFoodScreen(
     val haptics = rememberAppHaptics()
     var showAiInstructions by rememberSaveable { mutableStateOf(false) }
     var aiInstructions by rememberSaveable { mutableStateOf("") }
+    var showAiLog by rememberSaveable { mutableStateOf(false) }
+    val aiLogEntries by AiLog.entries.collectAsStateWithLifecycle()
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
     LaunchedEffect(prefillBarcode) {
         if (!prefillBarcode.isNullOrBlank() && state.barcode.isNullOrBlank()) {
@@ -109,7 +112,21 @@ fun AddFoodScreen(
         }
     }
 
-    AiProgressDialog(state.aiStep, verifies = state.aiVerifies)
+    AiProgressDialog(
+        step = state.aiStep,
+        verifies = state.aiVerifies,
+        // The brand is part of the question now, so it is part of what the
+        // dialog says it is asking about.
+        subject = listOf(state.name.trim(), state.brand.trim())
+            .filter { it.isNotBlank() }
+            .joinToString(" — "),
+        providerLabel = state.aiProvider.displayName,
+        modelLabel = state.aiModel.label,
+        startedAt = state.aiStartedAt,
+        onCancel = { haptics.light(); vm.cancelAi() },
+    )
+
+    if (showAiLog) AiDevLogSheet(onDismiss = { showAiLog = false })
 
     if (showAiInstructions) {
         AlertDialog(
@@ -117,18 +134,60 @@ fun AddFoodScreen(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = { Text("AI food details", style = AppText.titleL) },
             text = {
-                OutlinedTextField(
-                    value = aiInstructions,
-                    onValueChange = { aiInstructions = it },
-                    label = { Text("Optional instructions") },
-                    placeholder = { Text("e.g. Kerala-style, coconut-based, 1 bowl") },
-                    minLines = 3,
-                    maxLines = 5,
-                    // Same corner as the barcode dialog's field. A text field is
-                    // the one place Material's own default radius leaks through.
-                    shape = RoundedCornerShape(Radius.md),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column {
+                    // The model lives here as well as in Settings, because this
+                    // is where you are standing when you find out the cheap one
+                    // is rate-limited or out of free-tier requests for the day.
+                    // Walking to Settings to change it and walking back meant
+                    // retyping nothing but remembering everything; the whole
+                    // point of the retry is that the form is still filled in.
+                    // The provider is named but not switchable: each one needs
+                    // its own API key, so switching here would only fail
+                    // differently.
+                    Section(
+                        title = "Model",
+                        trailing = {
+                            Text(
+                                state.aiProvider.displayName,
+                                style = AppText.bodyS,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    ) {
+                        ExclusiveButtonGroup(
+                            options = state.aiProvider.models,
+                            selected = state.aiModel,
+                            onSelect = { vm.setAiModel(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            fillWidth = false,
+                            label = { it.label },
+                        )
+                    }
+
+                    Spacer(Modifier.height(Spacing.xxl))
+                    Section("Instructions") {
+                        OutlinedTextField(
+                            value = aiInstructions,
+                            onValueChange = { aiInstructions = it },
+                            label = { Text("Optional") },
+                            placeholder = { Text("e.g. Kerala-style, coconut-based, 1 bowl") },
+                            minLines = 2,
+                            maxLines = 4,
+                            // Same corner as the barcode dialog's field. A text
+                            // field is the one place Material's own default
+                            // radius leaks through.
+                            shape = RoundedCornerShape(Radius.md),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (aiLogEntries.isNotEmpty()) {
+                            Spacer(Modifier.height(Spacing.s))
+                            AppTextButton(
+                                text = "View request log",
+                                onClick = { showAiInstructions = false; showAiLog = true },
+                            )
+                        }
+                    }
+                }
             },
             confirmButton = {
                 AppButton(
@@ -189,6 +248,8 @@ fun AddFoodScreen(
                     state = state,
                     servingGramsInt = servingGramsInt,
                     onAskAi = { showAiInstructions = true },
+                    onOpenAiLog = { showAiLog = true },
+                    aiHasLog = aiLogEntries.isNotEmpty(),
                     vm = vm,
                 )
             }
@@ -253,6 +314,9 @@ private fun BasicsSection(
     state: AddFoodFormState,
     servingGramsInt: Int,
     onAskAi: () -> Unit,
+    onOpenAiLog: () -> Unit,
+    /** Whether any request has been attempted — nothing to show before the first. */
+    aiHasLog: Boolean,
     vm: AddFoodViewModel,
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -297,6 +361,15 @@ private fun BasicsSection(
             state.aiError?.let { err ->
                 Spacer(Modifier.height(Spacing.xs))
                 Text(err, style = AppText.bodyS, color = MaterialTheme.colorScheme.error)
+                // The message says what to do about the causes it can name.
+                // This is for the ones it cannot — and it opens over the form
+                // rather than navigating away from it, because the next thing
+                // you do after reading it is change one field and go again.
+                //
+                // Hidden when nothing has been attempted: a missing API key
+                // fails before any request is made, so the log would open on
+                // "nothing yet" and the button would be a dead end.
+                if (aiHasLog) AppTextButton(text = "View request log", onClick = onOpenAiLog)
             }
 
             Spacer(Modifier.height(Spacing.m))
@@ -307,6 +380,15 @@ private fun BasicsSection(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (state.aiEnabled) {
+                Spacer(Modifier.height(Spacing.xs))
+                Text(
+                    "Sent to the AI with the name — a named brand is asked for by " +
+                        "its own label rather than the generic food.",
+                    style = AppText.bodyS,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         Spacer(Modifier.height(Spacing.xxl))

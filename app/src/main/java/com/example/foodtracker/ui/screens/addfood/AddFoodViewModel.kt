@@ -2,7 +2,9 @@ package com.example.foodtracker.ui.screens.addfood
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.foodtracker.data.AiModel
 import com.example.foodtracker.data.AiNutrition
+import com.example.foodtracker.data.AiProvider
 import com.example.foodtracker.data.FoodCategory
 import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.NutritionBasis
@@ -10,10 +12,12 @@ import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.db.FoodEntity
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -77,6 +81,20 @@ data class AddFoodFormState(
     /** Whether this run includes the verify pass (skipped for premium models). */
     val aiVerifies: Boolean = true,
     val aiError: String? = null,
+    /**
+     * The provider and model this screen would use, mirrored out of settings so
+     * the model can be read — and changed — without leaving the form. The
+     * provider is shown but not switchable here: a provider needs its own API
+     * key, so changing it mid-lookup would just fail differently.
+     */
+    val aiProvider: AiProvider = AiProvider.Gemini,
+    val aiModel: AiModel = AiProvider.Gemini.defaultModel,
+    /**
+     * When the current lookup started, for the elapsed reading in the progress
+     * dialog. Zero while idle. Wall clock, not uptime: it is only ever
+     * subtracted from another wall-clock reading taken seconds later.
+     */
+    val aiStartedAt: Long = 0L,
 )
 
 /** Stages of the AI autofill, surfaced as an animated progress dialog. */
@@ -90,12 +108,52 @@ class AddFoodViewModel(
     private val _state = MutableStateFlow(AddFoodFormState())
     val state: StateFlow<AddFoodFormState> = _state.asStateFlow()
 
+    /** The running lookup, so [cancelAi] can stop one that is taking too long. */
+    private var aiJob: Job? = null
+
     init {
         viewModelScope.launch {
-            profileStore.aiEnabled.collect { enabled ->
-                _state.update { it.copy(aiEnabled = enabled) }
+            combine(
+                profileStore.aiEnabled,
+                profileStore.aiProvider,
+                profileStore.aiModelId,
+            ) { enabled, provider, modelId ->
+                Triple(enabled, provider, provider.modelFromId(modelId))
+            }.collect { (enabled, provider, model) ->
+                _state.update {
+                    it.copy(aiEnabled = enabled, aiProvider = provider, aiModel = model)
+                }
             }
         }
+    }
+
+    /**
+     * Switch the model the next lookup uses.
+     *
+     * Written straight through to settings rather than held as a form-local
+     * override: a model picked here because the cheap one is rate-limited is a
+     * model the user wants next time too, and two sources of truth for one
+     * setting is how the add-food screen and the settings sheet end up
+     * disagreeing about which model is selected.
+     */
+    fun setAiModel(model: AiModel) {
+        viewModelScope.launch { profileStore.setAiModel(model.id) }
+    }
+
+    /**
+     * Abandon a lookup in flight.
+     *
+     * The dialog used to be uncancelable, which assumed the request always
+     * ends. It does end — but three attempts against a provider that is
+     * shedding load is up to three minutes of a modal the user cannot leave,
+     * and the fix for that case is to pick another model, which they cannot
+     * reach while it is up. Anything the first pass already filled in stays:
+     * it is in the form, not in the job.
+     */
+    fun cancelAi() {
+        aiJob?.cancel()
+        aiJob = null
+        _state.update { it.copy(aiStep = AiStep.Idle, aiStartedAt = 0L, aiError = null) }
     }
 
     fun update(transform: (AddFoodFormState) -> AddFoodFormState) {
@@ -114,9 +172,16 @@ class AddFoodViewModel(
      */
     fun autofillFromAi(instructions: String = "") {
         val name = _state.value.name.trim()
+        val brand = _state.value.brand.trim()
         if (name.isBlank() || _state.value.aiStep != AiStep.Idle) return
-        _state.update { it.copy(aiStep = AiStep.Fetching, aiError = null) }
-        viewModelScope.launch {
+        _state.update {
+            it.copy(
+                aiStep = AiStep.Fetching,
+                aiError = null,
+                aiStartedAt = System.currentTimeMillis(),
+            )
+        }
+        aiJob = viewModelScope.launch {
             val provider = profileStore.aiProvider.first()
             val key = profileStore.aiApiKey.first()
             val aiModel = provider.modelFromId(profileStore.aiModelId.first())
@@ -128,6 +193,7 @@ class AddFoodViewModel(
                 _state.update {
                     it.copy(
                         aiStep = AiStep.Idle,
+                        aiStartedAt = 0L,
                         aiError = "Add your ${provider.displayName} API key in Settings first.",
                     )
                 }
@@ -135,11 +201,12 @@ class AddFoodViewModel(
             }
             _state.update { it.copy(aiVerifies = verifies) }
 
-            val first = repository.fetchAiNutrition(name, instructions, provider, model, key)
+            val first = repository.fetchAiNutrition(name, brand, instructions, provider, model, key)
             if (first == null) {
                 _state.update {
                     it.copy(
                         aiStep = AiStep.Idle,
+                        aiStartedAt = 0L,
                         aiError = repository.lastAiError()
                             ?: "Couldn't fetch nutrition. Check your key and connection, then try again.",
                     )
@@ -151,14 +218,16 @@ class AddFoodViewModel(
 
             if (verifies) {
                 _state.update { it.copy(aiStep = AiStep.Verifying) }
-                val verified = repository.verifyAiNutrition(name, first, instructions, provider, model, key)
+                val verified =
+                    repository.verifyAiNutrition(name, brand, first, instructions, provider, model, key)
                 if (verified != null) applyResult(verified)
             }
 
             // Brief "done" beat so the success animation reads before dismissing.
             _state.update { it.copy(aiStep = AiStep.Done) }
             delay(900)
-            _state.update { it.copy(aiStep = AiStep.Idle) }
+            _state.update { it.copy(aiStep = AiStep.Idle, aiStartedAt = 0L) }
+            aiJob = null
         }
     }
 

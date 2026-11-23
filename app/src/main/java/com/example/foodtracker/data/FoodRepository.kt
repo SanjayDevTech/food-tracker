@@ -83,11 +83,12 @@ class FoodRepository(
      */
     suspend fun fetchAiNutrition(
         name: String,
+        brand: String,
         instructions: String,
         provider: AiProvider,
         model: String,
         apiKey: String,
-    ): AiNutrition? = aiApi.fetchNutrition(name, instructions, provider, model, apiKey)
+    ): AiNutrition? = aiApi.fetchNutrition(name, brand, instructions, provider, model, apiKey)
 
     /** Reason for the most recent AI failure, or null. See [AiNutritionApi.lastError]. */
     fun lastAiError(): String? = aiApi.lastError
@@ -95,12 +96,14 @@ class FoodRepository(
     /** Second-pass verification of a prior AI result. See [AiNutritionApi.verifyNutrition]. */
     suspend fun verifyAiNutrition(
         name: String,
+        brand: String,
         candidate: AiNutrition,
         instructions: String,
         provider: AiProvider,
         model: String,
         apiKey: String,
-    ): AiNutrition? = aiApi.verifyNutrition(name, candidate, instructions, provider, model, apiKey)
+    ): AiNutrition? =
+        aiApi.verifyNutrition(name, brand, candidate, instructions, provider, model, apiKey)
     suspend fun setFoodFavourite(id: Long, favourite: Boolean) = foodDao.setFavourite(id, favourite)
 
     /** Persist the oil / style the user last chose for a food. See the DAO. */

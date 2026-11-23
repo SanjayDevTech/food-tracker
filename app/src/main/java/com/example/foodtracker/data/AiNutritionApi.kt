@@ -126,8 +126,82 @@ class AiNutritionApi {
     var lastError: String? = null
         private set
 
+    // ─── Diagnostics ────────────────────────────────────────────────────────
+    //
+    // Which pass is in flight, so every attempt it makes can be recorded
+    // against the right model without threading four parameters through the
+    // HTTP layer. Safe because one request runs at a time — the same
+    // assumption [lastError] already makes, and the one the add-food screen
+    // enforces by refusing a second Ask AI while aiStep != Idle.
+
+    @Volatile private var passName: String = "Look up"
+    @Volatile private var passProvider: String = ""
+    @Volatile private var passModel: String = ""
+    @Volatile private var passSubject: String? = null
+
+    private fun beginPass(
+        pass: String,
+        provider: AiProvider,
+        model: String,
+        foodName: String,
+        brand: String,
+    ) {
+        passName = pass
+        passProvider = provider.displayName
+        passModel = model
+        passSubject = if (brand.isBlank()) foodName else "$foodName — $brand"
+    }
+
+    private fun logAttempt(
+        attempt: Int,
+        outcome: AiLogOutcome,
+        code: Int?,
+        durationMs: Long,
+        detail: String?,
+    ) {
+        AiLog.record(
+            AiLogEntry(
+                atMillis = System.currentTimeMillis(),
+                pass = passName,
+                provider = passProvider,
+                model = passModel,
+                attempt = attempt,
+                attemptsAllowed = MAX_ATTEMPTS,
+                outcome = outcome,
+                httpCode = code,
+                durationMs = durationMs,
+                subject = passSubject,
+                detail = AiLog.redact(detail),
+            ),
+        )
+    }
+
+    /**
+     * A 200 whose body we could not turn into nutrition. Logged separately
+     * from the HTTP attempt that fetched it, because the two fail for opposite
+     * reasons and the fix is different: this one is the model answering in
+     * prose, or dropping the macros, and it is the case the user-facing
+     * message can say the least about.
+     */
+    private fun logParseFailure(reply: String) {
+        AiLog.record(
+            AiLogEntry(
+                atMillis = System.currentTimeMillis(),
+                pass = passName,
+                provider = passProvider,
+                model = passModel,
+                attempt = 1,
+                attemptsAllowed = 1,
+                outcome = AiLogOutcome.ParseError,
+                subject = passSubject,
+                detail = AiLog.redact("Reply did not parse into nutrition:\n$reply"),
+            ),
+        )
+    }
+
     suspend fun fetchNutrition(
         foodName: String,
+        brand: String = "",
         instructions: String = "",
         provider: AiProvider,
         model: String,
@@ -138,15 +212,19 @@ class AiNutritionApi {
         // Resolve against the provider's model list; a stale/blank id falls back
         // to the provider's default.
         val modelId = provider.modelFromId(model).id
-        val prompt = buildPrompt(foodName.trim(), instructions.trim(), provider.enforcesSchema)
+        beginPass("Look up", provider, modelId, foodName.trim(), brand.trim())
+        val prompt = buildPrompt(foodName.trim(), brand.trim(), instructions.trim(), provider.enforcesSchema)
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
             AiProvider.OpenAI -> callOpenAi(prompt, modelId, apiKey)
         } ?: return@withContext null
         val parsed = parseResult(reply)
-        if (parsed == null && lastError == null) {
-            lastError = "The AI reply couldn't be read. Try again or pick another model."
+        if (parsed == null) {
+            if (lastError == null) {
+                lastError = "The AI reply couldn't be read. Try again or pick another model."
+            }
+            logParseFailure(reply)
         }
         parsed
     }
@@ -158,6 +236,7 @@ class AiNutritionApi {
      */
     suspend fun verifyNutrition(
         foodName: String,
+        brand: String = "",
         candidate: AiNutrition,
         instructions: String = "",
         provider: AiProvider,
@@ -166,13 +245,18 @@ class AiNutritionApi {
     ): AiNutrition? = withContext(Dispatchers.IO) {
         if (foodName.isBlank() || apiKey.isBlank()) return@withContext null
         val modelId = provider.modelFromId(model).id
-        val prompt = buildVerifyPrompt(foodName.trim(), candidate, instructions.trim(), provider.enforcesSchema)
+        beginPass("Verify", provider, modelId, foodName.trim(), brand.trim())
+        val prompt = buildVerifyPrompt(
+            foodName.trim(), brand.trim(), candidate, instructions.trim(), provider.enforcesSchema,
+        )
         val reply = when (provider) {
             AiProvider.Gemini -> callGemini(prompt, modelId, apiKey)
             AiProvider.Claude -> callClaude(prompt, modelId, apiKey)
             AiProvider.OpenAI -> callOpenAi(prompt, modelId, apiKey)
         } ?: return@withContext null
-        parseResult(reply)?.withDetailCarriedFrom(candidate)
+        val verified = parseResult(reply)
+        if (verified == null) logParseFailure(reply)
+        verified?.withDetailCarriedFrom(candidate)
     }
 
     /**
@@ -241,6 +325,7 @@ class AiNutritionApi {
 
     private fun buildPrompt(
         foodName: String,
+        brand: String,
         instructions: String,
         schemaEnforced: Boolean,
     ): String = """
@@ -248,7 +333,7 @@ class AiNutritionApi {
         food-composition data (IFCT) over Western tables wherever it exists.
 
         Food: "$foodName"
-
+        ${brandPrompt(brand)}
         Pick ONE typical Indian household serving of this food, then give that
         serving's nutrition. Assume a common South Indian preparation (Tamil
         Nadu, Kerala, Karnataka) unless the name says otherwise, with real
@@ -311,6 +396,7 @@ class AiNutritionApi {
 
     private fun buildVerifyPrompt(
         foodName: String,
+        brand: String,
         candidate: AiNutrition,
         instructions: String,
         schemaEnforced: Boolean,
@@ -320,10 +406,14 @@ class AiNutritionApi {
         return the whole object.
 
         Food: "$foodName"
+        ${brandPrompt(brand)}
         Proposed: ${candidateJson(candidate)}
 
         Check:
-        - The values match Indian food-composition data (IFCT) where it exists.
+        - If a brand is named, the values are that product's own label figures
+          and not a generic version of the food.
+        - Otherwise the values match Indian food-composition data (IFCT) where
+          it exists.
         - servingGrams is a realistic single serving and servingLabel matches it.
         - The dish is a South Indian household preparation unless its name says
           otherwise — never a Western substitute, and with the coconut, lentil,
@@ -345,6 +435,27 @@ class AiNutritionApi {
         ${jsonContract(schemaEnforced)}
         ${instructionsPrompt(instructions)}
     """.trimIndent()
+
+    /**
+     * The brand, when the user typed one.
+     *
+     * A branded packaged food is a different question from the dish: Britannia
+     * Marie Gold has a printed label and a fixed biscuit weight, and answering
+     * it with a generic "marie biscuit" row is wrong in both the serving and
+     * the sodium. So the brand is stated as the product's identity and the
+     * model is told to prefer its label over a composition table — but told
+     * explicitly not to invent one, because a made-up label reads exactly like
+     * a real one and the user has no way to tell.
+     */
+    private fun brandPrompt(brand: String): String =
+        if (brand.isBlank()) "" else """
+        Brand: "$brand" — this is that brand's own packaged product, not a
+        homemade or generic version. Use the figures from its published
+        nutrition label and its printed pack/piece size where you know them,
+        in preference to any food-composition table. If you do not know this
+        particular product, say nothing about the brand and fall back to the
+        generic food rather than inventing label values.
+        """.trimIndent()
 
     private fun instructionsPrompt(instructions: String): String =
         if (instructions.isBlank()) "" else "Additional user instructions (use as context, not as a nutrient value): $instructions"
@@ -513,10 +624,31 @@ class AiNutritionApi {
 
     // ─── HTTP + parsing ─────────────────────────────────────────────────────
 
-    /** Outcome of a single HTTP attempt. */
+    /**
+     * Outcome of a single HTTP attempt.
+     *
+     * [code] and [durationMs] are carried out of the attempt even on success,
+     * because they are what [AiLog] records — a lookup that took 41 seconds and
+     * worked is the thing you want to see after the next one times out.
+     */
     private sealed interface PostResult {
-        data class Ok(val body: String) : PostResult
-        data class Failed(val message: String, val retryable: Boolean) : PostResult
+        val code: Int?
+        val durationMs: Long
+
+        data class Ok(
+            val body: String,
+            override val code: Int?,
+            override val durationMs: Long,
+        ) : PostResult
+
+        data class Failed(
+            val message: String,
+            val retryable: Boolean,
+            override val code: Int?,
+            override val durationMs: Long,
+            /** The provider's own reply body, or the exception. Redacted on record. */
+            val detail: String?,
+        ) : PostResult
     }
 
     /**
@@ -535,10 +667,19 @@ class AiNutritionApi {
             when (val result = postOnce(urlStr, headers, body)) {
                 is PostResult.Ok -> {
                     lastError = null
+                    logAttempt(attempt + 1, AiLogOutcome.Ok, result.code, result.durationMs, null)
                     return result.body
                 }
                 is PostResult.Failed -> {
                     lastError = result.message
+                    logAttempt(
+                        attempt = attempt + 1,
+                        outcome = if (result.code == null) AiLogOutcome.NetworkError
+                        else AiLogOutcome.HttpError,
+                        code = result.code,
+                        durationMs = result.durationMs,
+                        detail = result.detail ?: result.message,
+                    )
                     if (!result.retryable || attempt >= MAX_ATTEMPTS - 1) return null
                     delay(RETRY_DELAYS_MS[attempt])
                     attempt++
@@ -579,21 +720,38 @@ class AiNutritionApi {
             setRequestProperty("User-Agent", "FoodTracker/1.0 (Android)")
             headers.forEach { (k, v) -> setRequestProperty(k, v) }
         }
+        val startedAt = System.nanoTime()
+        fun elapsedMs(): Long = (System.nanoTime() - startedAt) / 1_000_000
         return try {
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val code = conn.responseCode
             if (code !in 200..299) {
                 val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
                 android.util.Log.w("AiNutritionApi", "POST $urlStr -> HTTP $code: ${err?.take(800)}")
-                PostResult.Failed(describeHttp(code, err), retryable = isRetryable(code))
+                PostResult.Failed(
+                    message = describeHttp(code, err),
+                    retryable = isRetryable(code),
+                    code = code,
+                    durationMs = elapsedMs(),
+                    detail = err,
+                )
             } else {
-                PostResult.Ok(conn.inputStream.bufferedReader().use { it.readText() })
+                PostResult.Ok(
+                    body = conn.inputStream.bufferedReader().use { it.readText() },
+                    code = code,
+                    durationMs = elapsedMs(),
+                )
             }
         } catch (e: Exception) {
             android.util.Log.w("AiNutritionApi", "POST $urlStr failed: ${e.javaClass.simpleName}: ${e.message}")
             PostResult.Failed(
-                "Network error — check your internet connection and try again.",
+                message = "Network error — check your internet connection and try again.",
                 retryable = true,
+                // No status: the request never got one. That null is what tells
+                // the log this was the network and not the provider.
+                code = null,
+                durationMs = elapsedMs(),
+                detail = "${e.javaClass.simpleName}: ${e.message}",
             )
         } finally {
             conn.disconnect()
