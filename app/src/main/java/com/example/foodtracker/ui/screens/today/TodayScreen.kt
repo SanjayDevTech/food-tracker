@@ -175,7 +175,12 @@ fun TodayScreen(
                     loaded = state.loaded,
                     // The shortcut the Trends heatmap used to own. Same
                     // destination, on a row you can actually hit.
-                    onMacroClick = { key -> haptics.light(); onOpenRichFoods(key) },
+                    // The same sheet the nutrient rows below open. Tapping
+                    // "Carbs" asks what made up today's carbs; it does not ask
+                    // for a shopping list, and sending it to Rich-in answered a
+                    // question the tap had not posed — and could not answer at
+                    // all once you were over the number.
+                    onMacroClick = { field -> haptics.light(); detailField = field },
                 )
             }
             item("tiles") {

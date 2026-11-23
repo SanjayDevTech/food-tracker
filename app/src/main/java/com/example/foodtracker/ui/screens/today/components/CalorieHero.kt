@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.foodtracker.data.NutrientField
+import com.example.foodtracker.data.NutrientFieldsByKey
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.ui.components.atoms.Meter
@@ -55,7 +57,7 @@ fun CalorieHero(
     goals: NutrientGoals,
     modifier: Modifier = Modifier,
     loaded: Boolean = true,
-    onMacroClick: (String) -> Unit = {},
+    onMacroClick: (NutrientField) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val left = goals.calories - consumed.calories
@@ -112,10 +114,21 @@ fun CalorieHero(
         }
 
         Spacer(Modifier.height(Spacing.l))
-        MacroLegendRow("Carbs", consumed.carbs, goals.carbs, MacroCarbs) { onMacroClick("carbs") }
-        MacroLegendRow("Protein", consumed.protein, goals.protein, MacroProtein) { onMacroClick("protein") }
-        MacroLegendRow("Fat", consumed.fat, goals.fat, MacroFat) { onMacroClick("fat") }
-        MacroLegendRow("Fiber", consumed.fiber, goals.fiber, MacroFiber) { onMacroClick("fiber") }
+        // The field itself, not its key: the receiver wants a NutrientField
+        // either way, and resolving it here means a bad key fails loudly at
+        // first composition instead of arriving as a null nobody checks.
+        MacroLegendRow("Carbs", consumed.carbs, goals.carbs, MacroCarbs) {
+            onMacroClick(NutrientFieldsByKey.getValue("carbs"))
+        }
+        MacroLegendRow("Protein", consumed.protein, goals.protein, MacroProtein) {
+            onMacroClick(NutrientFieldsByKey.getValue("protein"))
+        }
+        MacroLegendRow("Fat", consumed.fat, goals.fat, MacroFat) {
+            onMacroClick(NutrientFieldsByKey.getValue("fat"))
+        }
+        MacroLegendRow("Fiber", consumed.fiber, goals.fiber, MacroFiber) {
+            onMacroClick(NutrientFieldsByKey.getValue("fiber"))
+        }
     }
 }
 

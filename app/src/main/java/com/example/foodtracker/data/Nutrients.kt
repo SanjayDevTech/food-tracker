@@ -289,6 +289,15 @@ val AllNutrientFields: List<NutrientField> = listOf(
 )
 
 /**
+ * [AllNutrientFields] indexed by key.
+ *
+ * Use `getValue` rather than a `firstOrNull` scan: a key that does not exist is
+ * a typo in a caller, and `getValue` says so at the call instead of returning
+ * null for the caller to quietly treat as "nothing to show".
+ */
+val NutrientFieldsByKey: Map<String, NutrientField> = AllNutrientFields.associateBy { it.key }
+
+/**
  * A component of a parent nutrient — soluble fiber under Fiber, leucine under
  * Protein. Deliberately NOT a [NutrientField]: sub-nutrients carry no goal, no
  * bar and no contribution sheet. They are a detail you can open when curious,
