@@ -15,13 +15,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.foodtracker.ui.components.atoms.AppTextButton
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.screens.you.StatBlock
 import com.example.foodtracker.ui.theme.AppText
@@ -120,12 +120,15 @@ private fun DeleteAllCustomFoodsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete all custom foods?") },
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text("Delete all custom foods?", style = AppText.titleL) },
         text = {
             Column {
                 Text(
                     "This removes every food you added by hand or saved from a barcode " +
                         "scan. Seeded foods stay untouched. Choose how to handle log history:",
+                    style = AppText.body,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(Spacing.m))
                 Text(
@@ -143,16 +146,15 @@ private fun DeleteAllCustomFoodsDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onKeepHistory) { Text("Keep history") } },
+        confirmButton = { AppTextButton(text = "Keep history", onClick = onKeepHistory) },
         dismissButton = {
             Row {
-                TextButton(
+                AppTextButton(
+                    text = "Delete with history",
                     onClick = onCascade,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text("Delete with history") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                    destructive = true,
+                )
+                AppTextButton(text = "Cancel", onClick = onDismiss)
             }
         },
     )

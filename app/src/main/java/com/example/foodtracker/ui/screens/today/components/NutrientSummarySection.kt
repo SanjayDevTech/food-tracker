@@ -30,7 +30,7 @@ private const val MAX_SHORT = 4
 private const val MAX_OVER = 2
 
 /**
- * The micronutrient card on Today — design-plan §4.1.
+ * The micronutrient section on Today — design-plan §4.1.
  *
  * Answers two questions in that order, which is the whole design:
  *
@@ -42,7 +42,7 @@ private const val MAX_OVER = 2
  * bars is not a glance.
  */
 @Composable
-fun NutrientSummaryCard(
+fun NutrientSummarySection(
     totals: Nutrients,
     goals: NutrientGoals,
     hasLogs: Boolean,

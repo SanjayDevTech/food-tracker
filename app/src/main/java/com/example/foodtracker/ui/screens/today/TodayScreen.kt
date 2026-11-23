@@ -44,8 +44,8 @@ import com.example.foodtracker.ui.components.sheets.WeighInSheet
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.screens.today.components.CalorieHero
 import com.example.foodtracker.ui.screens.today.components.DayStrip
-import com.example.foodtracker.ui.screens.today.components.MealsCard
-import com.example.foodtracker.ui.screens.today.components.NutrientSummaryCard
+import com.example.foodtracker.ui.screens.today.components.MealsSection
+import com.example.foodtracker.ui.screens.today.components.NutrientSummarySection
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.screens.today.components.StatRow
 import com.example.foodtracker.ui.theme.AppText
@@ -198,7 +198,7 @@ fun TodayScreen(
                 }
             }
             item("meals") {
-                MealsCard(
+                MealsSection(
                     groups = state.mealGroups,
                     activeMeal = currentMeal(),
                     totalKcal = state.totalNutrients.calories,
@@ -220,7 +220,7 @@ fun TodayScreen(
                 )
             }
             item("nutrients") {
-                NutrientSummaryCard(
+                NutrientSummarySection(
                     totals = state.totalNutrients,
                     goals = state.goals,
                     hasLogs = state.logs.isNotEmpty(),

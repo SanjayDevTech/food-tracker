@@ -49,7 +49,7 @@ import com.example.foodtracker.ui.theme.Spacing
 /**
  * The day's diary — design-plan §3 and §4.1.
  *
- * One card with four rows rather than four cards. The reasoning in the original
+ * One section with four rows rather than four cards. The reasoning in the original
  * `MealsSection` docstring was right and is kept: on a normal day two or three
  * meals are empty, and four mostly-empty cards is a screen of borders around
  * nothing.
@@ -67,7 +67,7 @@ import com.example.foodtracker.ui.theme.Spacing
 private val ENTRY_INDENT = 16.dp
 
 @Composable
-fun MealsCard(
+fun MealsSection(
     groups: Map<MealType, List<FoodLogWithFood>>,
     activeMeal: MealType,
     totalKcal: Double,

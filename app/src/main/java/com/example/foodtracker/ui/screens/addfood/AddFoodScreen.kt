@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ExpandMore
@@ -53,10 +54,11 @@ import com.example.foodtracker.ui.components.atoms.AppTopBar
 import com.example.foodtracker.ui.components.atoms.NumberField
 import com.example.foodtracker.ui.components.atoms.NumberFieldGrid
 import com.example.foodtracker.ui.components.atoms.NumberFieldSpec
+import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.components.atoms.filledCount
 import com.example.foodtracker.ui.rememberAppHaptics
-import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Sizes
 import com.example.foodtracker.ui.theme.Spacing
 
@@ -112,7 +114,8 @@ fun AddFoodScreen(
     if (showAiInstructions) {
         AlertDialog(
             onDismissRequest = { showAiInstructions = false },
-            title = { Text("AI food details") },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            title = { Text("AI food details", style = AppText.titleL) },
             text = {
                 OutlinedTextField(
                     value = aiInstructions,
@@ -121,6 +124,9 @@ fun AddFoodScreen(
                     placeholder = { Text("e.g. Kerala-style, coconut-based, 1 bowl") },
                     minLines = 3,
                     maxLines = 5,
+                    // Same corner as the barcode dialog's field. A text field is
+                    // the one place Material's own default radius leaks through.
+                    shape = RoundedCornerShape(Radius.md),
                     modifier = Modifier.fillMaxWidth(),
                 )
             },

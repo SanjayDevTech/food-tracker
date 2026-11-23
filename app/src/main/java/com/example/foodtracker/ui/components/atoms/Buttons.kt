@@ -83,19 +83,35 @@ fun AppOutlinedButton(
     }
 }
 
-/** The tertiary action — a text link that still has a real tap target. */
+/**
+ * The tertiary action — a text link that still has a real tap target.
+ *
+ * [destructive] paints the label `error`. It is the one sanctioned exception to
+ * house rule 3's "over-limit is the only thing coloured": a confirmation whose
+ * two buttons look identical is a confirmation that does not confirm anything,
+ * and the irreversible option has to be the one that looks different. It stays
+ * a *text* button — a filled error button would make "erase everything" the
+ * loudest thing in the dialog, which is the opposite of what a destructive
+ * confirm wants.
+ */
 @Composable
 fun AppTextButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    destructive: Boolean = false,
 ) {
     TextButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = Sizes.button),
         shape = RoundedCornerShape(Radius.pill),
+        colors = if (destructive) {
+            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+        } else {
+            ButtonDefaults.textButtonColors()
+        },
     ) {
         Text(text, style = AppText.label)
     }

@@ -1118,7 +1118,7 @@ ViewModels mostly survive: `WaterViewModel` and `WeightViewModel` move packages 
 
 ### Phase 5 — Today rewrite
 
-`screens/home/HomeScreen.kt` (currently 1 171 lines) splits into `TodayScreen.kt` + `components/DayStrip.kt`, `CalorieHero.kt`, `MealGroup.kt`, `NutrientSummaryCard.kt`. `HomeViewModel` unchanged apart from the phase-3 deletions.
+`screens/home/HomeScreen.kt` (currently 1 171 lines) splits into `TodayScreen.kt` + `components/DayStrip.kt`, `CalorieHero.kt`, `MealGroup.kt`, `NutrientSummarySection.kt`. `HomeViewModel` unchanged apart from the phase-3 deletions.
 
 ### Phase 6 — Nutrient system
 

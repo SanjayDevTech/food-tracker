@@ -65,6 +65,11 @@ class ReminderReceiver : BroadcastReceiver() {
 
             val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                // The shade tints the small icon and the app name with this.
+                // Left unset, the system substitutes its own default accent —
+                // the one place the app was still showing a colour that is not
+                // in its palette.
+                .setColor(ContextCompat.getColor(context, R.color.notification_accent))
                 .setContentTitle(kind.title)
                 .setContentText(kind.body)
                 .setContentIntent(contentPI)

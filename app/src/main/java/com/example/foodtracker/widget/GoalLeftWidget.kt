@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import com.example.foodtracker.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -86,7 +87,7 @@ private fun EmptyGoalLeft(size: DpSize) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .padding(horizontal = Spacing.l, vertical = Spacing.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -97,7 +98,7 @@ private fun EmptyGoalLeft(size: DpSize) {
                     fontWeight = FontWeight.Bold,
                 ),
             )
-            Spacer(GlanceModifier.height(2.dp))
+            Spacer(GlanceModifier.height(Spacing.xs))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "0",
@@ -107,7 +108,7 @@ private fun EmptyGoalLeft(size: DpSize) {
                         fontWeight = FontWeight.Bold,
                     ),
                 )
-                Spacer(GlanceModifier.width(4.dp))
+                Spacer(GlanceModifier.width(Spacing.xs))
                 Text(
                     text = "kcal",
                     style = TextStyle(
@@ -115,11 +116,11 @@ private fun EmptyGoalLeft(size: DpSize) {
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     ),
-                    modifier = GlanceModifier.padding(bottom = 6.dp),
+                    modifier = GlanceModifier.padding(bottom = Spacing.s),
                 )
             }
             if (size.width.value >= GoalLeftWidget.WIDTH_MEDIUM_DP) {
-                Spacer(GlanceModifier.height(6.dp))
+                Spacer(GlanceModifier.height(Spacing.s))
                 Text(
                     text = "Set up to start",
                     style = TextStyle(
@@ -175,7 +176,7 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .padding(horizontal = Spacing.l, vertical = Spacing.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -186,7 +187,7 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
                     fontWeight = FontWeight.Bold,
                 ),
             )
-            Spacer(GlanceModifier.height(2.dp))
+            Spacer(GlanceModifier.height(Spacing.xs))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = if (isOver) "${-left}" else "$left",
@@ -196,7 +197,7 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
                         fontWeight = FontWeight.Bold,
                     ),
                 )
-                Spacer(GlanceModifier.width(4.dp))
+                Spacer(GlanceModifier.width(Spacing.xs))
                 Text(
                     text = "kcal",
                     style = TextStyle(
@@ -204,11 +205,11 @@ private fun GoalLeftContent(snapshot: WidgetSnapshot) {
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     ),
-                    modifier = GlanceModifier.padding(bottom = 6.dp),
+                    modifier = GlanceModifier.padding(bottom = Spacing.s),
                 )
             }
             if (size.width.value >= GoalLeftWidget.WIDTH_LARGE_DP) {
-                Spacer(GlanceModifier.height(6.dp))
+                Spacer(GlanceModifier.height(Spacing.s))
                 Text(
                     text = "${snapshot.caloriesConsumed.roundToInt()} of ${goalKcal.roundToInt()}",
                     style = TextStyle(

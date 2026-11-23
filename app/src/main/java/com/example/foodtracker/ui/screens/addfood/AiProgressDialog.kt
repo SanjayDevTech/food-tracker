@@ -41,17 +41,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.foodtracker.ui.theme.AppText
+import com.example.foodtracker.ui.theme.Elevation
+import com.example.foodtracker.ui.theme.Radius
+import com.example.foodtracker.ui.theme.Spacing
 import androidx.compose.ui.window.DialogProperties
 
 /**
  * Non-cancelable overlay shown while the two-pass AI autofill runs. Each step
- * ([AiStep]) gets its own animated illustration (a rotating sweep ring with a
- * pulsing, morphing icon) plus a two-node "Look up → Verify" tracker so the
- * user sees where the (sometimes slow) request is.
+ * ([AiStep]) gets its own animated illustration (a pulsing, morphing icon) plus
+ * a two-node "Look up → Verify" tracker so the user sees where the (sometimes
+ * slow) request is.
+ *
+ * Design-plan §8 put this out of the rewrite's scope, so it kept a 28dp corner
+ * off the radius scale, a 6dp tonal elevation against house rule 6's zero, six
+ * raw gaps off the spacing scale, and an accent-filled icon disc — house rule
+ * 3's exact prohibition. The animation is the part that earned its exemption,
+ * and it is untouched; only the chrome has been brought onto the tokens.
  */
 @Composable
 fun AiProgressDialog(step: AiStep, verifies: Boolean = true) {
@@ -61,16 +70,20 @@ fun AiProgressDialog(step: AiStep, verifies: Boolean = true) {
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(Radius.lg),
+            // surfaceContainer, not surface + tonalElevation. Both land on a
+            // lighter fill; one of them is house rule 6's banned elevation and
+            // the other is the same container every other dialog in the app
+            // already uses.
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = Elevation.none,
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 28.dp, vertical = 30.dp),
+                modifier = Modifier.padding(horizontal = Spacing.xxl, vertical = Spacing.xxxl),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 AiStepIllustration(step)
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(Spacing.xxl))
                 AnimatedContent(
                     targetState = step,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -78,24 +91,26 @@ fun AiProgressDialog(step: AiStep, verifies: Boolean = true) {
                 ) { s ->
                     Text(
                         titleFor(s),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = AppText.titleM,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
                     )
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Spacing.s))
                 Text(
                     subtitleFor(step, verifies),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AppText.bodyS,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Spacing.l))
+                // The one accent that stays. A progress bar is a reading, which
+                // is exactly what house rule 3 reserves `primary` for.
                 LinearProgressIndicator(
                     progress = { progressFor(step, verifies) },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(Spacing.xxl))
                 StepTracker(step, verifies)
             }
         }
@@ -143,8 +158,11 @@ private fun AiStepIllustration(step: AiStep) {
         ),
         label = "ai-icon-scale",
     )
-    val discColor = MaterialTheme.colorScheme.primaryContainer
-    val iconTint = MaterialTheme.colorScheme.onPrimaryContainer
+    // Neutral disc, accent icon. A filled accent circle behind an icon is
+    // decoration, which house rule 3 forbids; tinting the glyph itself is the
+    // sanctioned form — the same move the rewrite made on every selected pill.
+    val discColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val iconTint = MaterialTheme.colorScheme.primary
 
     Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
         Box(
@@ -211,10 +229,10 @@ private fun StepNode(label: String, active: Boolean, done: Boolean) {
                 active -> Box(Modifier.size(8.dp).clip(CircleShape).background(onColor))
             }
         }
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(Spacing.xs))
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = AppText.eyebrow,
             color = if (active || done) MaterialTheme.colorScheme.onSurface
             else MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -225,7 +243,7 @@ private fun StepNode(label: String, active: Boolean, done: Boolean) {
 private fun StepConnector(filled: Boolean) {
     Box(
         modifier = Modifier
-            .padding(top = 11.dp, start = 6.dp, end = 6.dp)
+            .padding(top = 11.dp, start = Spacing.s, end = Spacing.s)
             .width(30.dp)
             .height(2.dp)
             .clip(CircleShape)

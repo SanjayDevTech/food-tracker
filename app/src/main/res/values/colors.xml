@@ -11,6 +11,12 @@
     <color name="ic_launcher_foreground">#FF63D2B0</color>
     <color name="ic_launcher_background">#FF000000</color>
 
+    <!-- The shade tints a notification's small icon and app name with this.
+         Without it the system picks its own default, which made the reminder
+         the last surface in the app showing a non-palette accent. Same value as
+         AppPrimary and ic_launcher_foreground; all three move together. -->
+    <color name="notification_accent">#FF63D2B0</color>
+
     <!-- Window + splash background. Black, because the app's canvas is black:
          anything else is a flash of a colour the app does not contain. There is
          no values-night override any more — the app is dark-only, so one table

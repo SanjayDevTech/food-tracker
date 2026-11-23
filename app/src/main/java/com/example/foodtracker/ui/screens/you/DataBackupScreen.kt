@@ -23,7 +23,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -380,6 +379,15 @@ private fun BackupRow(
     }
 }
 
+/**
+ * The guard on the two irreversible actions on this screen — restoring over
+ * everything, and importing over everything.
+ *
+ * Both confirmations are destructive, so the confirm is an error-coloured text
+ * button: the rewrite left this dialog entirely bare, which meant the button
+ * that replaces all your data and the button that cancels were the same
+ * widget in the same colour at the same weight.
+ */
 @Composable
 private fun ConfirmDialog(
     title: String,
@@ -390,10 +398,15 @@ private fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        title = { Text(title, style = AppText.titleL) },
+        text = {
+            Text(body, style = AppText.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        confirmButton = {
+            AppTextButton(text = confirmLabel, onClick = onConfirm, destructive = true)
+        },
+        dismissButton = { AppTextButton(text = "Cancel", onClick = onDismiss) },
     )
 }
 

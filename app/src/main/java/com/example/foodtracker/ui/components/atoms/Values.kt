@@ -15,6 +15,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Radius
+import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -84,13 +85,21 @@ fun ValueText(
     }
 }
 
-/** Small pill badge — `NOW`, counts, flags. */
+/**
+ * Small pill badge — `NOW`, counts, flags.
+ *
+ * Neutral by default. It used to fill with `primaryContainer`, which is house
+ * rule 3's exact prohibition — a filled accent block used as chrome — and the
+ * rewrite replaced its other call sites with accent *labels* while leaving the
+ * atom's own default pointing at the thing it had removed. A badge marks a
+ * category, not a reading, so the accent has nothing to say here.
+ */
 @Composable
 fun AppBadge(
     text: String,
     modifier: Modifier = Modifier,
-    container: Color = MaterialTheme.colorScheme.primaryContainer,
-    content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    content: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Text(
         text,
@@ -99,6 +108,6 @@ fun AppBadge(
         modifier = modifier
             .clip(RoundedCornerShape(Radius.sm))
             .background(container)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .padding(horizontal = Spacing.s, vertical = 2.dp),
     )
 }
