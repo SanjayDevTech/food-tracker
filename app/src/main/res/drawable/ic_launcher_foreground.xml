@@ -1,25 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive icon foreground: a bowl under a rule, with three rising marks.
+  Adaptive icon foreground: a fork and a knife, side on.
 
-  Built from the app's own primitives rather than drawn as an illustration, the
-  way GymTracker's barbell is a 4dp bar carrying plates:
-    - the rim is the 4dp rule house rule 1 puts under every standing head, run
-      past the bowl on both sides so it reads as a rule and not as a lip;
-    - the three marks above it are the Meter stack from Today's macro rows at
-      the sizes they actually appear, so the thing that says "steam" at 48dp is
-      the same thing that says "tracking" when you look twice.
-
-  Flat, one colour, no gradient and no shadow — the previous mark drew its steam
-  with stroked bezier wisps, which is the only curve-for-its-own-sake left in
-  the app after the rewrite.
+  The tool of the activity, drawn as long thin geometric objects — the same
+  sentence GymTracker's icon says with a loaded barbell. Both marks are built
+  from the app's own primitives rather than illustrated: every end is the 2dp
+  corner radius the UI uses, the fork's tines are the Meter bars from Today's
+  macro rows stood on end, and the handles are the 4dp rule from house rule 1
+  turned vertical. Flat, one colour, no gradient, no stroke, no shadow.
 
   Geometry on the 108dp canvas, centred on (54,54):
-    steam   x44..48 / x52..56 / x60..64, bottoms aligned at y49, r2
-    rim     x26..82, y52..56, r2
-    bowl    half-disc, centre (54,56), radius 22, so y56..78
-  Extents x26..82, y31..78. Farthest point is a rim corner at 28.1dp from
-  centre, inside the 33dp safe-zone radius, so no mask crops it.
+
+    fork
+      tines   x37..41 / x44..48 / x51..55, w4 gap3, y32..50, top corners r2
+      head    x37..55, y46..57, bottom corners r5 (tines sink 4 into it)
+      handle  x44..48, y54..76, bottom r2 (sinks 3 into the head)
+    knife
+      blade   wedge: spine straight at x61, y32..54; edge runs convex from
+              the r1 tip at (62.3,32) out to x70 at y50, then shoulders back
+              in to x66 at y54
+      handle  x61..65, y52..76, bottom r2 (the spine runs on unbroken)
+
+  Extents x37..71, y32..76 — 34 x 44, centred on (54,54) in both axes. The
+  farthest point is the outer top corner of the fork's first tine, 27.8dp from
+  centre before its r2 rounding, inside the 33dp safe-zone radius, so neither
+  the circle nor the squircle mask crops anything.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -27,24 +32,34 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Steam / meter marks, short to tall to short. -->
+    <!-- Fork: three tines. -->
     <path
         android:fillColor="@color/ic_launcher_foreground"
-        android:pathData="M46,37 a2,2 0 0 1 2,2 v8 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-8 a2,2 0 0 1 2,-2 Z" />
+        android:pathData="M39,32 a2,2 0 0 1 2,2 v16 h-4 v-16 a2,2 0 0 1 2,-2 Z" />
     <path
         android:fillColor="@color/ic_launcher_foreground"
-        android:pathData="M54,31 a2,2 0 0 1 2,2 v14 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-14 a2,2 0 0 1 2,-2 Z" />
+        android:pathData="M46,32 a2,2 0 0 1 2,2 v16 h-4 v-16 a2,2 0 0 1 2,-2 Z" />
     <path
         android:fillColor="@color/ic_launcher_foreground"
-        android:pathData="M62,40 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 Z" />
+        android:pathData="M53,32 a2,2 0 0 1 2,2 v16 h-4 v-16 a2,2 0 0 1 2,-2 Z" />
 
-    <!-- The rule. -->
+    <!-- Fork: head the tines sink into. -->
     <path
         android:fillColor="@color/ic_launcher_foreground"
-        android:pathData="M28,52 h52 a2,2 0 0 1 2,2 a2,2 0 0 1 -2,2 h-52 a2,2 0 0 1 -2,-2 a2,2 0 0 1 2,-2 Z" />
+        android:pathData="M37,46 h18 v6 a5,5 0 0 1 -5,5 h-8 a5,5 0 0 1 -5,-5 Z" />
 
-    <!-- Bowl. -->
+    <!-- Fork: handle. -->
     <path
         android:fillColor="@color/ic_launcher_foreground"
-        android:pathData="M32,56 A22,22 0 0 0 76,56 Z" />
+        android:pathData="M44,54 h4 v20 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 Z" />
+
+    <!-- Knife: blade, straight spine and a swelling edge. -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M61,33 a1,1 0 0 1 1.3,-0.95 c4.5,2.6 7.7,9.6 7.7,17.95 c0,2.6 -1.6,4 -4,4 h-5 Z" />
+
+    <!-- Knife: handle, carrying the spine on. -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M61,52 h4 v22 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 Z" />
 </vector>
