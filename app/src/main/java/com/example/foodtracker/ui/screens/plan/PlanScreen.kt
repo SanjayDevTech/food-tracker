@@ -39,6 +39,7 @@ import com.example.foodtracker.ui.components.atoms.ConfirmDialog
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.components.atoms.countText
 import com.example.foodtracker.ui.components.atoms.grouped
+import com.example.foodtracker.ui.screens.today.components.StatRow
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Sizes
@@ -48,11 +49,16 @@ import com.example.foodtracker.ui.theme.Spacing
  * The plan: what you have decided to eat, by meal.
  *
  * **It is a shortcut, and the screen is built to stay one.** There is no
- * adherence score, no total against the day's targets, no "4 of 7 planned"
- * anywhere — those would make the plan a thing you can succeed or fail at,
- * which is a different feature with a different cost. What it says per meal is
- * the same thing Today's diary says per meal: how many items and how many
- * calories they come to.
+ * adherence score and no "4 of 7 planned" anywhere — those would make the plan
+ * a thing you can succeed or fail at, which is a different feature with a
+ * different cost. What it says per meal is the same thing Today's diary says
+ * per meal: how many items and how many calories they come to.
+ *
+ * The one figure above that is the nutrition row, which opens
+ * [PlanNutritionSheet] — what the whole plan comes to, raised over the page
+ * rather than printed down the middle of it. That is a description of the plan
+ * and not a grade on the reader; the sheet's docstring holds the rest of that
+ * argument, including why it carries no status colours.
  *
  * All four meals render even when empty, which is the one place this screen
  * differs from Today's. Here an empty Lunch is the answer to "what have I
@@ -65,13 +71,14 @@ fun PlanScreen(
     onAddFood: (MealType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val vm: PlanViewModel = appViewModel { PlanViewModel(it.repository) }
+    val vm: PlanViewModel = appViewModel { PlanViewModel(it.repository, it.profileStore) }
     val addVm: PlanAddViewModel = appViewModel { PlanAddViewModel(it.repository) }
     val state by vm.state.collectAsStateWithLifecycle()
     val haptics = rememberAppHaptics()
 
     var editing by remember { mutableStateOf<PlanItemWithFood?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    var showNutrition by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -105,6 +112,24 @@ fun PlanScreen(
                         style = AppText.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            // Above the meals, because it is the page's summary figure and a
+            // total printed under four lists is a total nobody scrolls to. One
+            // row and a chevron: the breakdown itself is a sheet (see
+            // PlanNutritionSheet) so this page stays a list you act on.
+            if (state.itemCount > 0) {
+                item("nutrition") {
+                    Section("Nutrition") {
+                        StatRow(
+                            label = "If you eat it all",
+                            value = grouped(state.totals.calories),
+                            unit = "kcal",
+                            caption = "Macro split and every nutrient it gives you",
+                            onClick = { haptics.light(); showNutrition = true },
+                        )
+                    }
                 }
             }
 
@@ -147,6 +172,15 @@ fun PlanScreen(
             confirmLabel = "Clear plan",
             onConfirm = { haptics.light(); vm.clear(); confirmClear = false },
             onDismiss = { confirmClear = false },
+        )
+    }
+
+    if (showNutrition) {
+        PlanNutritionSheet(
+            totals = state.totals,
+            goals = state.goals,
+            itemCount = state.itemCount,
+            onDismiss = { showNutrition = false },
         )
     }
 

@@ -4,10 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.NutrientGoals
+import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.ProfileStore
+import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.PlanItemEntity
 import com.example.foodtracker.data.db.PlanItemWithFood
+import com.example.foodtracker.data.db.nutrients
+import com.example.foodtracker.domain.GoalCalculator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -35,16 +41,40 @@ import kotlinx.coroutines.launch
 data class PlanEditorState(
     val groups: Map<MealType, List<PlanItemWithFood>> = MealType.entries.associateWith { emptyList() },
     val itemCount: Int = 0,
+    /**
+     * Everything the plan adds up to, at the amounts planned.
+     *
+     * Summed here rather than in the sheet so the row that opens the breakdown
+     * and the breakdown itself cannot state different totals — they are the
+     * same figure, shown twice.
+     */
+    val totals: Nutrients = Nutrients.Zero,
+    /**
+     * The user's daily targets, as the reference the breakdown reads against.
+     *
+     * Defaulted from a default profile rather than from zeros, the same
+     * compromise Today's first emission makes: a goal of zero is not "no
+     * target", it is a bug, and every reading divided by it would read as a
+     * shortfall for the one frame before the profile arrives.
+     */
+    val goals: NutrientGoals = GoalCalculator.goalsFor(UserProfile()),
 )
 
-class PlanViewModel(private val repository: FoodRepository) : ViewModel() {
+class PlanViewModel(
+    private val repository: FoodRepository,
+    profileStore: ProfileStore,
+) : ViewModel() {
 
-    val state: StateFlow<PlanEditorState> = repository.observePlan()
-        .map { items ->
+    val state: StateFlow<PlanEditorState> = combine(
+        repository.observePlan(),
+        profileStore.profile,
+    ) { items, profile ->
             val byMeal = items.groupBy { MealType.fromName(it.item.mealType) }
             PlanEditorState(
                 groups = MealType.entries.associateWith { byMeal[it].orEmpty() },
                 itemCount = items.size,
+                totals = items.fold(Nutrients.Zero) { acc, row -> acc + row.nutrients() },
+                goals = GoalCalculator.goalsFor(profile),
             )
         }
         .stateIn(
