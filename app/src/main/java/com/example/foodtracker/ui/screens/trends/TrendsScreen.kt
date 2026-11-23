@@ -191,7 +191,6 @@ fun TrendsScreen(
                         lastDayLabel = state.heatmapLastLabel,
                         expanded = showAllNutrients,
                         collapsedRows = HEATMAP_COLLAPSED_ROWS,
-                        onRowClick = { onOpenRichFoods(it.field.key) },
                     )
                 }
             }

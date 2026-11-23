@@ -215,31 +215,44 @@ private fun NavHostController.toBarDestination(dest: BarDestination) {
  */
 private const val NAV_ANIM_MS = 300
 
+/**
+ * True only when *both* ends of the move are bar destinations.
+ *
+ * This is the whole fix for a mismatched back transition. The fade-through used
+ * to be declared per-destination on the three tab composables, and a
+ * destination-level transition beats the NavHost's. A transition has two ends,
+ * though, and each end was answering for itself: leaving Today for the log
+ * picker, Today ran its own `exitTransition` and faded while the picker slid
+ * in; coming back, the picker slid off to the right while Today ran its
+ * `popEnterTransition` and faded up underneath instead of parallaxing back.
+ * Asking about both ends at once is the only way to tell a peer swap from a
+ * push, so the decision belongs here rather than on either destination.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boolean =
+    initialState.destination.barDestination() != null &&
+        targetState.destination.barDestination() != null
+
 private val navEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-    slideIntoContainer(SlideDirection.Start, tween(NAV_ANIM_MS))
+    if (isTabSwitch()) fadeThroughIn() else slideIntoContainer(SlideDirection.Start, tween(NAV_ANIM_MS))
 }
 
 private val navExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-    slideOutOfContainer(SlideDirection.Start, tween(NAV_ANIM_MS)) { it / 3 }
+    if (isTabSwitch()) fadeThroughOut() else slideOutOfContainer(SlideDirection.Start, tween(NAV_ANIM_MS)) { it / 3 }
 }
 
 private val navPopEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-    slideIntoContainer(SlideDirection.End, tween(NAV_ANIM_MS)) { it / 3 }
+    if (isTabSwitch()) fadeThroughIn() else slideIntoContainer(SlideDirection.End, tween(NAV_ANIM_MS)) { it / 3 }
 }
 
 private val navPopExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-    slideOutOfContainer(SlideDirection.End, tween(NAV_ANIM_MS))
+    if (isTabSwitch()) fadeThroughOut() else slideOutOfContainer(SlideDirection.End, tween(NAV_ANIM_MS))
 }
 
 private val navPredictivePopEnter:
-    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> EnterTransition = {
-    slideIntoContainer(SlideDirection.End, tween(NAV_ANIM_MS)) { it / 3 }
-}
+    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> EnterTransition = { navPopEnter() }
 
 private val navPredictivePopExit:
-    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> ExitTransition = {
-    slideOutOfContainer(SlideDirection.End, tween(NAV_ANIM_MS))
-}
+    AnimatedContentTransitionScope<NavBackStackEntry>.(Int) -> ExitTransition = { navPopExit() }
 
 /**
  * Fade-through for bar switches — §1's motion table. Peers do not slide: a
@@ -247,11 +260,9 @@ private val navPredictivePopExit:
  * 90ms out, then 210ms in, so the outgoing screen is gone before the incoming
  * one starts and the two never cross-dissolve into mud.
  */
-private val fadeThroughEnter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-    { fadeIn(tween(durationMillis = 210, delayMillis = 90)) }
+private fun fadeThroughIn(): EnterTransition = fadeIn(tween(durationMillis = 210, delayMillis = 90))
 
-private val fadeThroughExit: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-    { fadeOut(tween(90)) }
+private fun fadeThroughOut(): ExitTransition = fadeOut(tween(90))
 
 private fun NavGraphBuilder.graph(
     navController: NavHostController,
@@ -268,12 +279,7 @@ private fun NavGraphBuilder.graph(
 
     // ---- Bar destinations: fade-through, no slide -------------------------
 
-    composable<TodayRoute>(
-        enterTransition = fadeThroughEnter,
-        exitTransition = fadeThroughExit,
-        popEnterTransition = fadeThroughEnter,
-        popExitTransition = fadeThroughExit,
-    ) {
+    composable<TodayRoute> {
         TodayScreen(
             onAddFoodToMeal = { meal -> navController.navigate(LogFoodRoute(meal.name)) },
             onOpenRichFoods = { key -> navController.navigate(RichFoodsRoute(key)) },
@@ -282,12 +288,7 @@ private fun NavGraphBuilder.graph(
             onSheetConsumed = onSheetConsumed,
         )
     }
-    composable<TrendsRoute>(
-        enterTransition = fadeThroughEnter,
-        exitTransition = fadeThroughExit,
-        popEnterTransition = fadeThroughEnter,
-        popExitTransition = fadeThroughExit,
-    ) {
+    composable<TrendsRoute> {
         // Trends hosts the same two sheets Today does. They are modals, not
         // routes (§5): a whole back-stack entry for four water buttons was
         // over-provisioned, and the weigh-in sheet is one number and a toggle.
@@ -303,12 +304,7 @@ private fun NavGraphBuilder.graph(
             null -> Unit
         }
     }
-    composable<YouRoute>(
-        enterTransition = fadeThroughEnter,
-        exitTransition = fadeThroughExit,
-        popEnterTransition = fadeThroughEnter,
-        popExitTransition = fadeThroughExit,
-    ) {
+    composable<YouRoute> {
         YouScreen(
             onOpenReminders = { navController.navigate(RemindersRoute) },
             onOpenPrivacy = { navController.navigate(PrivacyRoute) },

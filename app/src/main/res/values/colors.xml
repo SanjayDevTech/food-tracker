@@ -3,12 +3,13 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Brand accent — kept in sync with ui/theme/Color.kt. These two feed the
-         adaptive launcher icon (ic_launcher_foreground / _background), so the
-         icon moves with the palette instead of stranding the old mint-teal on
-         the home screen. Deep green, per design-plan open question 9. -->
-    <color name="mint_primary">#FF63D2B0</color>
-    <color name="mint_primary_container">#FF123A2F</color>
+    <!-- Launcher icon layers. The foreground is AppPrimary, kept in sync with
+         ui/theme/Color.kt so the mark moves with the palette instead of
+         stranding an old accent on the home screen. The background is black
+         rather than the old primaryContainer tile: the app canvas is black and
+         house rule 3 keeps the accent for data, so the icon says the same. -->
+    <color name="ic_launcher_foreground">#FF63D2B0</color>
+    <color name="ic_launcher_background">#FF000000</color>
 
     <!-- Window + splash background. Black, because the app's canvas is black:
          anything else is a flash of a colour the app does not contain. There is

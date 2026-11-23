@@ -1,6 +1,7 @@
 package com.example.foodtracker.ui.screens.today.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ fun CalorieHero(
     goals: NutrientGoals,
     modifier: Modifier = Modifier,
     loaded: Boolean = true,
+    onMacroClick: (String) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val left = goals.calories - consumed.calories
@@ -109,14 +111,11 @@ fun CalorieHero(
             )
         }
 
-        Spacer(Modifier.height(Spacing.xxl))
-        MacroLegendRow("Carbs", consumed.carbs, goals.carbs, MacroCarbs)
-        Spacer(Modifier.height(Spacing.m))
-        MacroLegendRow("Protein", consumed.protein, goals.protein, MacroProtein)
-        Spacer(Modifier.height(Spacing.m))
-        MacroLegendRow("Fat", consumed.fat, goals.fat, MacroFat)
-        Spacer(Modifier.height(Spacing.m))
-        MacroLegendRow("Fiber", consumed.fiber, goals.fiber, MacroFiber)
+        Spacer(Modifier.height(Spacing.l))
+        MacroLegendRow("Carbs", consumed.carbs, goals.carbs, MacroCarbs) { onMacroClick("carbs") }
+        MacroLegendRow("Protein", consumed.protein, goals.protein, MacroProtein) { onMacroClick("protein") }
+        MacroLegendRow("Fat", consumed.fat, goals.fat, MacroFat) { onMacroClick("fat") }
+        MacroLegendRow("Fiber", consumed.fiber, goals.fiber, MacroFiber) { onMacroClick("fiber") }
     }
 }
 
@@ -153,14 +152,34 @@ private fun HeroColumn(
 }
 
 /**
- * `CARBS · 468 g` over its own hairline.
+ * `CARBS · 468 g` over its own hairline. Tapping it opens "Rich in…" for that
+ * macro.
  *
  * The label is an eyebrow rather than body text, so the row reads label-then-
  * number instead of two competing words, and the number gets the weight.
+ *
+ * **The padding is the tap target.** The row's own content is about 26dp tall —
+ * an eyebrow, a number and a 2dp meter — which is half of [Sizes.touchTarget].
+ * Rather than force the row to 48dp and open the hero up by 40dp, the 12dp
+ * spacers that used to sit *between* the rows moved inside them as 8dp of
+ * vertical padding, so the target grew to ~42dp while the gap a reader sees
+ * only went from 12dp to 16dp. Full-bleed width does the rest: there is no
+ * horizontal aim involved, unlike the heatmap rows this gesture replaces.
  */
 @Composable
-private fun MacroLegendRow(label: String, value: Double, goal: Double, color: Color) {
-    Column {
+private fun MacroLegendRow(
+    label: String,
+    value: Double,
+    goal: Double,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = Spacing.s)
+    ) {
         Row(verticalAlignment = Alignment.Bottom) {
             Box(Modifier.size(6.dp).clip(RoundedCornerShape(1.dp)).background(color))
             Spacer(Modifier.width(Spacing.s))

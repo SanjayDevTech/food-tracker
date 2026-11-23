@@ -1,13 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  FoodTracker launcher mark: a warm bowl of food with three rising steam wisps.
-  Single-colour mint silhouette — reads cleanly at every density and works as the
-  Android 13+ monochrome themed icon (the system extracts the alpha mask and
-  applies its own tint).
+  Adaptive icon foreground: a bowl under a rule, with three rising marks.
 
-  Viewport is 108×108. Visible content is kept inside the 66dp safe-zone circle
-  centred on (54,54) so it survives circular masks and themed-icon cropping:
-  the steam tops at y≈22 and the bowl base bottoms at y≈86.
+  Built from the app's own primitives rather than drawn as an illustration, the
+  way GymTracker's barbell is a 4dp bar carrying plates:
+    - the rim is the 4dp rule house rule 1 puts under every standing head, run
+      past the bowl on both sides so it reads as a rule and not as a lip;
+    - the three marks above it are the Meter stack from Today's macro rows at
+      the sizes they actually appear, so the thing that says "steam" at 48dp is
+      the same thing that says "tracking" when you look twice.
+
+  Flat, one colour, no gradient and no shadow — the previous mark drew its steam
+  with stroked bezier wisps, which is the only curve-for-its-own-sake left in
+  the app after the rewrite.
+
+  Geometry on the 108dp canvas, centred on (54,54):
+    steam   x44..48 / x52..56 / x60..64, bottoms aligned at y49, r2
+    rim     x26..82, y52..56, r2
+    bowl    half-disc, centre (54,56), radius 22, so y56..78
+  Extents x26..82, y31..78. Farthest point is a rim corner at 28.1dp from
+  centre, inside the 33dp safe-zone radius, so no mask crops it.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -15,51 +27,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!--
-      Scale all marks to ~70% around (54,54). Google Play guidance: the
-      foreground should occupy roughly the inner 60–70% of the 108dp canvas
-      so masks and themed-icon crops don't clip the artwork. Adjusting via a
-      single <group> keeps the source paths legible.
-    -->
-    <group
-        android:scaleX="0.7"
-        android:scaleY="0.7"
-        android:pivotX="54"
-        android:pivotY="54">
+    <!-- Steam / meter marks, short to tall to short. -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M46,37 a2,2 0 0 1 2,2 v8 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-8 a2,2 0 0 1 2,-2 Z" />
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M54,31 a2,2 0 0 1 2,2 v14 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-14 a2,2 0 0 1 2,-2 Z" />
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M62,40 a2,2 0 0 1 2,2 v5 a2,2 0 0 1 -2,2 a2,2 0 0 1 -2,-2 v-5 a2,2 0 0 1 2,-2 Z" />
 
-        <!-- Bowl body: a clean wide half-ellipse with a subtly recessed rim. -->
-        <path
-            android:fillColor="@color/mint_primary"
-            android:pathData="M26,58 L82,58 C82,61 80,63.5 77.5,64.5 C74,79 65,87 54,87 C43,87 34,79 30.5,64.5 C28,63.5 26,61 26,58 Z" />
+    <!-- The rule. -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M28,52 h52 a2,2 0 0 1 2,2 a2,2 0 0 1 -2,2 h-52 a2,2 0 0 1 -2,-2 a2,2 0 0 1 2,-2 Z" />
 
-        <!-- Rim ellipse sitting on top of the bowl, hollow centre via even-odd fill. -->
-        <path
-            android:fillColor="@color/mint_primary"
-            android:fillType="evenOdd"
-            android:pathData="M22,57 C22,52.6 36.3,49 54,49 C71.7,49 86,52.6 86,57 C86,61.4 71.7,65 54,65 C36.3,65 22,61.4 22,57 Z M30,57 C30,59.2 40.7,61 54,61 C67.3,61 78,59.2 78,57 C78,54.8 67.3,53 54,53 C40.7,53 30,54.8 30,57 Z" />
-
-        <!-- Centre steam wisp. -->
-        <path
-            android:strokeColor="@color/mint_primary"
-            android:strokeWidth="4"
-            android:strokeLineCap="round"
-            android:fillColor="#00000000"
-            android:pathData="M54,44 C49,38 59,34 54,28 C50,23 57,20 54,22" />
-
-        <!-- Left steam wisp. -->
-        <path
-            android:strokeColor="@color/mint_primary"
-            android:strokeWidth="3.5"
-            android:strokeLineCap="round"
-            android:fillColor="#00000000"
-            android:pathData="M43,44 C39,39 47,35 43,30 C40,26 45,24 43,25" />
-
-        <!-- Right steam wisp. -->
-        <path
-            android:strokeColor="@color/mint_primary"
-            android:strokeWidth="3.5"
-            android:strokeLineCap="round"
-            android:fillColor="#00000000"
-            android:pathData="M65,44 C61,39 69,35 65,30 C62,26 67,24 65,25" />
-    </group>
+    <!-- Bowl. -->
+    <path
+        android:fillColor="@color/ic_launcher_foreground"
+        android:pathData="M32,56 A22,22 0 0 0 76,56 Z" />
 </vector>

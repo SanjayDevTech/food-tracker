@@ -1,6 +1,5 @@
 package com.example.foodtracker.ui.screens.trends.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -69,10 +68,15 @@ private val MAX_CELL = 10.dp
  * enclosing card gave every cell 32dp of width back, which at 30 columns is
  * most of a dp per cell — small, and in the direction that matters.
  *
- * **A row is a tap target.** Finding out you are chronically short of calcium
- * is only half an answer; [onRowClick] hands the nutrient straight to "Rich
- * in…", which is the other half. It is the one navigation this grid needs and
- * the shortest path the app has between a problem and a food that fixes it.
+ * **A row is not a tap target.** It used to be: tapping one opened "Rich in…"
+ * for that nutrient. The row is a 16sp eyebrow beside cells that clamp to 10dp,
+ * so with its 4dp padding the whole thing stands about 24dp tall — half the
+ * 48dp minimum, in a grid of up to 29 of them stacked with no gap, where the
+ * row above and the row below are the same size and one dot apart. That is a
+ * target you hit by luck. The shortcut was worth keeping, so it moved to the
+ * four macro rows on Today, which are full-bleed and twice the height; the
+ * card's own "Find rich foods" action reaches the same screen with its own
+ * nutrient picker for everything else.
  *
  * **The drawing model is untouched by the editorial pass** — same statuses,
  * same sizing maths, same sort. What changed is type and rhythm: the row label
@@ -87,7 +91,6 @@ fun NutrientHeatmap(
     firstDayLabel: String,
     lastDayLabel: String,
     expanded: Boolean,
-    onRowClick: (NutrientTrendRow) -> Unit,
     collapsedRows: Int = 6,
     modifier: Modifier = Modifier,
 ) {
@@ -105,7 +108,6 @@ fun NutrientHeatmap(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onRowClick(row) }
                         .padding(vertical = Spacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

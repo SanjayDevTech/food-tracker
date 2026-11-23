@@ -169,7 +169,14 @@ fun TodayScreen(
                 DayStrip(selected = state.epochDay, onSelect = { haptics.light(); vm.setDay(it) })
             }
             item("hero") {
-                CalorieHero(state.totalNutrients, state.goals, loaded = state.loaded)
+                CalorieHero(
+                    state.totalNutrients,
+                    state.goals,
+                    loaded = state.loaded,
+                    // The shortcut the Trends heatmap used to own. Same
+                    // destination, on a row you can actually hit.
+                    onMacroClick = { key -> haptics.light(); onOpenRichFoods(key) },
+                )
             }
             item("tiles") {
                 Section("Intake") {
