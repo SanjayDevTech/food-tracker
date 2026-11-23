@@ -234,7 +234,12 @@ class LogFoodViewModel(
      * their choice about *which rows*, and the two are independent.
      */
     fun setQuery(q: String) {
+        val openingASearch = _query.value.isBlank() && q.isNotBlank()
         _query.update { q }
+        // Starting to type says "it is not in this short list" — so move to the
+        // one list that holds everything. See [autoAllArmed] for why this is
+        // not the tab-jumping bug the doc above describes.
+        if (openingASearch && autoAllArmed) _tab.update { LogTab.All }
         // Any new keystroke invalidates the previous online search.
         if (_onlinePhase.value != OnlineSearchPhase.Idle) {
             _onlineResults.update { emptyList() }
@@ -278,7 +283,35 @@ class LogFoodViewModel(
             _onlinePhase.update { OnlineSearchPhase.Idle }
         }
     }
-    fun setTab(tab: LogTab) = _tab.update { tab }
+    /**
+     * Whether a first search may still move the picker to [LogTab.All].
+     *
+     * Three tabs hold a dozen rows each; All holds the whole catalogue. Opening
+     * the picker on [LogTab.Often] is right — on a repetitive diet the food is
+     * usually right there, with no typing at all — but it makes the *first*
+     * keystroke misleading, because searching twelve recent foods for something
+     * that is not among them returns nothing and looks like the food is missing.
+     *
+     * This is not a return to the behaviour [setQuery]'s doc warns about. That
+     * version jumped on every keystroke, from any tab, which is what made
+     * "search my favourites" impossible. This one fires only on the blank →
+     * non-blank edge, and only until the user touches a tab themselves: picking
+     * a tab is an explicit statement about which set they want to search, and
+     * it disarms the jump for good. Tapping All disarms it too, harmlessly —
+     * the jump would be a no-op there anyway, and one rule is easier to hold
+     * than two.
+     *
+     * Plain `var`, not state: nothing renders it, and it is only ever touched
+     * from main-thread UI callbacks. It outlives rotation with the ViewModel,
+     * which is correct — the user's choice should not be undone by a turn of
+     * the phone.
+     */
+    private var autoAllArmed = true
+
+    fun setTab(tab: LogTab) {
+        autoAllArmed = false
+        _tab.update { tab }
+    }
     fun setCustomFilter(filter: CustomFilter) = _customFilter.update { filter }
     fun setMealType(type: MealType) = _mealType.update { type }
     fun select(food: FoodEntity?) {
