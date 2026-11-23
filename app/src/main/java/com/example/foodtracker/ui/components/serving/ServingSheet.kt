@@ -153,6 +153,8 @@ fun ServingSheet(
     style: StyleOption? = null,
     onStyleChange: (StyleOption) -> Unit = {},
     onDelete: (() -> Unit)? = null,
+    /** Label for the destructive row. Only read when [onDelete] is non-null. */
+    deleteText: String = "Remove from diary",
     extraBlock: (@Composable () -> Unit)? = null,
 ) {
     // Custom-grams mode is signalled by the sentinel label. In that mode
@@ -268,6 +270,7 @@ fun ServingSheet(
                 confirmText = confirmText,
                 onConfirm = onConfirm,
                 onDelete = onDelete,
+                deleteText = deleteText,
             )
         }
     }

@@ -60,6 +60,7 @@ internal fun SheetFooter(
     confirmText: String,
     onConfirm: () -> Unit,
     onDelete: (() -> Unit)?,
+    deleteText: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -92,7 +93,7 @@ internal fun SheetFooter(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(Spacing.s))
-                Text("Remove from diary", style = AppText.label)
+                Text(deleteText, style = AppText.label)
             }
         }
     }

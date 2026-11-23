@@ -8,6 +8,9 @@ import com.example.foodtracker.data.db.FoodLogDao
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
 import com.example.foodtracker.data.db.IndianFoodSeed
+import com.example.foodtracker.data.db.PlanDao
+import com.example.foodtracker.data.db.PlanItemEntity
+import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.WaterLogDao
 import com.example.foodtracker.data.db.WaterLogEntity
 import com.example.foodtracker.data.db.WeightLogDao
@@ -54,6 +57,7 @@ class FoodRepository(
     private val foodLogDao: FoodLogDao,
     private val waterLogDao: WaterLogDao,
     private val weightLogDao: WeightLogDao,
+    private val planDao: PlanDao,
     private val api: OpenFoodFactsApi,
     private val usdaApi: UsdaFoodApi,
     private val aiApi: AiNutritionApi = AiNutritionApi(),
@@ -114,8 +118,15 @@ class FoodRepository(
      */
     suspend fun deleteCustomFood(id: Long, cascadeLogs: Boolean) {
         if (cascadeLogs) {
+            // FK CASCADE takes the plan lines with the food row.
             foodDao.delete(id)
         } else {
+            // A hidden food leaves the picker, so it has to leave the plan too:
+            // a planned line the user can no longer add is a row that can only
+            // disappoint. Dropped rather than kept-and-filtered, so restoring
+            // the food later does not silently put a line back into a plan the
+            // user has since rebuilt without it.
+            planDao.deleteForFood(id)
             foodDao.hide(id)
         }
     }
@@ -125,6 +136,7 @@ class FoodRepository(
         if (cascadeLogs) {
             foodDao.deleteAllCustom()
         } else {
+            planDao.deleteForAllCustomFoods()
             foodDao.hideAllCustom()
         }
     }
@@ -293,13 +305,34 @@ class FoodRepository(
         // row with a new id and uuid: @Upsert finds no primary-key or
         // client_uuid conflict to update against. Hiding a seeded food would
         // therefore un-hide it as a duplicate on the next SEED_VERSION bump.
+        val seededRows = foodDao.getAllSeeded()
+        val existingByUuid = seededRows.associateBy { it.clientUuid }
         val existingByName = HashMap<String, FoodEntity>()
-        for (row in foodDao.getAllSeeded()) {
+        for (row in seededRows) {
             existingByName.putIfAbsent(row.name.lowercase(Locale.ROOT), row)
         }
 
+        // Rows already spoken for by a uuid match, so the name pass below
+        // cannot hijack one of them. Two fresh entries landing on the same
+        // local id would have `upsertAll` write one over the other and insert
+        // neither of the foods that were missing — the kind of silent loss that
+        // only shows up as a food having vanished.
+        val claimedIds = HashSet<Long>()
+        for (fresh in IndianFoodSeed.ALL) {
+            existingByUuid[fresh.clientUuid]?.let { claimedIds.add(it.id) }
+        }
+
         val updated = IndianFoodSeed.ALL.map { fresh ->
-            val existing = existingByName[fresh.name.lowercase(Locale.ROOT)]
+            // **uuid first, name only as a fallback.** The uuid is this entry's
+            // permanent identity, so matching on it is what lets a seeded food
+            // be *renamed*: the existing row is found, its name updated, and no
+            // duplicate inserted. The name fallback carries the one run where
+            // that cannot work — the first launch after uuids were pinned,
+            // when every local row still holds the random uuid it was seeded
+            // with and has to be re-keyed to the literal.
+            val existing = existingByUuid[fresh.clientUuid]
+                ?: existingByName[fresh.name.lowercase(Locale.ROOT)]
+                    ?.takeIf { it.id !in claimedIds }
                 ?: return@map fresh
             fresh.copy(
                 id = existing.id,
@@ -309,10 +342,13 @@ class FoodRepository(
                 // hat. Hiding is the user's decision about a seeded food, and
                 // a nutrient correction is not a reason to overturn it.
                 isHidden = existing.isHidden,
-                // Preserve the stable cross-install uuid; a fresh seed list
-                // generates a new random one, which would otherwise break
-                // backup/restore merge keyed on client_uuid.
-                clientUuid = existing.clientUuid,
+                // `fresh.clientUuid` deliberately wins — it is the pinned
+                // literal from the seed, and adopting it is what re-keys an
+                // install that was seeded before the uuids existed. This used
+                // to carry `existing.clientUuid` forward, correctly, because
+                // back then a fresh seed list minted a new random uuid on every
+                // construction and keeping it would have broken restore. Now
+                // the seed is the authority on what a seeded food's uuid is.
                 isFavourite = existing.isFavourite,
                 // The preparation this user last chose is theirs, not the
                 // seed's. A nutrient correction must not reset their dosa back
@@ -383,6 +419,51 @@ class FoodRepository(
         foodLogDao.delete(id)
         onWidgetDataChanged()
     }
+
+    // ----- Plan -----
+    //
+    // One plan, no list, no active flag — see [PlanItemEntity]. Everything the
+    // feature needs is "what is on it" and "put this on it".
+
+    fun observePlan(): Flow<List<PlanItemWithFood>> = planDao.observeAll()
+
+    fun observePlanItemCount(): Flow<Int> = planDao.observeCount()
+
+    /**
+     * Put a food on the plan at an amount — adding it, changing its amount, or
+     * moving it to another meal, depending on what is already there.
+     *
+     * The branching is not ceremony: `(food_id, meal_type)` is unique, so a
+     * blind insert throws and a blind replace loses the row's place in the
+     * order. The case that actually bites is the third one — editing a line and
+     * changing its meal. Written naively that leaves the original row behind
+     * and the food is then planned twice, which is precisely the state the
+     * unique index exists to prevent. Adding dosa to breakfast when it is
+     * already there is the user saying "actually, three", not "two dosas and
+     * also three dosas".
+     */
+    suspend fun putPlanItem(item: PlanItemEntity) {
+        val inSlot = planDao.find(item.foodId, item.mealType)
+        when {
+            // Editing a line that is staying where it is.
+            inSlot != null && inSlot.id == item.id ->
+                planDao.update(item.copy(sortIndex = inSlot.sortIndex))
+            // The slot already holds this food: fold into that line, and drop
+            // the one we came from if we were editing rather than adding.
+            inSlot != null -> {
+                planDao.update(item.copy(id = inSlot.id, sortIndex = inSlot.sortIndex))
+                if (item.id != 0L) planDao.delete(item.id)
+            }
+            // Free slot — move the line we were editing into it...
+            item.id != 0L -> planDao.update(item)
+            // ...or append a new one.
+            else -> planDao.insert(item.copy(sortIndex = planDao.maxSortIndex() + 1))
+        }
+    }
+
+    suspend fun deletePlanItem(id: Long) = planDao.delete(id)
+
+    suspend fun clearPlan() = planDao.deleteAll()
 
     // ----- Water -----
     fun observeWaterForDay(epochDay: Long): Flow<List<WaterLogEntity>> =

@@ -85,6 +85,7 @@ fun TodayScreen(
     onAddFoodToMeal: (MealType) -> Unit,
     onOpenRichFoods: (String?) -> Unit,
     onOpenAllNutrients: (Long) -> Unit,
+    onOpenPlan: () -> Unit,
     openSheet: TodaySheet? = null,
     onSheetConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -200,6 +201,39 @@ fun TodayScreen(
                         caption = state.latestWeight?.let { agoLabel(it.dateEpochDay) } ?: "Tap to log",
                         onClick = { sheet = TodaySheet.Weight },
                     )
+                }
+            }
+            // One row, not the list. A whole day planned is ~10 rows that
+            // mirror the meal structure sitting right above the real meal
+            // structure, so the list lives on its own page and this says only
+            // how much of it is left. Absent entirely when no plan is set, so
+            // Today is unchanged for anyone who skips the feature.
+            if (state.hasPlan) {
+                item("plan") {
+                    Section("Plan") {
+                        StatRow(
+                            label = "To log",
+                            // Em-dash for "nothing left", the same convention
+                            // the water and weight rows use for "nothing yet".
+                            // A big 0 would read as a score, and the plan is
+                            // not a thing to be scored.
+                            value = if (state.planRemaining > 0) state.planRemaining.toString() else "\u2014",
+                            unit = when (state.planRemaining) {
+                                0 -> ""
+                                1 -> "food"
+                                else -> "foods"
+                            },
+                            caption = if (state.planRemaining > 0) {
+                                // Not "add them": the count beside it can be
+                                // 1, and the app should not read as though it
+                                // cannot count.
+                                "Tap to add to today"
+                            } else {
+                                "Everything planned is logged"
+                            },
+                            onClick = { haptics.light(); onOpenPlan() },
+                        )
+                    }
                 }
             }
             item("meals") {

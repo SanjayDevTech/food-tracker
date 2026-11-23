@@ -44,9 +44,45 @@ object BarcodeRoute
  * @param nutrientKey preselects the nutrient to rank by. Set when arriving from
  *        a contribution sheet's "Find foods rich in iron"; null from the Log
  *        picker's ⚗ action, which has no nutrient in mind yet.
+ * @param planMeal the meal to add a result to, when this screen was opened
+ *        from the plan editor. Null on every other entry point, and null is
+ *        what keeps the add affordance off the rows: ranking foods by iron is
+ *        a question, and a page reached by asking it has nowhere to put an
+ *        answer unless a plan sent you there.
  */
 @Serializable
-data class RichFoodsRoute(val nutrientKey: String? = null)
+data class RichFoodsRoute(
+    val nutrientKey: String? = null,
+    val planMeal: String? = null,
+)
+
+/**
+ * Today's plan as a list to tick off.
+ *
+ * Separate from [PlanRoute] because ticking and editing are different actions
+ * on the same rows, and one screen doing both is how you tap "remove from
+ * plan" when you meant "I ate it".
+ */
+@Serializable
+object PlanTodayRoute
+
+/**
+ * The plan editor. One plan, so no id: the route is the plan.
+ */
+@Serializable
+object PlanRoute
+
+/**
+ * Pick a food to put on the plan.
+ *
+ * A page rather than a sheet because the serving sheet opens on top of it, and
+ * a sheet over a sheet has no convention in this app — the same reasoning that
+ * made [AllNutrientsRoute] a page.
+ *
+ * @param mealType which meal the picked food is being planned for.
+ */
+@Serializable
+data class PlanPickFoodRoute(val mealType: String)
 
 /**
  * Every tracked nutrient for one day.

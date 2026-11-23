@@ -12,7 +12,9 @@ import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.FoodLogWithFood
+import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.nutrients
+import com.example.foodtracker.ui.screens.plan.plannedRemaining
 import com.example.foodtracker.data.db.WeightLogEntity
 import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.util.DateUtil
@@ -31,6 +33,7 @@ data class TodayUiState(
     val goals: NutrientGoals,
     val logs: List<FoodLogWithFood>,
     val waterMl: Int,
+    val plan: List<PlanItemWithFood> = emptyList(),
     val latestWeight: WeightLogEntity? = null,
     /**
      * False only for the synthetic first emission.
@@ -49,6 +52,28 @@ data class TodayUiState(
         acc + row.nutrients()
     }
     val mealGroups: Map<MealType, List<FoodLogWithFood>> = logs.groupBy { MealType.fromName(it.log.mealType) }
+
+    /** True only when the day on screen is the one a tick would be written against. */
+    val isToday: Boolean = epochDay == DateUtil.todayEpochDay()
+
+    /**
+     * How many planned lines are not yet in today's diary — the one number the
+     * plan row on this screen shows.
+     *
+     * Today deliberately holds the count and not the rows. The list itself
+     * lives on the plan-for-today page: a whole day planned is ~10 rows
+     * mirroring the meal structure directly above the real meal structure,
+     * which pushed the diary and the nutrient summary off the fold. That is why
+     * the block became a page.
+     *
+     * Zero on any day but today, so the row disappears while you are looking at
+     * last Tuesday — a tick there would write to today's diary, which is not the
+     * day on screen.
+     */
+    val planRemaining: Int = if (isToday) plannedRemaining(plan, logs) else 0
+
+    /** Whether the plan row appears at all. Absent for anyone who never set one. */
+    val hasPlan: Boolean = isToday && plan.isNotEmpty()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -82,13 +107,18 @@ class TodayViewModel(
             // that used to share that holder existed for the quick-log row, which
             // is gone — every write to the diary now goes through the serving
             // sheet, so Home no longer needs a food list of its own.
-            combine(coreFlow, repository.observeLatestWeight()) { core, weight ->
+            combine(
+                coreFlow,
+                repository.observeLatestWeight(),
+                repository.observePlan(),
+            ) { core, weight, plan ->
                 TodayUiState(
                     epochDay = day,
                     profile = core.profile,
                     goals = GoalCalculator.goalsFor(core.profile),
                     logs = core.logs,
                     waterMl = core.water,
+                    plan = plan,
                     latestWeight = weight,
                 )
             }

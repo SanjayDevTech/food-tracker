@@ -77,14 +77,21 @@ class YouViewModel(
             reminderStore.configs,
             profileStore.backupIntervalHours,
             _backupCount,
-            repository.observeCustomVisibleFoods(),
-        ) { haptics, reminders, backupHours, backupCount, customFoods ->
+            // Paired into one leg because combine's typed overloads stop at
+            // five, and dropping to the vararg form would cost this whole
+            // block its types for the sake of one Int.
+            combine(
+                repository.observeCustomVisibleFoods(),
+                repository.observePlanItemCount(),
+            ) { customFoods, planItems -> customFoods.size to planItems },
+        ) { haptics, reminders, backupHours, backupCount, counts ->
             AppBase(
                 haptics = haptics,
                 reminderSummary = reminderSummary(reminders),
                 backupCadence = BackupCadence.fromHours(backupHours),
                 backupCount = backupCount,
-                customFoodCount = customFoods.size,
+                customFoodCount = counts.first,
+                planItemCount = counts.second,
             )
         },
         combine(
@@ -107,6 +114,7 @@ class YouViewModel(
             backupCadence = app.backupCadence,
             backupCount = app.backupCount,
             customFoodCount = app.customFoodCount,
+            planSummary = planSummary(app.planItemCount),
             aiEnabled = ai.enabled,
             aiProvider = ai.provider,
             aiApiKey = ai.key,
@@ -128,6 +136,7 @@ class YouViewModel(
         val backupCadence: BackupCadence,
         val backupCount: Int,
         val customFoodCount: Int,
+        val planItemCount: Int,
     )
 
     private data class AiBase(
@@ -204,6 +213,7 @@ data class YouUiState(
     val backupCadence: BackupCadence = BackupCadence.Off,
     val backupCount: Int = 0,
     val customFoodCount: Int = 0,
+    val planSummary: String = "Not set",
     val aiEnabled: Boolean = false,
     val aiProvider: AiProvider = AiProvider.Gemini,
     val aiApiKey: String = "",
@@ -237,6 +247,16 @@ data class YouUiState(
  * "Breakfast, Lunch, Snack, Dinner, Water" does not fit a settings row and
  * does not tell the user anything the word "meals" doesn't.
  */
+/**
+ * "Not set" reads better than "0 foods" for a feature nobody has to use —
+ * a zero states a score, and the plan is not something to be scoring.
+ */
+private fun planSummary(itemCount: Int): String = when (itemCount) {
+    0 -> "Not set"
+    1 -> "1 food"
+    else -> "$itemCount foods"
+}
+
 private fun reminderSummary(configs: List<ReminderConfig>): String {
     val on = configs.filter { it.enabled }.map { it.kind }
     if (on.isEmpty()) return "Off"

@@ -8,6 +8,7 @@ import com.example.foodtracker.data.UserProfile
 import com.example.foodtracker.data.WeightChangeRate
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.FoodLogEntity
+import com.example.foodtracker.data.db.PlanItemEntity
 import com.example.foodtracker.data.db.WaterLogEntity
 import com.example.foodtracker.data.db.WeightLogEntity
 import kotlinx.serialization.Serializable
@@ -36,6 +37,12 @@ data class BackupPayload(
     val foodLog: List<FoodLogSnapshot>,
     val waterLog: List<WaterLogSnapshot>,
     val weightLog: List<WeightLogSnapshot>,
+    /**
+     * The standing plan. Added after SCHEMA_VERSION 2 and defaulted, so older
+     * payloads still load — a backup taken before the feature existed restores
+     * to an empty plan, which is the truth about that device.
+     */
+    val plan: List<PlanItemSnapshot> = emptyList(),
 ) {
     companion object {
         const val SCHEMA_VERSION = 2
@@ -266,9 +273,24 @@ data class FoodLogSnapshot(
     val id: Long,
     /** Source-device local id. Only useful as a fallback against legacy `foods`. */
     val foodId: Long,
-    /** Portable identity for the referenced food (custom only). Null for seeded. */
+    /**
+     * Portable identity for the referenced food.
+     *
+     * Set for seeded foods as well as customs since the seed pinned literal
+     * uuids: a seeded row's uuid is now the same string on every install, so it
+     * identifies the food across a restore even if the food has since been
+     * renamed. It was custom-only when seeded uuids were minted randomly per
+     * install and carried no meaning off the device that wrote them.
+     */
     val foodClientUuid: String? = null,
-    /** Portable identity fallback — recreates seeded refs by name on the target install. */
+    /**
+     * Portable identity fallback — resolves the food by name.
+     *
+     * Still written, and still the only key that works for a snapshot taken
+     * before the uuids were pinned, which is why the restore path keeps trying
+     * it. Those payloads carry no seeded uuid and no update to this app can put
+     * one in them.
+     */
     val foodName: String = "",
     val dateEpochDay: Long,
     val mealType: String,
@@ -299,7 +321,7 @@ data class FoodLogSnapshot(
         fun from(e: FoodLogEntity, food: FoodEntity?) = FoodLogSnapshot(
             id = e.id,
             foodId = e.foodId,
-            foodClientUuid = food?.takeIf { it.isCustom }?.clientUuid,
+            foodClientUuid = food?.clientUuid,
             foodName = food?.name ?: "",
             dateEpochDay = e.dateEpochDay,
             mealType = e.mealType,
@@ -309,6 +331,59 @@ data class FoodLogSnapshot(
             oil = e.oil,
             style = e.style,
             loggedAtMillis = e.loggedAtMillis,
+        )
+    }
+}
+
+/**
+ * One planned line, made portable the same way a log entry is: by carrying the
+ * referenced food's `clientUuid` (for customs) and its name (for seeded rows)
+ * rather than the local Room id, which re-numbers on a fresh install. A plan
+ * restored by id would point every line at whatever food happened to land on
+ * that row number.
+ */
+@Serializable
+data class PlanItemSnapshot(
+    val id: Long,
+    /** Source-device local id. Only useful as a fallback against legacy `foods`. */
+    val foodId: Long,
+    /** Portable identity for the referenced food, seeded or custom. */
+    val foodClientUuid: String? = null,
+    /** Portable identity fallback, for payloads predating the pinned seed uuids. */
+    val foodName: String = "",
+    val mealType: String,
+    val servings: Double,
+    val grams: Double,
+    val servingLabel: String = "",
+    val oil: String? = null,
+    val style: String? = null,
+    val sortIndex: Int = 0,
+) {
+    fun toEntity(localFoodId: Long) = PlanItemEntity(
+        id = 0,
+        foodId = localFoodId,
+        mealType = mealType,
+        servings = servings,
+        grams = grams,
+        servingLabel = servingLabel,
+        oil = oil,
+        style = style,
+        sortIndex = sortIndex,
+    )
+
+    companion object {
+        fun from(e: PlanItemEntity, food: FoodEntity?) = PlanItemSnapshot(
+            id = e.id,
+            foodId = e.foodId,
+            foodClientUuid = food?.clientUuid,
+            foodName = food?.name ?: "",
+            mealType = e.mealType,
+            servings = e.servings,
+            grams = e.grams,
+            servingLabel = e.servingLabel,
+            oil = e.oil,
+            style = e.style,
+            sortIndex = e.sortIndex,
         )
     }
 }

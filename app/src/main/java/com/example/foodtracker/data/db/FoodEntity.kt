@@ -208,6 +208,14 @@ data class FoodEntity(
         fun fromNutrientsPer100g(
             name: String,
             category: String,
+            /**
+             * Cross-install identity. Seeded foods pass their pinned literal
+             * from [IndianFoodSeed]; everything else — customs, barcode saves,
+             * online results — omits it and takes a fresh random one, which is
+             * correct because those rows have no identity to share with any
+             * other install.
+             */
+            clientUuid: String = java.util.UUID.randomUUID().toString(),
             n: Nutrients,
             servingGrams: Double = 100.0,
             servingLabel: String = "1 serving (100 g)",
@@ -221,6 +229,7 @@ data class FoodEntity(
             styleOptions: List<StyleOption> = emptyList(),
         ) = FoodEntity(
             name = name,
+            clientUuid = clientUuid,
             brand = brand,
             category = category,
             servingGrams = servingGrams,

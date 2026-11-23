@@ -14,8 +14,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FoodLogEntity::class,
         WaterLogEntity::class,
         WeightLogEntity::class,
+        PlanItemEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -24,6 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun foodLogDao(): FoodLogDao
     abstract fun waterLogDao(): WaterLogDao
     abstract fun weightLogDao(): WeightLogDao
+    abstract fun planDao(): PlanDao
 
     companion object {
         @Volatile
@@ -141,6 +143,48 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v10 → v11: adds `plan_items`, the single standing plan.
+         *
+         * A new table only — nothing existing is read, altered or dropped, so
+         * every food, log, water and weight row is untouched and a user who
+         * never opens the plan cannot tell the migration ran.
+         *
+         * The DDL has to match what Room would have generated exactly, down to
+         * the index names, or `validateMigration` rejects the database on the
+         * next open. `(food_id, meal_type)` is UNIQUE on purpose — see the note
+         * on [PlanItemEntity] for why two plan rows for the same food in the
+         * same meal would make the tick marks unreadable.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `plan_items` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `food_id` INTEGER NOT NULL,
+                        `meal_type` TEXT NOT NULL,
+                        `servings` REAL NOT NULL,
+                        `grams` REAL NOT NULL,
+                        `serving_label` TEXT NOT NULL,
+                        `oil` TEXT,
+                        `style` TEXT,
+                        `sort_index` INTEGER NOT NULL,
+                        FOREIGN KEY(`food_id`) REFERENCES `foods`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_plan_items_food_id_meal_type` " +
+                        "ON `plan_items` (`food_id`, `meal_type`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_plan_items_food_id` ON `plan_items` (`food_id`)"
+                )
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -154,6 +198,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_7_8,
                     MIGRATION_8_9,
                     MIGRATION_9_10,
+                    MIGRATION_10_11,
                 )
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket

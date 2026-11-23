@@ -86,11 +86,22 @@ class BackupManager(
         val foodsById = foodDao.getAll().associateBy { it.id }
         val foodLogs = foodLogDao.getAll()
         val foodLogSnaps = foodLogs.map { FoodLogSnapshot.from(it, foodsById[it.foodId]) }
+        val planItems = database.planDao().getAll()
+        val planSnaps = planItems.map { PlanItemSnapshot.from(it, foodsById[it.foodId]) }
 
         // Custom foods to include = only those referenced by at least one log
-        // entry. Seeded foods are reproduced from `IndianFoodSeed` on the target
-        // install, so we don't ship them inside the backup payload.
-        val referencedFoodIds = foodLogs.mapTo(mutableSetOf()) { it.foodId }
+        // entry or planned line. Seeded foods are reproduced from
+        // `IndianFoodSeed` on the target install, so we don't ship them inside
+        // the backup payload.
+        //
+        // The plan half of that union is load-bearing: a custom food that is
+        // planned but has never actually been eaten appears in no log, so
+        // without it the payload would carry a plan line pointing at a food it
+        // did not ship, and the restore would silently drop that line.
+        val referencedFoodIds = buildSet {
+            foodLogs.mapTo(this) { it.foodId }
+            planItems.mapTo(this) { it.foodId }
+        }
         val customs = foodDao.getAllCustom().filter { it.id in referencedFoodIds }
 
         BackupPayload(
@@ -101,6 +112,7 @@ class BackupManager(
             foodLog = foodLogSnaps,
             waterLog = database.waterLogDao().getAll().map(WaterLogSnapshot::from),
             weightLog = database.weightLogDao().getAll().map(WeightLogSnapshot::from),
+            plan = planSnaps,
         )
     }
 
@@ -575,7 +587,9 @@ class BackupManager(
         foodLogDao.deleteAll()
         val resolvedLogs = payload.foodLog.mapNotNull { log ->
             val localFoodId = resolveLocalFoodId(
-                log = log,
+                foodClientUuid = log.foodClientUuid,
+                foodName = log.foodName,
+                sourceFoodId = log.foodId,
                 foodDao = foodDao,
                 byOldId = byOldId,
                 oldIdToLocalId = oldIdToLocalId,
@@ -585,6 +599,34 @@ class BackupManager(
             log.toEntity(localFoodId)
         }
         foodLogDao.insertAll(resolvedLogs)
+
+        // Same treatment for the plan, and for the same reason: it is
+        // user-owned data and a backup is a point-in-time copy of it, so the
+        // local plan is replaced rather than merged. A line whose food cannot
+        // be resolved on this install is dropped — better a shorter plan than
+        // a row that renders as a blank.
+        val planDao = database.planDao()
+        planDao.deleteAll()
+        val resolvedPlan = payload.plan.mapNotNull { item ->
+            val localFoodId = resolveLocalFoodId(
+                foodClientUuid = item.foodClientUuid,
+                foodName = item.foodName,
+                sourceFoodId = item.foodId,
+                foodDao = foodDao,
+                byOldId = byOldId,
+                oldIdToLocalId = oldIdToLocalId,
+                seededByName = seededByName,
+                backupCustoms = backupCustoms,
+            ) ?: return@mapNotNull null
+            item.toEntity(localFoodId)
+        }
+        // Distinct by (food, meal): `plan_items` has a unique index on that
+        // pair, and two snapshot lines can collapse onto it when two different
+        // source foods resolve to the same local row — a custom the target
+        // already had under a different uuid, say. Letting the insert fold them
+        // silently would keep an arbitrary one of the two amounts, so the first
+        // is taken deliberately.
+        planDao.insertAll(resolvedPlan.distinctBy { it.foodId to it.mealType })
 
         // The rest of the logs don't reference foods — wipe and re-insert.
         waterDao.deleteAll()
@@ -605,29 +647,38 @@ class BackupManager(
         }
     }
 
+    /**
+     * Point a snapshot's food reference at a row on *this* install.
+     *
+     * Takes the three portable fields rather than a snapshot type, because log
+     * entries and plan lines carry exactly the same reference and resolving
+     * them two different ways is how the two would drift.
+     */
     private suspend fun resolveLocalFoodId(
-        log: FoodLogSnapshot,
+        foodClientUuid: String?,
+        foodName: String,
+        sourceFoodId: Long,
         foodDao: com.example.foodtracker.data.db.FoodDao,
         byOldId: Map<Long, FoodSnapshot>,
         oldIdToLocalId: Map<Long, Long>,
         seededByName: Map<String, Long>,
         backupCustoms: List<FoodSnapshot>,
     ): Long? {
-        // Preferred: the log carries a clientUuid for the referenced custom.
-        log.foodClientUuid?.let { uuid ->
+        // Preferred: the row carries a clientUuid for the referenced custom.
+        foodClientUuid?.let { uuid ->
             foodDao.findByClientUuid(uuid)?.let { return it.id }
             // UUID not local yet — maybe the custom was just inserted.
             backupCustoms.firstOrNull { it.clientUuid == uuid }
                 ?.let { return oldIdToLocalId[it.id] }
         }
-        // Fallback: the log's name resolves to a seeded row.
-        if (log.foodName.isNotBlank()) {
-            seededByName[log.foodName.lowercase()]?.let { return it }
+        // Fallback: the row's name resolves to a seeded food.
+        if (foodName.isNotBlank()) {
+            seededByName[foodName.lowercase()]?.let { return it }
         }
         // Last resort (schema-1 logs): map via old foodId.
-        oldIdToLocalId[log.foodId]?.let { return it }
+        oldIdToLocalId[sourceFoodId]?.let { return it }
         // Schema-1 + seeded: look the source food up by id and resolve its name.
-        val sourceFood = byOldId[log.foodId] ?: return null
+        val sourceFood = byOldId[sourceFoodId] ?: return null
         if (!sourceFood.isCustom) {
             seededByName[sourceFood.name.lowercase()]?.let { return it }
         }

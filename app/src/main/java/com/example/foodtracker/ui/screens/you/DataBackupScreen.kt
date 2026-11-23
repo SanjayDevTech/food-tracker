@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +39,7 @@ import com.example.foodtracker.ui.components.ExclusiveButtonGroup
 import com.example.foodtracker.ui.components.atoms.AppDivider
 import com.example.foodtracker.ui.components.atoms.AppOutlinedButton
 import com.example.foodtracker.ui.components.atoms.AppTextButton
+import com.example.foodtracker.ui.components.atoms.ConfirmDialog
 import com.example.foodtracker.ui.components.atoms.AppTopBar
 import com.example.foodtracker.ui.rememberAppHaptics
 import com.example.foodtracker.ui.components.atoms.Section
@@ -389,27 +389,6 @@ private fun BackupRow(
  * widget in the same colour at the same weight.
  */
 @Composable
-private fun ConfirmDialog(
-    title: String,
-    body: String,
-    confirmLabel: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        title = { Text(title, style = AppText.titleL) },
-        text = {
-            Text(body, style = AppText.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        },
-        confirmButton = {
-            AppTextButton(text = confirmLabel, onClick = onConfirm, destructive = true)
-        },
-        dismissButton = { AppTextButton(text = "Cancel", onClick = onDismiss) },
-    )
-}
-
 private fun timestamp(millis: Long): String = DateFormat
     .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
     .format(Date(millis))

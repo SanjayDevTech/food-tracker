@@ -73,6 +73,7 @@ import com.example.foodtracker.ui.theme.Spacing
  */
 @Composable
 fun YouScreen(
+    onOpenPlan: () -> Unit,
     onOpenReminders: () -> Unit,
     onOpenPrivacy: () -> Unit,
     onOpenEditProfile: () -> Unit,
@@ -159,6 +160,12 @@ fun YouScreen(
                     // and the next section's head closes it. A border drawn
                     // round the rows would be a second boundary doing the first
                     // one's job (house rule 1).
+                    SettingRow(
+                        label = "Plan",
+                        value = state.planSummary,
+                        onClick = onOpenPlan,
+                    )
+                    AppDivider()
                     SettingRow(
                         label = "Reminders",
                         value = state.reminderSummary,

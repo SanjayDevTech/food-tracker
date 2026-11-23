@@ -41,6 +41,9 @@ import com.example.foodtracker.ui.screens.barcode.BarcodeScreen
 import com.example.foodtracker.ui.screens.log.LogFoodScreen
 import com.example.foodtracker.ui.screens.nutrients.AllNutrientsScreen
 import com.example.foodtracker.ui.screens.onboarding.OnboardingScreen
+import com.example.foodtracker.ui.screens.plan.PlanPickFoodScreen
+import com.example.foodtracker.ui.screens.plan.PlanScreen
+import com.example.foodtracker.ui.screens.plan.PlanTodayScreen
 import com.example.foodtracker.ui.screens.privacy.PrivacyScreen
 import com.example.foodtracker.ui.screens.reminders.RemindersScreen
 import com.example.foodtracker.ui.screens.rich.RichFoodsScreen
@@ -284,6 +287,7 @@ private fun NavGraphBuilder.graph(
             onAddFoodToMeal = { meal -> navController.navigate(LogFoodRoute(meal.name)) },
             onOpenRichFoods = { key -> navController.navigate(RichFoodsRoute(key)) },
             onOpenAllNutrients = { day -> navController.navigate(AllNutrientsRoute(day)) },
+            onOpenPlan = { navController.navigate(PlanTodayRoute) },
             openSheet = pendingSheet,
             onSheetConsumed = onSheetConsumed,
         )
@@ -306,6 +310,7 @@ private fun NavGraphBuilder.graph(
     }
     composable<YouRoute> {
         YouScreen(
+            onOpenPlan = { navController.navigate(PlanRoute) },
             onOpenReminders = { navController.navigate(RemindersRoute) },
             onOpenPrivacy = { navController.navigate(PrivacyRoute) },
             onOpenEditProfile = { navController.navigate(EditProfileRoute) },
@@ -348,6 +353,36 @@ private fun NavGraphBuilder.graph(
         RichFoodsScreen(
             onBack = { navController.popBackStack() },
             preselectedNutrientKey = route.nutrientKey,
+            planMeal = route.planMeal?.let { MealType.fromName(it) },
+            // Back to the editor, not back one step: the user walked
+            // Plan → pick → Rich-in to add one food, and unwinding that
+            // through the picker would leave them on a search screen they
+            // have finished with.
+            onPlanned = {
+                navController.popBackStack(route = PlanRoute, inclusive = false)
+            },
+        )
+    }
+    composable<PlanTodayRoute> {
+        PlanTodayScreen(
+            onBack = { navController.popBackStack() },
+            onEditPlan = { navController.navigate(PlanRoute) },
+        )
+    }
+    composable<PlanRoute> {
+        PlanScreen(
+            onBack = { navController.popBackStack() },
+            onAddFood = { meal -> navController.navigate(PlanPickFoodRoute(meal.name)) },
+        )
+    }
+    composable<PlanPickFoodRoute> { entry ->
+        val route: PlanPickFoodRoute = entry.toRoute()
+        PlanPickFoodScreen(
+            meal = MealType.fromName(route.mealType),
+            onBack = { navController.popBackStack() },
+            onOpenRichFoods = {
+                navController.navigate(RichFoodsRoute(planMeal = route.mealType))
+            },
         )
     }
     composable<AllNutrientsRoute> { entry ->

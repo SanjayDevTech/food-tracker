@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,8 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientField
+import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.domain.RichFood
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.components.HapticFilterChip
@@ -53,6 +56,8 @@ import com.example.foodtracker.ui.components.atoms.Meter
 import com.example.foodtracker.ui.components.atoms.ValueText
 import com.example.foodtracker.ui.components.color
 import com.example.foodtracker.ui.rememberAppHaptics
+import com.example.foodtracker.ui.screens.plan.PlanAddViewModel
+import com.example.foodtracker.ui.screens.plan.PlanAmountSheet
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Elevation
@@ -93,11 +98,22 @@ import kotlin.math.roundToInt
 fun RichFoodsScreen(
     onBack: () -> Unit,
     preselectedNutrientKey: String? = null,
+    /**
+     * The meal a result should be planned for, when the plan editor sent the
+     * user here. Null on every other entry point — and null is what keeps the
+     * rows inert: arriving from "find foods rich in iron" is a question, and a
+     * page reached by asking it has nowhere to put an answer.
+     */
+    planMeal: MealType? = null,
+    /** Called once a food has been added to the plan; the caller navigates. */
+    onPlanned: () -> Unit = {},
 ) {
     val vm: RichFoodsViewModel = appViewModel {
         RichFoodsViewModel(it.repository, it.profileStore)
     }
+    val planVm: PlanAddViewModel = appViewModel { PlanAddViewModel(it.repository) }
     val state by vm.state.collectAsStateWithLifecycle()
+    var picked by remember { mutableStateOf<FoodEntity?>(null) }
 
     // Keyed on the argument, so arriving from a contribution sheet picks that
     // nutrient once. [RichFoodsViewModel.preselect] is a no-op if anything is
@@ -118,7 +134,11 @@ fun RichFoodsScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Rich in…",
+                title = if (planMeal == null) {
+                    "Rich in…"
+                } else {
+                    "Rich in… · ${planMeal.displayName}"
+                },
                 onBack = onBack,
                 actions = {
                     if (state.selectedKeys.isNotEmpty()) {
@@ -217,11 +237,25 @@ fun RichFoodsScreen(
                         // Rules between rows, not around them — and none above
                         // the first, which already sits under the head's rule.
                         if (index > 0) AppDivider()
-                        RichFoodRow(result, state.selectedFields)
+                        RichFoodRow(
+                            result = result,
+                            fields = state.selectedFields,
+                            onPick = planMeal?.let { { picked = result.food } },
+                        )
                     }
                 }
             }
         }
+    }
+
+    val food = picked
+    if (food != null && planMeal != null) {
+        PlanAmountSheet(
+            food = food,
+            meal = planMeal,
+            onConfirm = { item -> planVm.add(item, onDone = onPlanned) },
+            onDismiss = { picked = null },
+        )
     }
 }
 
@@ -360,14 +394,19 @@ private fun NoResults(state: RichFoodsState, onDropBlocker: (NutrientField) -> U
  * names truncate.
  */
 @Composable
-private fun RichFoodRow(result: RichFood, fields: List<NutrientField>) {
+private fun RichFoodRow(
+    result: RichFood,
+    fields: List<NutrientField>,
+    onPick: (() -> Unit)? = null,
+) {
     // A hairline between results is what keeps two of them from bleeding
     // together — the job the card's border used to do, done by one line
     // instead of four, and without the inset that pushed every result 16dp off
     // the page's margin. The caller draws it, so the last row has no dangling
     // rule under it.
     Column(Modifier.fillMaxWidth()) {
-        FoodRow(food = result.food, onClick = {})
+        // Inert unless a plan sent us here — see the `planMeal` parameter.
+        FoodRow(food = result.food, onClick = onPick ?: {})
         Column(
             // Aligned with the food name above: 16dp row padding + 40dp
             // category disc + 12dp gap.
