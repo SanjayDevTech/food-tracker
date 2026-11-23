@@ -33,6 +33,15 @@ import com.example.foodtracker.ui.theme.Spacing
  * [trailing] is the section's summary figure — `2 981 kcal`, `18 of 29 on
  * track` — which sits on the head's baseline, right-aligned, so every section
  * states its total in the same place.
+ *
+ * **The head is `onSurface`, the rows under it are `onSurfaceVariant`.** It was
+ * `onSurfaceVariant` too, which meant a section head and a row label inside it
+ * were the same 11sp uppercase in the same colour: on Today, `INTAKE` and the
+ * `WATER` / `WEIGHT` labels beneath it were typographically identical, so three
+ * stacked sections read as one undifferentiated list of eyebrows and nothing
+ * said which of them was the heading. The rule under the head could not fix
+ * that on its own — a rule says *where* a section starts, not *what* is the
+ * head. One step of contrast does, and it costs no space.
  */
 @Composable
 fun Section(
@@ -49,7 +58,7 @@ fun Section(
             Text(
                 title.uppercase(),
                 style = AppText.eyebrow,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
             trailing?.invoke(this)

@@ -15,6 +15,7 @@ import com.example.foodtracker.data.db.FoodLogWithFood
 import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.ui.screens.plan.plannedRemaining
+import com.example.foodtracker.ui.screens.plan.plannedRemainingRows
 import com.example.foodtracker.data.db.WeightLogEntity
 import com.example.foodtracker.domain.GoalCalculator
 import com.example.foodtracker.util.DateUtil
@@ -71,6 +72,20 @@ data class TodayUiState(
      * day on screen.
      */
     val planRemaining: Int = if (isToday) plannedRemaining(plan, logs) else 0
+
+    /**
+     * The first few foods still to log, named.
+     *
+     * Three, because three short Indian food names fit one line at the default
+     * font scale and the row ellipsises rather than growing past two. The
+     * remainder is stated as a count instead of being cut off mid-word.
+     */
+    val planNextFoods: List<String> =
+        if (isToday) plannedRemainingRows(plan, logs).map { it.planned.food.name } else emptyList()
+
+    /** `2 of 5 logged` — the plan section's summary figure, in the head's trailing slot. */
+    val planSummary: String =
+        if (plan.isEmpty()) "" else "${plan.size - planRemaining} of ${plan.size} logged"
 
     /** Whether the plan row appears at all. Absent for anyone who never set one. */
     val hasPlan: Boolean = isToday && plan.isNotEmpty()

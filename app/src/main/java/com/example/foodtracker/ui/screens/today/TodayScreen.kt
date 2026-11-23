@@ -184,6 +184,50 @@ fun TodayScreen(
                     onMacroClick = { field -> haptics.light(); detailField = field },
                 )
             }
+            // Directly under the hero, and above Intake.
+            //
+            // It used to sit third, between Intake and Meals, where it was one
+            // more 11sp uppercase head in a column of them — a plan you had set
+            // deliberately that morning, reported more quietly than the water
+            // you had not. Position is the whole fix: the one section that is a
+            // list of things still to do belongs next to the figure it is going
+            // to move.
+            //
+            // Still one row and not the list. A whole day planned is ~10 rows
+            // mirroring the meal structure directly above the real meal
+            // structure, which is why the list is a page. What the row gained
+            // is the foods' names, so it says what is left rather than only how
+            // many — a count on its own reads as a score, and the plan is not a
+            // thing to be scored. Absent entirely when no plan is set, so Today
+            // is unchanged for anyone who skips the feature.
+            if (state.hasPlan) {
+                item("plan") {
+                    Section(
+                        "Plan",
+                        trailing = {
+                            Text(
+                                state.planSummary,
+                                style = AppText.bodyS,
+                                color = scheme.onSurfaceVariant,
+                            )
+                        },
+                    ) {
+                        StatRow(
+                            label = "To log",
+                            // Em-dash for "nothing left", the same convention
+                            // the water and weight rows use for "nothing yet".
+                            value = if (state.planRemaining > 0) state.planRemaining.toString() else "\u2014",
+                            unit = when (state.planRemaining) {
+                                0 -> ""
+                                1 -> "food"
+                                else -> "foods"
+                            },
+                            caption = planCaption(state.planNextFoods),
+                            onClick = { haptics.light(); onOpenPlan() },
+                        )
+                    }
+                }
+            }
             item("tiles") {
                 Section("Intake") {
                     StatRow(
@@ -201,39 +245,6 @@ fun TodayScreen(
                         caption = state.latestWeight?.let { agoLabel(it.dateEpochDay) } ?: "Tap to log",
                         onClick = { sheet = TodaySheet.Weight },
                     )
-                }
-            }
-            // One row, not the list. A whole day planned is ~10 rows that
-            // mirror the meal structure sitting right above the real meal
-            // structure, so the list lives on its own page and this says only
-            // how much of it is left. Absent entirely when no plan is set, so
-            // Today is unchanged for anyone who skips the feature.
-            if (state.hasPlan) {
-                item("plan") {
-                    Section("Plan") {
-                        StatRow(
-                            label = "To log",
-                            // Em-dash for "nothing left", the same convention
-                            // the water and weight rows use for "nothing yet".
-                            // A big 0 would read as a score, and the plan is
-                            // not a thing to be scored.
-                            value = if (state.planRemaining > 0) state.planRemaining.toString() else "\u2014",
-                            unit = when (state.planRemaining) {
-                                0 -> ""
-                                1 -> "food"
-                                else -> "foods"
-                            },
-                            caption = if (state.planRemaining > 0) {
-                                // Not "add them": the count beside it can be
-                                // 1, and the app should not read as though it
-                                // cannot count.
-                                "Tap to add to today"
-                            } else {
-                                "Everything planned is logged"
-                            },
-                            onClick = { haptics.light(); onOpenPlan() },
-                        )
-                    }
                 }
             }
             item("meals") {
@@ -299,6 +310,20 @@ fun TodayScreen(
         TodaySheet.Weight -> WeighInSheet(onDismiss = { sheet = null })
         null -> Unit
     }
+}
+
+/**
+ * The foods still to log, named — up to three, then a count.
+ *
+ * Three is what fits one line at the default font scale; the row allows a
+ * second and ellipsises after that, so a long fourth name is stated as "+2
+ * more" rather than cut off mid-word.
+ */
+private fun planCaption(nextFoods: List<String>): String {
+    if (nextFoods.isEmpty()) return "Everything planned is logged"
+    val shown = nextFoods.take(3)
+    val rest = nextFoods.size - shown.size
+    return shown.joinToString(" · ") + if (rest > 0) " · +$rest more" else ""
 }
 
 /** The meal the wall clock says you are in. Drives the auto-expanded row and the FAB. */

@@ -45,6 +45,20 @@ fun plannedGroups(
         .toSortedMap(compareBy { it.ordinal })
 }
 
+/**
+ * The planned lines that are not yet in today's diary, flattened out of their
+ * meal groups but still in meal order — breakfast first.
+ *
+ * Today names the first few of these on its plan row. A count alone said how
+ * much was left and nothing about what, which is the half that makes the row
+ * worth reading: "3 foods" is a score, "Dosa · Sambar · Filter coffee" is the
+ * plan.
+ */
+fun plannedRemainingRows(
+    plan: List<PlanItemWithFood>,
+    logs: List<FoodLogWithFood>,
+): List<PlannedRow> = plannedGroups(plan, logs).values.flatten().filter { !it.logged }
+
 /** How many planned lines are not yet in today's diary. */
 fun plannedRemaining(
     plan: List<PlanItemWithFood>,
