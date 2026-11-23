@@ -39,8 +39,22 @@ android {
         buildConfigField("String", "USDA_API_KEY", "\"$usdaApiKey\"")
     }
 
+    signingConfigs {
+        // Deliberately public: the key and both passwords are in the repo, so anyone can
+        // build an APK that installs over — and updates — a GitHub release. That also means
+        // anyone can sign one, so it proves nothing about who built a given APK. Never use
+        // it for Play.
+        create("githubPublicRelease") {
+            storeFile = rootProject.file("github-public-release.jks")
+            storePassword = "github-public-release"
+            keyAlias = "github-public-release"
+            keyPassword = "github-public-release"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("githubPublicRelease")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

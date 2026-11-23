@@ -1,0 +1,24 @@
+name: Build release APK
+description: >
+  Builds the signed release APK of the checked-out commit and leaves it at
+  app/build/outputs/apk/release/app-release.apk. Shared by the build and release workflows.
+
+runs:
+  using: composite
+  steps:
+    # Same JDK the build runs on (gradle/gradle-daemon-jvm.properties), so Gradle doesn't
+    # download another one.
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 21
+
+    # Caches Gradle's dependencies and build cache between runs.
+    - uses: gradle/actions/setup-gradle@v6
+
+    # Signed with the public github-public-release key committed in the repo, so this needs
+    # no secrets. USDA_API_KEY is absent here and the build falls back to the public
+    # DEMO_KEY, which is rate-limited but works — see app/build.gradle.kts.
+    - name: Build release APK
+      shell: bash
+      run: ./gradlew :app:assembleRelease --stacktrace
