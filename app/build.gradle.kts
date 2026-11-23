@@ -31,8 +31,8 @@ android {
         applicationId = "com.example.foodtracker"
         minSdk = 31
         targetSdk = 37
-        versionCode = 9
-        versionName = "2.1"
+        versionCode = 10
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
