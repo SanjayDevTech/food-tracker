@@ -18,18 +18,22 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * The nutrients this screen can search for: every field with a daily goal to
- * measure against, minus the capped ones.
+ * The nutrients this screen can search for: [NutrientTarget.Goal] fields only.
  *
- * [NutrientTarget.Limit] fields are excluded on purpose. Sugar, sodium,
- * saturated fat and cholesterol are numbers to stay under, so "foods richest
- * in sodium" would be a league table of what to avoid presented exactly like a
- * league table of what to eat. Calories are excluded for the same reason —
- * "richest in calories" is not a search anyone should be nudged towards by a
- * tracker. Ranking a limit needs its own inverted screen, not a chip here.
+ * [NutrientTarget.Limit] fields are excluded on purpose. Sugar, sodium and
+ * saturated fat are numbers to stay under, so "foods richest in sodium" would
+ * be a league table of what to avoid presented exactly like a league table of
+ * what to eat. Calories are excluded for the same reason — "richest in
+ * calories" is not a search anyone should be nudged towards by a tracker.
+ * Ranking a limit needs its own inverted screen, not a chip here.
+ *
+ * [NutrientTarget.Untargeted] is excluded for the opposite reason, and the test
+ * is positive — `== Goal`, not `!= Limit` — precisely so that dropping dietary
+ * cholesterol's cap did not quietly hand it a "foods rich in dietary
+ * cholesterol" chip. Rich-in only makes sense against a number to reach.
  */
 val RichSearchableFields: List<NutrientField> =
-    AllNutrientFields.filter { it.target != NutrientTarget.Limit && it.key != "calories" }
+    AllNutrientFields.filter { it.target == NutrientTarget.Goal && it.key != "calories" }
 
 data class RichFoodsState(
     val selectedKeys: Set<String> = emptySet(),

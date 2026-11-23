@@ -114,7 +114,11 @@ object GoalCalculator {
             sugar = sugarG.roundTo(0),
             saturatedFat = satFatG.roundTo(0),
             omega3 = 1.6,
-            cholesterol = 300.0,
+            // Deliberately zero, and deliberately not a target: the field is
+            // NutrientTarget.Untargeted, so nothing reads this number. 300 mg
+            // was the pre-2015 DGA cap and no current guideline has reinstated
+            // it — see NutrientTarget.Untargeted for the three sources.
+            cholesterol = 0.0,
             sodium = 2300.0,
             calcium = 1000.0,
             iron = if (isFemale) 21.0 else 11.0,

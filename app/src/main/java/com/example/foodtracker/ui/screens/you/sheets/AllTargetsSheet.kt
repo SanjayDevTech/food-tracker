@@ -26,7 +26,7 @@ import com.example.foodtracker.ui.theme.Spacing
  * model: on the edit page the goals it shows are the *draft's*, recomputed on
  * every drag.
  *
- * Thirty-one rows is the dense register — [TargetList] renders them at
+ * Thirty rows is the dense register — [TargetList] renders them at
  * `numberM` against `body` labels, not the `numberL`-over-eyebrow treatment the
  * four headline targets get. House rule 2 reserves `numberM` for exactly this.
  */

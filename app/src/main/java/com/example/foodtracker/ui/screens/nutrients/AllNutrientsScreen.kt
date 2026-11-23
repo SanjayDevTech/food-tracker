@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientField
 import com.example.foodtracker.data.onTrack
+import com.example.foodtracker.ui.components.scored
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.components.NutrientCell
 import com.example.foodtracker.ui.components.NutrientContributionSheet
@@ -73,7 +74,8 @@ fun AllNutrientsScreen(
     val readings = remember(state.totalNutrients, state.goals) {
         readingsFor(state.totalNutrients, state.goals)
     }
-    val onTrackCount = readings.count { it.status.onTrack }
+    val scored = readings.scored()
+    val onTrackCount = scored.count { it.status.onTrack }
     val scheme = MaterialTheme.colorScheme
 
     Scaffold(
@@ -99,7 +101,7 @@ fun AllNutrientsScreen(
         ) {
             item("tally") {
                 Text(
-                    "$onTrackCount of ${readings.size} on track",
+                    "$onTrackCount of ${scored.size} on track",
                     style = AppText.bodyS,
                     color = scheme.onSurfaceVariant,
                 )

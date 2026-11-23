@@ -16,6 +16,7 @@ import com.example.foodtracker.data.NutrientField
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.onTrack
+import com.example.foodtracker.ui.components.scored
 import com.example.foodtracker.ui.components.NutrientRow
 import com.example.foodtracker.ui.components.NutrientStatusStrip
 import com.example.foodtracker.ui.components.atoms.AppDivider
@@ -51,7 +52,8 @@ fun NutrientSummaryCard(
 ) {
     val scheme = MaterialTheme.colorScheme
     val readings = remember(totals, goals) { readingsFor(totals, goals) }
-    val onTrackCount = readings.count { it.status.onTrack }
+    val scored = readings.scored()
+    val onTrackCount = scored.count { it.status.onTrack }
 
     // A limit is never "short", and a goal within 80% of target is counted as
     // met by the tally above — listing it here would contradict the count.
@@ -69,7 +71,7 @@ fun NutrientSummaryCard(
         modifier = modifier,
         trailing = {
             Text(
-                if (hasLogs) "$onTrackCount of ${readings.size} on track" else "—",
+                if (hasLogs) "$onTrackCount of ${scored.size} on track" else "—",
                 style = AppText.bodyS,
                 color = scheme.onSurfaceVariant,
             )
@@ -77,7 +79,7 @@ fun NutrientSummaryCard(
     ) {
         if (!hasLogs) {
             Text(
-                "Log something and your ${readings.size} nutrient targets appear here.",
+                "Log something and your ${scored.size} nutrient targets appear here.",
                 style = AppText.body,
                 color = scheme.onSurfaceVariant,
             )
@@ -106,7 +108,12 @@ fun NutrientSummaryCard(
         Spacer(Modifier.height(Spacing.inCard))
         AppDivider()
         Text(
-            "See all ${readings.size} nutrients",
+            // No count here. The screen behind this link shows all 29 fields,
+            // but the tally directly above says "of 28" — both numbers are
+            // right and they mean different things (shown vs. scored), which
+            // side by side just reads as an off-by-one. The link does not need
+            // a number to say where it goes.
+            "See all nutrients",
             style = AppText.label,
             color = scheme.primary,
             modifier = Modifier

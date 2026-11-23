@@ -138,13 +138,35 @@ enum class NutrientUnit(val symbol: String) {
 }
 
 /**
- * Whether a field's number is something to reach or something to stay under.
+ * Whether a field's number is something to reach, something to stay under, or
+ * nothing at all.
  *
  * [Limit] fields are capped by dietary guidance rather than targeted: sitting at
  * 40% of the number is a good day, not a shortfall. The UI must not present them
  * the same way it presents an RDA, or a low reading reads as a failure.
+ *
+ * [Untargeted] fields are measured and shown but scored against nothing, because
+ * no current authority publishes a number to score them against. Dietary
+ * cholesterol is the only one. Its 300 mg cap was the pre-2015 figure, and the
+ * three guidelines this app otherwise follows have all since dropped it: the
+ * 2025-2030 Dietary Guidelines for Americans do not contain the word
+ * "cholesterol" at all; the AHA's 2020 science advisory declines a figure
+ * outright, on the grounds that "a recommendation that gives a specific dietary
+ * cholesterol target within the context of food-based advice is challenging for
+ * clinicians and consumers to implement"; and ICMR-NIN's 2024 guidelines for
+ * Indians mention cholesterol twenty-five times without ever naming a limit.
+ *
+ * Tracking it anyway, rather than deleting the field, is deliberate. The
+ * evidence that retired the cap is about saturated fat being the dominant
+ * dietary driver of LDL, not about dietary cholesterol being inert — a 2026
+ * Nature paper has chronic dietary cholesterol routing the LDL receptor to
+ * lysosomes for degradation, which is a mechanism for impaired clearance. The
+ * honest position is the one the guidelines themselves take: show the number,
+ * assert nothing about it.
+ *
+ * An untargeted field is NOT a field with a goal of zero. See [statusFor].
  */
-enum class NutrientTarget { Goal, Limit }
+enum class NutrientTarget { Goal, Limit, Untargeted }
 
 data class NutrientField(
     val key: String,
@@ -153,9 +175,20 @@ data class NutrientField(
     val category: NutrientCategory,
     val read: (Nutrients) -> Double,
     val goal: (NutrientGoals) -> Double,
-    /** Defaults to [NutrientTarget.Goal] - only the four capped fields opt out. */
+    /** Defaults to [NutrientTarget.Goal] - only the capped fields opt out. */
     val target: NutrientTarget = NutrientTarget.Goal,
-)
+) {
+    /**
+     * True when this field is measured against a number — so false only for
+     * [NutrientTarget.Untargeted].
+     *
+     * Every tally, strip and heatmap filters on this rather than on `goal > 0`.
+     * The two are not the same test: a goal of zero means the number has not
+     * been worked out yet, which is a bug; untargeted means there is no number
+     * to work out, which is the finding.
+     */
+    val scored: Boolean get() = target != NutrientTarget.Untargeted
+}
 
 /**
  * What a single nutrient reading means today — design-plan §3 / §4.1.
@@ -171,7 +204,7 @@ data class NutrientField(
  * weighting, deliberately: the strip must mean the same thing whenever you look
  * at it, not soften because it is only 10am.
  */
-enum class NutrientStatus { Unmet, Partial, Met, Headroom, Over, FarOver }
+enum class NutrientStatus { Unmet, Partial, Met, Headroom, Over, FarOver, Untracked }
 
 /**
  * True when a reading counts toward the "n of 29 on track" tally.
@@ -179,6 +212,11 @@ enum class NutrientStatus { Unmet, Partial, Met, Headroom, Over, FarOver }
  * A limit under its cap is a pass (open question 5) — staying under sodium
  * genuinely is on track, and it makes the denominator match the strip directly
  * above it instead of silently dropping four cells.
+ *
+ * [NutrientStatus.Untracked] is the one status that is neither a pass nor a
+ * fail: an untargeted field has nothing to be on track *for*. It must be left
+ * out of the denominator too, not merely counted as a miss — hence
+ * [NutrientField.scored], which every caller of this filters on first.
  */
 val NutrientStatus.onTrack: Boolean
     get() = this == NutrientStatus.Met || this == NutrientStatus.Headroom
@@ -186,8 +224,18 @@ val NutrientStatus.onTrack: Boolean
 /** Fraction of goal at which a [NutrientTarget.Goal] field counts as met. */
 const val MET_FRACTION = 0.80
 
-/** Resolve a reading against its goal. [goal] of zero or less is always [NutrientStatus.Unmet]. */
+/**
+ * Resolve a reading against its goal. [goal] of zero or less is always
+ * [NutrientStatus.Unmet].
+ *
+ * The untargeted check has to come first, and that ordering is the whole reason
+ * [NutrientTarget.Untargeted] exists as a target rather than as a goal of zero:
+ * a zeroed goal falls into the line below and scores [NutrientStatus.Unmet],
+ * which would paint "we decline to set a target for this" as "you failed to
+ * reach it" — the exact opposite reading.
+ */
 fun NutrientField.statusFor(consumed: Double, goal: Double): NutrientStatus {
+    if (target == NutrientTarget.Untargeted) return NutrientStatus.Untracked
     if (goal <= 0.0) return NutrientStatus.Unmet
     val f = consumed / goal
     return if (target == NutrientTarget.Limit) {
@@ -214,7 +262,7 @@ val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("fat", "Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.fat }, { it.fat }),
     NutrientField("saturatedFat", "Saturated Fat", NutrientUnit.Gram, NutrientCategory.Macros, { it.saturatedFat }, { it.saturatedFat }, NutrientTarget.Limit),
     NutrientField("omega3", "Omega-3", NutrientUnit.Gram, NutrientCategory.Macros, { it.omega3 }, { it.omega3 }),
-    NutrientField("cholesterol", "Dietary cholesterol", NutrientUnit.Milligram, NutrientCategory.Macros, { it.cholesterol }, { it.cholesterol }, NutrientTarget.Limit),
+    NutrientField("cholesterol", "Dietary cholesterol", NutrientUnit.Milligram, NutrientCategory.Macros, { it.cholesterol }, { it.cholesterol }, NutrientTarget.Untargeted),
     NutrientField("sodium", "Sodium", NutrientUnit.Milligram, NutrientCategory.Macros, { it.sodium }, { it.sodium }, NutrientTarget.Limit),
 
     NutrientField("calcium", "Calcium", NutrientUnit.Milligram, NutrientCategory.Minerals, { it.calcium }, { it.calcium }),

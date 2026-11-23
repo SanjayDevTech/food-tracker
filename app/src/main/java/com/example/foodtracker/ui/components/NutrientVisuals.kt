@@ -60,6 +60,10 @@ fun NutrientStatus.color(): Color = when (this) {
     NutrientStatus.Headroom -> MaterialTheme.colorScheme.outline
     NutrientStatus.Over -> StatusOver
     NutrientStatus.FarOver -> MaterialTheme.colorScheme.error
+    // Never actually drawn: the strip filters untargeted readings out before it
+    // reaches a cell. Here so the `when` stays exhaustive without an `else`,
+    // which would silently swallow any status added after this one.
+    NutrientStatus.Untracked -> MaterialTheme.colorScheme.outlineVariant
 }
 
 /**

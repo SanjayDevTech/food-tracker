@@ -319,7 +319,9 @@ class TrendsViewModel(
             byDay: Map<Long, Nutrients>,
             goals: NutrientGoals,
         ): List<NutrientTrendRow> = AllNutrientFields
-            .filter { it.key != "calories" }
+            // Untargeted fields have no status to plot and no miss to count, so
+            // a row for one would be 30 identical cells above a hard-coded zero.
+            .filter { it.key != "calories" && it.scored }
             .map { field ->
                 val goal = field.goal(goals)
                 var missed = 0

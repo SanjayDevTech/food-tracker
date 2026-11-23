@@ -117,6 +117,7 @@ fun NutrientContributionContent(
     val total = field.read(consumed)
     val goal = field.goal(goals)
     val isLimit = field.target == NutrientTarget.Limit
+    val isUntargeted = field.target == NutrientTarget.Untargeted
 
     // Combine repeat logs of the same food into one row, then rank by
     // contribution. Remembered because it walks every log row and does nutrient
@@ -203,6 +204,18 @@ fun NutrientContributionContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    // The absence of a number is the one thing here that looks
+                    // like a bug, so it gets a sentence rather than blank space.
+                    if (isUntargeted) {
+                        Text(
+                            "Tracked, but not scored. No current dietary guideline sets a " +
+                                "daily figure for ${field.label.lowercase()} — saturated fat is " +
+                                "the number to watch for LDL. The amount is here to look at, " +
+                                "not to hit or avoid.",
+                            style = AppText.bodyS,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     // Fiber and protein break down further. This lives here
                     // rather than beside the bar on Today: the bars are the
                     // day's scoreboard, and adding rows to them makes the
@@ -216,12 +229,16 @@ fun NutrientContributionContent(
             if (contributions.isEmpty()) {
                 item("empty") {
                     Text(
-                        if (isLimit) {
-                            "Nothing logged today contributes ${field.label}. " +
-                                "That is exactly where you want to be."
-                        } else {
-                            "Nothing logged today contributes ${field.label}. " +
-                                "Log foods rich in it to close the gap."
+                        when {
+                            isLimit ->
+                                "Nothing logged today contributes ${field.label}. " +
+                                    "That is exactly where you want to be."
+                            // Neither a win nor a gap — there is nothing to close.
+                            isUntargeted ->
+                                "Nothing logged today contributes ${field.label}."
+                            else ->
+                                "Nothing logged today contributes ${field.label}. " +
+                                    "Log foods rich in it to close the gap."
                         },
                         style = AppText.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

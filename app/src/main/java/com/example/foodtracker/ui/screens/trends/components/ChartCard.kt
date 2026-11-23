@@ -252,7 +252,7 @@ private fun InsightLine(insight: ChartInsight) {
  *
  * It was a centred `AppTextButton` inside the card: a pill-shaped control
  * floating in the middle of a hairline strip. Left-aligned accent text in the
- * section's own gutter is what Today's "See all 29 nutrients" does, and the two
+ * section's own gutter is what Today's "See all nutrients" does, and the two
  * are the same gesture. The vertical padding is what keeps it a 48dp target
  * without a shape — house rule 3 allows the accent for a text link and nothing
  * pill-shaped.

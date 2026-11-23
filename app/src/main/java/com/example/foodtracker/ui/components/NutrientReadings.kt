@@ -57,6 +57,13 @@ data class NutrientReading(
     // Kotlin's backing-field keyword, not the constructor property of the same
     // name, and it resolves to the property being defined.
     val limit: Boolean get() = this.field.target == NutrientTarget.Limit
+
+    /** No cap, no RDA, nothing to measure against — see [NutrientTarget.Untargeted]. */
+    val untargeted: Boolean get() = this.field.target == NutrientTarget.Untargeted
+
+    /** True when this reading belongs in a tally, a strip or a heatmap. */
+    val scored: Boolean get() = this.field.scored
+
     val fraction: Double get() = if (goal > 0) value / goal else 0.0
 
     // `this.field`, not `field`: inside a property accessor the bare name is
@@ -65,9 +72,17 @@ data class NutrientReading(
     val status: NutrientStatus get() = this.field.statusFor(value, goal)
 }
 
-/** Read every tracked field off one day's totals. */
+/** Read every tracked field off one day's totals, scored and untargeted alike. */
 fun readingsFor(totals: Nutrients, goals: NutrientGoals): List<NutrientReading> =
     StripFields.map { f -> NutrientReading(f, f.read(totals), f.goal(goals)) }
+
+/**
+ * The readings a tally may count, and its denominator.
+ *
+ * Untargeted readings are dropped rather than counted as passes: "28 of 29"
+ * with one cell that can never move is a worse answer than "28 of 28".
+ */
+fun List<NutrientReading>.scored(): List<NutrientReading> = filter { it.scored }
 
 /**
  * A limit's meter is drawn against a cap tick at 80% of the track, so crossing
@@ -104,7 +119,10 @@ fun NutrientStatusStrip(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        readings.forEach { StatusCell(it.status, onClick = onCellClick) }
+        // Untargeted readings are left out entirely. A cell is a verdict, and
+        // an untargeted field has none — drawing a permanently neutral square
+        // among 28 live ones would read as a nutrient stuck at zero.
+        readings.scored().forEach { StatusCell(it.status, onClick = onCellClick) }
     }
 }
 
@@ -125,13 +143,22 @@ fun NutrientRow(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                "${formatValue(r.value)} / ${formatValue(r.goal)} ${r.field.unit.symbol}",
+                if (r.untargeted) {
+                    "${formatValue(r.value)} ${r.field.unit.symbol}"
+                } else {
+                    "${formatValue(r.value)} / ${formatValue(r.goal)} ${r.field.unit.symbol}"
+                },
                 style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Meter(fraction = r.meterFraction, color = r.status.meterColor(), capAt = r.capTick)
+        // No meter without a target. A bar has to be a fraction of something,
+        // and inventing a denominator here would smuggle back the very cap the
+        // field exists to not have.
+        if (!r.untargeted) {
+            Spacer(Modifier.height(8.dp))
+            Meter(fraction = r.meterFraction, color = r.status.meterColor(), capAt = r.capTick)
+        }
     }
 }
 
@@ -165,12 +192,17 @@ fun NutrientCell(
             ValueText(r.value, r.field.unit.symbol)
             Spacer(Modifier.weight(1f))
             Text(
-                "/ ${formatValue(r.goal)}",
+                if (r.untargeted) "no limit" else "/ ${formatValue(r.goal)}",
                 style = AppText.bodyS,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Meter(fraction = r.meterFraction, color = r.status.meterColor(), capAt = r.capTick)
+        // See NutrientRow: a meter needs a denominator, and this field has none.
+        // The cell is shorter than its neighbours as a result, which is correct —
+        // the grid rows are laid out in pairs, not on a shared baseline.
+        if (!r.untargeted) {
+            Spacer(Modifier.height(8.dp))
+            Meter(fraction = r.meterFraction, color = r.status.meterColor(), capAt = r.capTick)
+        }
     }
 }

@@ -66,8 +66,15 @@ import kotlin.math.round
  * so the content stays open to the page and bleeds to the gutter.
  */
 
-/** Macros + minerals + vitamins, plus water, which has a goal but no field. */
-val TARGET_COUNT: Int = AllNutrientFields.size + 1
+/**
+ * Macros + minerals + vitamins, plus water, which has a goal but no field.
+ *
+ * Counts scored fields only. This list is called "targets", and an untargeted
+ * field has none — dietary cholesterol in here would render its goal of 0.0 as
+ * a flat "0 mg", which reads as a target of zero rather than as the absence of
+ * one. See [com.example.foodtracker.data.NutrientTarget.Untargeted].
+ */
+val TARGET_COUNT: Int = AllNutrientFields.count { it.scored } + 1
 
 /**
  * How wide a settings row's right-hand value is allowed to get.
@@ -374,8 +381,8 @@ fun TargetRow(
  * whole reason the sheet can be read-only: there is exactly one renderer.
  *
  * Each category is its own [Section] — a standing head with the count of what
- * is under it — so thirty-one rows read as four short lists rather than as one
- * scroll with headings floating in it.
+ * is under it — so [TARGET_COUNT] rows read as four short lists rather than as
+ * one scroll with headings floating in it.
  */
 @Composable
 fun TargetList(
@@ -387,7 +394,7 @@ fun TargetList(
     Column(modifier) {
         NutrientCategory.entries.forEachIndexed { index, category ->
             if (index > 0) Spacer(Modifier.height(Spacing.xxl))
-            val fields = AllNutrientFields.filter { it.category == category }
+            val fields = AllNutrientFields.filter { it.category == category && it.scored }
             val isMacros = category == NutrientCategory.Macros
             val count = fields.size + if (isMacros) 1 else 0
             Section(
