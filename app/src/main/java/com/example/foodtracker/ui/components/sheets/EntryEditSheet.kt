@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodLogEntity
@@ -74,6 +75,7 @@ fun EntryEditSheet(
     var style by remember(log.id) {
         mutableStateOf(StyleOption.find(food.styleOptions, log.style))
     }
+    var oilAmount by remember(log.id) { mutableStateOf(OilAmount.fromName(log.oilAmount)) }
 
     // Provenance, not decoration: the sheet is identical to the logging one, so
     // the time this entry was written is the only thing on screen saying you
@@ -105,6 +107,7 @@ fun EntryEditSheet(
                     servingLabel = variant.label,
                     oil = oil?.name,
                     style = style?.label,
+                    oilAmount = oilAmount?.name,
                 )
             )
             onDismiss()
@@ -116,6 +119,8 @@ fun EntryEditSheet(
         onOilChange = { oil = it },
         style = style,
         onStyleChange = { style = it },
+        oilAmount = oilAmount,
+        onOilAmountChange = { oilAmount = it },
         onDelete = { onDelete(); onDismiss() },
     )
 }

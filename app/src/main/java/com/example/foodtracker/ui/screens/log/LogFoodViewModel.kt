@@ -6,6 +6,7 @@ import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ProfileStore
 import com.example.foodtracker.data.OnlineSearchResult
 import com.example.foodtracker.data.ServingVariant
@@ -55,6 +56,7 @@ data class LogUiState(
     val selectedServings: Double = 1.0,
     val selectedOil: CookingOil? = null,
     val selectedStyle: StyleOption? = null,
+    val selectedOilAmount: OilAmount? = null,
     val onlineResults: List<OnlineSearchResult> = emptyList(),
     val onlinePhase: OnlineSearchPhase = OnlineSearchPhase.Idle,
 ) {
@@ -103,6 +105,7 @@ class LogFoodViewModel(
     /** Oil chosen for the entry being composed. Null = the food's own default. */
     private val _oil = MutableStateFlow<CookingOil?>(null)
     private val _style = MutableStateFlow<StyleOption?>(null)
+    private val _oilAmount = MutableStateFlow<OilAmount?>(null)
     private val _onlineResults = MutableStateFlow<List<OnlineSearchResult>>(emptyList())
     private val _onlinePhase = MutableStateFlow(OnlineSearchPhase.Idle)
 
@@ -149,15 +152,24 @@ class LogFoodViewModel(
         val servings: Double,
         val oil: CookingOil?,
         val style: StyleOption?,
+        val oilAmount: OilAmount?,
     )
+
+    /**
+     * The three preparation axes, folded into one flow.
+     *
+     * Not for tidiness: `combine`'s typed overloads stop at five sources, and
+     * the selection needs six. Folding the axes that always travel together is
+     * the fold that costs nothing to read.
+     */
+    private val prepFlow = combine(_oil, _style, _oilAmount) { o, s, a -> Triple(o, s, a) }
 
     private val selectionFlow = combine(
         _selected,
         _variant,
         _servings,
-        _oil,
-        _style,
-    ) { sel, v, s, pickedOil, pickedStyle ->
+        prepFlow,
+    ) { sel, v, s, (pickedOil, pickedStyle, pickedAmount) ->
         // Fall back to what this food remembers, so the sheet opens on the
         // preparation the user last chose rather than on nothing.
         Selection(
@@ -166,6 +178,7 @@ class LogFoodViewModel(
             servings = s,
             oil = sel?.let { pickedOil ?: it.preselectedOil() },
             style = sel?.let { pickedStyle ?: it.preselectedStyle() },
+            oilAmount = sel?.let { pickedAmount ?: it.preselectedOilAmount() },
         )
     }
 
@@ -279,6 +292,7 @@ class LogFoodViewModel(
             _servings.update { 1.0 }
             _oil.value = null
             _style.value = null
+            _oilAmount.value = null
             _onlineResults.update { emptyList() }
             _onlinePhase.update { OnlineSearchPhase.Idle }
         }
@@ -317,6 +331,7 @@ class LogFoodViewModel(
     fun select(food: FoodEntity?) {
         _oil.value = null
         _style.value = null
+        _oilAmount.value = null
         _selected.update { food }
         _variant.update { food?.variantsOrDefault()?.firstOrNull() ?: ServingVariant.Default }
         _servings.update { 1.0 }
@@ -333,6 +348,11 @@ class LogFoodViewModel(
         rememberVariant()
     }
 
+    fun setOilAmount(amount: OilAmount) {
+        _oilAmount.update { amount }
+        rememberVariant()
+    }
+
     /**
      * Write the current picks back to the food so the next visit opens on
      * them. Fired on selection, not on log — see [FoodDao.rememberVariant].
@@ -341,7 +361,8 @@ class LogFoodViewModel(
         val food = _selected.value ?: return
         val oil = _oil.value?.name
         val style = _style.value?.label
-        viewModelScope.launch { repository.rememberVariant(food.id, oil, style) }
+        val oilAmount = _oilAmount.value?.name
+        viewModelScope.launch { repository.rememberVariant(food.id, oil, style, oilAmount) }
     }
     fun setServings(value: Double) = _servings.update { value.coerceAtLeast(0.0) }
 
@@ -381,6 +402,7 @@ class LogFoodViewModel(
         // later export.
         val oil = if (food.usesCookingOil()) state.value.selectedOil else null
         val style = if (food.hasStyleAxis()) state.value.selectedStyle else null
+        val oilAmount = if (food.usesOilAmountAxis()) state.value.selectedOilAmount else null
         viewModelScope.launch {
             repository.addFoodLog(
                 FoodLogEntity(
@@ -392,6 +414,7 @@ class LogFoodViewModel(
                     servingLabel = variant.label,
                     oil = oil?.name,
                     style = style?.label,
+                    oilAmount = oilAmount?.name,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )

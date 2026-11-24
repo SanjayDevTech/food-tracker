@@ -45,6 +45,17 @@ data class FoodLogEntity(
      *  for the food's default. Stored for the same reason as [oil]: the diary
      *  has to keep saying "ghee roast" after the food's default changes. */
     @ColumnInfo(name = "style") val style: String? = null,
+    /**
+     * Name of the [com.example.foodtracker.data.OilAmount] this entry was
+     * logged with, or null for the food's own.
+     *
+     * Frozen here for a sharper version of [oil]'s reason. How much oil a
+     * kitchen uses is a standing fact, so the food remembers it — which means
+     * that without this column, the day the user first taps "Light" would
+     * silently re-price every dosa they have ever logged. The diary has to keep
+     * saying what each one actually cost.
+     */
+    @ColumnInfo(name = "oil_amount") val oilAmount: String? = null,
     @ColumnInfo(name = "logged_at_millis") val loggedAtMillis: Long,
 )
 

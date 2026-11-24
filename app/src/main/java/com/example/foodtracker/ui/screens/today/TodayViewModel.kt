@@ -6,6 +6,7 @@ import com.example.foodtracker.data.FoodRepository
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
@@ -157,9 +158,14 @@ class TodayViewModel(
     }
 
     /** Mirror of the picker flow's behaviour: remember the pick immediately. */
-    fun rememberVariant(foodId: Long, oil: CookingOil?, style: StyleOption?) {
+    fun rememberVariant(
+        foodId: Long,
+        oil: CookingOil?,
+        style: StyleOption?,
+        oilAmount: OilAmount? = null,
+    ) {
         viewModelScope.launch {
-            repository.rememberVariant(foodId, oil?.name, style?.label)
+            repository.rememberVariant(foodId, oil?.name, style?.label, oilAmount?.name)
         }
     }
 

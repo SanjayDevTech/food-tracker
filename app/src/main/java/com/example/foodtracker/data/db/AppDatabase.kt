@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WeightLogEntity::class,
         PlanItemEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -185,6 +185,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v11 → v12: adds the oil-*amount* axis — `last_oil_amount` on `foods`
+         * (what this kitchen uses for that dish), and `oil_amount` on
+         * `food_log` and `plan_items` (what one entry or planned line was
+         * actually priced at).
+         *
+         * Three nullable ALTERs, same rationale as [MIGRATION_4_5]. Every
+         * existing row backfills to NULL, which reads as "the food's own
+         * amount" — and since nothing has chosen one yet, that resolves to the
+         * seed's documented figure. So the migration changes no number on any
+         * screen; it only makes a choice recordable.
+         *
+         * The per-entry columns are the point of the migration rather than a
+         * convenience: the food remembers the amount, so without them the first
+         * tap of "Light" would retroactively re-price every dosa in the diary.
+         * See [FoodLogEntity.oilAmount].
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN last_oil_amount TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE food_log ADD COLUMN oil_amount TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE plan_items ADD COLUMN oil_amount TEXT DEFAULT NULL")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -199,6 +224,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_8_9,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
+                    MIGRATION_11_12,
                 )
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket

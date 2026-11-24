@@ -107,8 +107,8 @@ class FoodRepository(
     suspend fun setFoodFavourite(id: Long, favourite: Boolean) = foodDao.setFavourite(id, favourite)
 
     /** Persist the oil / style the user last chose for a food. See the DAO. */
-    suspend fun rememberVariant(foodId: Long, oil: String?, style: String?) =
-        foodDao.rememberVariant(foodId, oil, style)
+    suspend fun rememberVariant(foodId: Long, oil: String?, style: String?, oilAmount: String?) =
+        foodDao.rememberVariant(foodId, oil, style, oilAmount)
     suspend fun deleteFood(id: Long) = foodDao.delete(id)
 
     /**
@@ -358,6 +358,7 @@ class FoodRepository(
                 // to plain any more than it may un-favourite it.
                 lastOil = existing.lastOil,
                 lastStyle = existing.lastStyle,
+                lastOilAmount = existing.lastOilAmount,
                 // Keep the user's custom variants if they edited them; otherwise
                 // adopt the fresh seed's variants so renamed labels, new gram
                 // refs, and new size options (e.g. banana Small/Medium/Large)

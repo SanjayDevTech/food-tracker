@@ -378,6 +378,8 @@ fun LogFoodScreen(
             onOilChange = vm::setOil,
             style = state.selectedStyle,
             onStyleChange = vm::setStyle,
+            oilAmount = state.selectedOilAmount,
+            onOilAmountChange = vm::setOilAmount,
         )
     }
 

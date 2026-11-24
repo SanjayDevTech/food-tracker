@@ -301,6 +301,8 @@ data class FoodLogSnapshot(
     val oil: String? = null,
     /** Style option recorded on this entry, or null for the food's default. */
     val style: String? = null,
+    /** Oil amount recorded on this entry, or null for the food's own. */
+    val oilAmount: String? = null,
     val loggedAtMillis: Long,
 ) {
     /** Local id is supplied by the caller after food lookup; mealType etc. are preserved. */
@@ -314,6 +316,7 @@ data class FoodLogSnapshot(
         servingLabel = servingLabel,
         oil = oil,
         style = style,
+        oilAmount = oilAmount,
         loggedAtMillis = loggedAtMillis,
     )
 
@@ -330,6 +333,7 @@ data class FoodLogSnapshot(
             servingLabel = e.servingLabel,
             oil = e.oil,
             style = e.style,
+            oilAmount = e.oilAmount,
             loggedAtMillis = e.loggedAtMillis,
         )
     }
@@ -357,6 +361,7 @@ data class PlanItemSnapshot(
     val servingLabel: String = "",
     val oil: String? = null,
     val style: String? = null,
+    val oilAmount: String? = null,
     val sortIndex: Int = 0,
 ) {
     fun toEntity(localFoodId: Long) = PlanItemEntity(
@@ -368,6 +373,7 @@ data class PlanItemSnapshot(
         servingLabel = servingLabel,
         oil = oil,
         style = style,
+        oilAmount = oilAmount,
         sortIndex = sortIndex,
     )
 
@@ -383,6 +389,7 @@ data class PlanItemSnapshot(
             servingLabel = e.servingLabel,
             oil = e.oil,
             style = e.style,
+            oilAmount = e.oilAmount,
             sortIndex = e.sortIndex,
         )
     }

@@ -15,6 +15,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.StyleOption
 import kotlinx.coroutines.flow.Flow
 
@@ -65,6 +66,8 @@ data class PlanItemEntity(
     @ColumnInfo(name = "oil") val oil: String? = null,
     /** Preparation option planned, or null for the food's default. */
     @ColumnInfo(name = "style") val style: String? = null,
+    /** Oil amount planned, or null for the food's own. See [FoodLogEntity.oilAmount]. */
+    @ColumnInfo(name = "oil_amount") val oilAmount: String? = null,
     @ColumnInfo(name = "sort_index") val sortIndex: Int = 0,
 )
 
@@ -83,6 +86,7 @@ data class PlanItemWithFood(
 fun PlanItemWithFood.nutrients(): Nutrients = food.nutrientsPer100g(
     oil = CookingOil.fromName(item.oil) ?: food.defaultOil,
     style = StyleOption.find(food.styleOptions, item.style) ?: food.styleOptions.firstOrNull(),
+    oilAmount = OilAmount.fromName(item.oilAmount) ?: food.preselectedOilAmount(),
 ) * (item.grams / 100.0)
 
 @Dao

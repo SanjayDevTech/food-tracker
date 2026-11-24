@@ -12,6 +12,7 @@ import androidx.room.Upsert
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.OilAmount
 import kotlinx.coroutines.flow.Flow
 
 data class FoodLogWithFood(
@@ -35,6 +36,11 @@ data class FoodLogWithFood(
 fun FoodLogWithFood.nutrients(): Nutrients = food.nutrientsPer100g(
     oil = CookingOil.fromName(log.oil) ?: food.defaultOil,
     style = StyleOption.find(food.styleOptions, log.style) ?: food.styleOptions.firstOrNull(),
+    // Falls back to what the food remembers, not to Normal: rows written
+    // before this column existed belong to a kitchen that has since told us
+    // how much oil it uses, and re-pricing them upward would be the same
+    // silent rewrite the column exists to prevent.
+    oilAmount = OilAmount.fromName(log.oilAmount) ?: food.preselectedOilAmount(),
 ) * (log.grams / 100.0)
 
 @Dao
@@ -127,8 +133,11 @@ interface FoodDao {
      * sheet still teaches the app something. Cheap enough to do on every chip
      * tap: one row, two text columns, no index touched.
      */
-    @Query("UPDATE foods SET last_oil = :oil, last_style = :style WHERE id = :id")
-    suspend fun rememberVariant(id: Long, oil: String?, style: String?)
+    @Query(
+        "UPDATE foods SET last_oil = :oil, last_style = :style, " +
+            "last_oil_amount = :oilAmount WHERE id = :id"
+    )
+    suspend fun rememberVariant(id: Long, oil: String?, style: String?, oilAmount: String?)
 
     @Query("DELETE FROM foods WHERE id = :id")
     suspend fun delete(id: Long)

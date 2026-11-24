@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodEntity
@@ -72,6 +73,9 @@ fun PlanAmountSheet(
     var style by remember(food.id, existing?.id) {
         mutableStateOf(StyleOption.find(food.styleOptions, existing?.style))
     }
+    var oilAmount by remember(food.id, existing?.id) {
+        mutableStateOf(OilAmount.fromName(existing?.oilAmount))
+    }
 
     ServingSheet(
         food = food,
@@ -96,6 +100,9 @@ fun PlanAmountSheet(
                     // would be noise the check sheet then has to ignore.
                     oil = if (food.usesCookingOil()) (oil ?: food.preselectedOil()).name else null,
                     style = if (food.hasStyleAxis()) (style ?: food.preselectedStyle())?.label else null,
+                    oilAmount = if (food.usesOilAmountAxis()) {
+                        (oilAmount ?: food.preselectedOilAmount()).name
+                    } else null,
                     sortIndex = existing?.sortIndex ?: 0,
                 )
             )
@@ -108,6 +115,8 @@ fun PlanAmountSheet(
         onOilChange = { oil = it },
         style = style,
         onStyleChange = { style = it },
+        oilAmount = oilAmount,
+        onOilAmountChange = { oilAmount = it },
         onDelete = onRemove?.let { remove -> { remove(); onDismiss() } },
         deleteText = "Remove from plan",
     )

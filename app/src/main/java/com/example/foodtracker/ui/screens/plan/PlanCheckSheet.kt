@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodLogEntity
@@ -56,6 +57,7 @@ fun PlanCheckSheet(
     // every morning is the friction the plan exists to remove.
     var oil by remember(item.id) { mutableStateOf(item.oil?.let { CookingOil.fromName(it) }) }
     var style by remember(item.id) { mutableStateOf(StyleOption.find(food.styleOptions, item.style)) }
+    var oilAmount by remember(item.id) { mutableStateOf(OilAmount.fromName(item.oilAmount)) }
 
     ServingSheet(
         food = food,
@@ -77,6 +79,9 @@ fun PlanCheckSheet(
                     servingLabel = variant.label,
                     oil = if (food.usesCookingOil()) (oil ?: food.preselectedOil()).name else null,
                     style = if (food.hasStyleAxis()) (style ?: food.preselectedStyle())?.label else null,
+                    oilAmount = if (food.usesOilAmountAxis()) {
+                        (oilAmount ?: food.preselectedOilAmount()).name
+                    } else null,
                     loggedAtMillis = System.currentTimeMillis(),
                 )
             )
@@ -89,5 +94,7 @@ fun PlanCheckSheet(
         onOilChange = { oil = it },
         style = style,
         onStyleChange = { style = it },
+        oilAmount = oilAmount,
+        onOilAmountChange = { oilAmount = it },
     )
 }

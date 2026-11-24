@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.foodtracker.data.CookingOil
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.ui.components.HapticFilterChip
@@ -41,6 +42,13 @@ import com.example.foodtracker.ui.theme.Spacing
  * back to the full exclusive set with Plain shown, rather than silently
  * dropping options a toggle cannot express.
  *
+ * **The oil amount is a third row, not more oil chips.** "Cooked in" swaps one
+ * fat for another at the same weight and so never moves calories; "Oil used"
+ * changes the weight and so always does. Putting them on one row would make a
+ * single tap sometimes re-price the dish and sometimes not, with nothing on
+ * screen saying which. It appears for one dish for now — see
+ * [OilAmount.AXIS_FOOD_UUIDS].
+ *
  * Oil options stay restricted to [CookingOil.optionsFor] with the dish's own
  * default leading: the list is a claim about what this dish is plausibly cooked
  * in, not a catalogue of every fat in the model.
@@ -54,8 +62,10 @@ internal fun PreparationBlock(
     food: FoodEntity,
     oil: CookingOil,
     style: StyleOption?,
+    oilAmount: OilAmount,
     onOilChange: (CookingOil) -> Unit,
     onStyleChange: (StyleOption) -> Unit,
+    onOilAmountChange: (OilAmount) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth()) {
@@ -66,6 +76,26 @@ internal fun PreparationBlock(
                     HapticFilterChip(
                         selected = option == oil,
                         onClick = { onOilChange(option) },
+                        label = { Text(option.label, maxLines = 1) },
+                    )
+                }
+            }
+        }
+
+        // A third row, and the only one that moves the calorie figure — see
+        // [OilAmount] for why that is a reason to keep it separate from "Cooked
+        // in" rather than a reason to merge them. Labelled "Oil used" because
+        // "Cooked in: Palmolein / Oil: Light" reads as two answers to one
+        // question; this way the first row says what was in the pan and the
+        // second says how much of it ended up in the dish.
+        if (food.usesOilAmountAxis()) {
+            Spacer(Modifier.height(Spacing.m))
+            SubLabel("Oil used")
+            ChipRow {
+                OilAmount.entries.forEach { option ->
+                    HapticFilterChip(
+                        selected = option == oilAmount,
+                        onClick = { onOilAmountChange(option) },
                         label = { Text(option.label, maxLines = 1) },
                     )
                 }

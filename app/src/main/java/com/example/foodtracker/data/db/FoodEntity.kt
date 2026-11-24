@@ -6,10 +6,12 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.Nutrients
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.withStyle
 import com.example.foodtracker.data.withCookingOil
+import com.example.foodtracker.data.withOilAmount
 
 @Entity(
     tableName = "foods",
@@ -122,6 +124,16 @@ data class FoodEntity(
      */
     @ColumnInfo(name = "last_oil") val lastOil: String? = null,
     @ColumnInfo(name = "last_style") val lastStyle: String? = null,
+    /**
+     * Last [OilAmount] the user picked for this food, remembered for the same
+     * reason and on the same tap as [lastOil].
+     *
+     * It carries more weight than the other two, because how much oil a kitchen
+     * uses is a standing fact about that kitchen rather than a choice made per
+     * dosa — so this column is what makes "Light" the default from the second
+     * dosa onward, and it is why no separate preselect concept was needed.
+     */
+    @ColumnInfo(name = "last_oil_amount") val lastOilAmount: String? = null,
 ) {
     /** [oilDefault] resolved, tolerating a stored name this build no longer has. */
     val defaultOil: CookingOil
@@ -133,6 +145,15 @@ data class FoodEntity(
     /** True when this food offers a preparation choice beyond the oil. */
     fun hasStyleAxis(): Boolean = styleOptions.size > 1
 
+    /**
+     * True when this food lets the user say *how much* oil, not just which.
+     *
+     * Narrower than [usesCookingOil] on purpose — see
+     * [OilAmount.AXIS_FOOD_UUIDS] for why the list starts at one dish.
+     */
+    fun usesOilAmountAxis(): Boolean =
+        usesCookingOil() && clientUuid in OilAmount.AXIS_FOOD_UUIDS
+
     /** The option the sheet should open on — last picked, else the default. */
     fun preselectedStyle(): StyleOption? =
         StyleOption.find(styleOptions, lastStyle) ?: styleOptions.firstOrNull()
@@ -140,6 +161,13 @@ data class FoodEntity(
     /** The oil the sheet should open on — last picked, else this dish's own. */
     fun preselectedOil(): CookingOil =
         CookingOil.fromName(lastOil) ?: defaultOil
+
+    /**
+     * The oil amount the sheet should open on — last picked, else the seed's
+     * own figure, which is what the stored nutrients describe.
+     */
+    fun preselectedOilAmount(): OilAmount =
+        OilAmount.fromName(lastOilAmount) ?: OilAmount.Default
     /** Variants to show in pickers. Always non-empty — falls back to the canonical serving. */
     fun variantsOrDefault(): List<ServingVariant> = servingVariants.ifEmpty {
         listOf(ServingVariant(servingLabel, servingGrams))
@@ -190,14 +218,32 @@ data class FoodEntity(
     )
 
     /**
-     * Per-100 g nutrients as if cooked in [oil].
+     * Per-100 g nutrients as if cooked in [oil], using [oilAmount] of it.
      *
      * Pass null — or a food with no [oilGrams] — to get the stored figures
      * unchanged, so callers that have no opinion about oil need no branch.
+     *
+     * The three steps are ordered and the order is load-bearing: swap the fat
+     * for the one the user picked, take back however much of it they did not
+     * use, then add whatever was put on top.
      */
-    fun nutrientsPer100g(oil: CookingOil?, style: StyleOption? = null): Nutrients {
+    fun nutrientsPer100g(
+        oil: CookingOil?,
+        style: StyleOption? = null,
+        oilAmount: OilAmount? = null,
+    ): Nutrients {
         var n = nutrientsPer100g()
-        if (oil != null && oilGrams > 0.0) n = n.withCookingOil(oilGrams, defaultOil, oil)
+        if (oil != null && oilGrams > 0.0) {
+            n = n.withCookingOil(oilGrams, defaultOil, oil)
+            // Second, and against the oil just chosen — by this point the
+            // figures describe that oil, so that is the one being removed.
+            // Gated on the axis as well as the value so a stored "Light" on a
+            // food that no longer offers the choice cannot silently re-price
+            // it.
+            if (oilAmount != null && usesOilAmountAxis()) {
+                n = n.withOilAmount(oilGrams, oil, oilAmount)
+            }
+        }
         // Applied after the oil swap, never before: a style addition brings its
         // own fat, which the dish did not absorb in the pan and which must not
         // be re-priced as though it had been.

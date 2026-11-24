@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodEntity
@@ -88,8 +89,10 @@ private const val FLASH_MS = 2_000L
  * that is almost never touched, at the expense of the two that always are.
  *
  * **Why the preview flashes.** Tapping "Coconut" moves nothing a user can see:
- * calories and total fat are identical across oils *by design*, which made the
- * most domain-specific control in the app look broken. The old answer was two
+ * calories and total fat are identical across oils *by design* (the oil-*amount*
+ * row is the one that moves them, and it needs no flash because the header
+ * figure changes under your thumb), which made the most domain-specific control
+ * in the app look broken. The old answer was two
  * extra always-on rows (`showFatDetail`), which was the right instinct but
  * passive — you had to already know which rows to watch. Now the fields that
  * actually moved announce themselves for two seconds. See [LivePreview].
@@ -152,6 +155,12 @@ fun ServingSheet(
     /** Preparation option, for the few seeded foods that offer a choice. */
     style: StyleOption? = null,
     onStyleChange: (StyleOption) -> Unit = {},
+    /**
+     * How much of the cooking fat to price in. Null means "whatever this food
+     * remembers", same as [oil]. Only read for foods on the oil-amount axis.
+     */
+    oilAmount: OilAmount? = null,
+    onOilAmountChange: (OilAmount) -> Unit = {},
     onDelete: (() -> Unit)? = null,
     /** Label for the destructive row. Only read when [onDelete] is non-null. */
     deleteText: String = "Remove from diary",
@@ -167,9 +176,12 @@ fun ServingSheet(
     // the picker is hidden and this resolves to the stored figures unchanged.
     val showsOil = food.usesCookingOil()
     val showsStyle = food.hasStyleAxis()
+    val showsOilAmount = food.usesOilAmountAxis()
     val effectiveOil = oil ?: food.preselectedOil()
     val effectiveStyle = style ?: food.preselectedStyle()
-    val nutrients = food.nutrientsPer100g(effectiveOil, effectiveStyle) * (grams / 100.0)
+    val effectiveOilAmount = oilAmount ?: food.preselectedOilAmount()
+    val nutrients =
+        food.nutrientsPer100g(effectiveOil, effectiveStyle, effectiveOilAmount) * (grams / 100.0)
 
     // The flash baseline is captured in the chip's own click handler, where
     // `nutrients` is still the pre-change value — reconstructing "what it was"
@@ -222,7 +234,7 @@ fun ServingSheet(
                     )
                 }
 
-                if (showsOil || showsStyle) {
+                if (showsOil || showsStyle || showsOilAmount) {
                     Spacer(Modifier.height(Spacing.xxl))
                     // One heading, two axes. "Cooked in" and "Made with" were
                     // two headings answering the same question — how was this
@@ -233,8 +245,12 @@ fun ServingSheet(
                             food = food,
                             oil = effectiveOil,
                             style = effectiveStyle,
+                            oilAmount = effectiveOilAmount,
                             onOilChange = { picked -> flagPrepChange(); onOilChange(picked) },
                             onStyleChange = { picked -> flagPrepChange(); onStyleChange(picked) },
+                            onOilAmountChange = { picked ->
+                                flagPrepChange(); onOilAmountChange(picked)
+                            },
                         )
                     }
                 }
