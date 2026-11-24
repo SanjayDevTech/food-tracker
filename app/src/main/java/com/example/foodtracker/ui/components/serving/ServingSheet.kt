@@ -127,9 +127,11 @@ private const val FLASH_MS = 2_000L
  * @param onDelete renders the destructive row under the footer. Null (the
  *        default) when there is nothing to delete, which is the logging case.
  * @param extraBlock an axis only one caller knows about, rendered above *How
- *        much* because it reprices everything below it. The barcode screen puts
- *        its per-100 g / per-serving basis here rather than this file learning
- *        what a barcode is.
+ *        much* — either because it reprices everything below it (the barcode
+ *        screen's per-100 g / per-serving basis) or because it says what the
+ *        line *is* before the sheet says how much of it (the plan editor's
+ *        slot). Either way it leads, and this file learns neither what a
+ *        barcode is nor what a plan is.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,6 +163,15 @@ fun ServingSheet(
      */
     oilAmount: OilAmount? = null,
     onOilAmountChange: (OilAmount) -> Unit = {},
+    /**
+     * Whether the footer carries the meal chip.
+     *
+     * False for the plan editor, which chooses between five slots rather than
+     * four meals (see [com.example.foodtracker.data.PlanSlot]) and so renders
+     * its own control in [extraBlock]. Two meal pickers on one sheet, one of
+     * them unable to express the value the other holds, is worse than either.
+     */
+    showMealChip: Boolean = true,
     onDelete: (() -> Unit)? = null,
     /** Label for the destructive row. Only read when [onDelete] is non-null. */
     deleteText: String = "Remove from diary",
@@ -283,6 +294,7 @@ fun ServingSheet(
             SheetFooter(
                 meal = meal,
                 onMealChange = onMealChange,
+                showMealChip = showMealChip,
                 confirmText = confirmText,
                 onConfirm = onConfirm,
                 onDelete = onDelete,

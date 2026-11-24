@@ -28,7 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.ui.appViewModel
@@ -68,7 +68,7 @@ import com.example.foodtracker.ui.theme.Spacing
 @Composable
 fun PlanScreen(
     onBack: () -> Unit,
-    onAddFood: (MealType) -> Unit,
+    onAddFood: (PlanSlot) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val vm: PlanViewModel = appViewModel { PlanViewModel(it.repository, it.profileStore) }
@@ -133,11 +133,11 @@ fun PlanScreen(
                 }
             }
 
-            for (meal in MealType.entries) {
-                val rows = state.groups[meal].orEmpty()
-                item(meal.name) {
+            for (slot in PlanSlot.entries) {
+                val rows = state.groups[slot].orEmpty()
+                item(slot.storedName) {
                     Section(
-                        title = meal.displayName,
+                        title = slot.displayName,
                         trailing = {
                             Text(
                                 if (rows.isEmpty()) {
@@ -155,7 +155,7 @@ fun PlanScreen(
                             PlanLine(row = row, onClick = { haptics.light(); editing = row })
                         }
                         if (rows.isNotEmpty()) AppDivider()
-                        AddFoodRow(meal = meal, onClick = { haptics.light(); onAddFood(meal) })
+                        AddFoodRow(slot = slot, onClick = { haptics.light(); onAddFood(slot) })
                     }
                 }
             }
@@ -187,7 +187,7 @@ fun PlanScreen(
     editing?.let { row ->
         PlanAmountSheet(
             food = row.food,
-            meal = MealType.fromName(row.item.mealType),
+            slot = PlanSlot.fromName(row.item.mealType),
             existing = row.item,
             onConfirm = { addVm.add(it) },
             onDismiss = { editing = null },
@@ -234,7 +234,7 @@ private fun PlanLine(row: PlanItemWithFood, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AddFoodRow(meal: MealType, onClick: () -> Unit) {
+private fun AddFoodRow(slot: PlanSlot, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier
@@ -255,7 +255,12 @@ private fun AddFoodRow(meal: MealType, onClick: () -> Unit) {
         // accent for data and for the one primary action, and text links are
         // the listed exception.
         Text(
-            "Add food to ${meal.displayName.lowercase()}",
+            // "Add food to any time" is not a sentence; the any-time group
+            // takes a preposition of its own rather than a lowercased heading.
+            when (slot) {
+                is PlanSlot.At -> "Add food to ${slot.meal.displayName.lowercase()}"
+                PlanSlot.AnyTime -> "Add food for any time"
+            },
             style = AppText.label,
             color = scheme.primary,
         )

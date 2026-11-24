@@ -62,6 +62,7 @@ internal fun SheetFooter(
     onDelete: (() -> Unit)?,
     deleteText: String,
     modifier: Modifier = Modifier,
+    showMealChip: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -70,8 +71,10 @@ internal fun SheetFooter(
             .padding(top = Spacing.m, bottom = Spacing.m),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MealChip(meal = meal, onMealChange = onMealChange)
-            Spacer(Modifier.width(Spacing.m))
+            if (showMealChip) {
+                MealChip(meal = meal, onMealChange = onMealChange)
+                Spacer(Modifier.width(Spacing.m))
+            }
             AppButton(
                 text = confirmText,
                 onClick = onConfirm,

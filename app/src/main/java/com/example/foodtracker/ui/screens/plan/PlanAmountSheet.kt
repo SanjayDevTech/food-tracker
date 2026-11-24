@@ -7,13 +7,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.data.db.PlanItemEntity
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import com.example.foodtracker.ui.components.HapticFilterChip
+import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.components.serving.ServingSheet
 import com.example.foodtracker.ui.components.serving.isCustomGrams
+import com.example.foodtracker.ui.theme.Spacing
 
 /**
  * Decide how much of a food goes on the plan.
@@ -31,17 +42,24 @@ import com.example.foodtracker.ui.components.serving.isCustomGrams
  * cooking fat and no style axis — which is most of them — never see the
  * controls at all, so this costs nothing where it buys nothing.
  *
- * The meal arrives answered — you got here from "add to Breakfast" — but the
- * footer chip stays live, because a control that opens a menu and then ignores
- * the choice is worse than one that is not there. Picking a different meal here
- * is a correction, and the repository's upsert handles the awkward case of
- * moving a line that already exists into a slot that already holds the same
- * food.
+ * The slot arrives answered — you got here from "add to Breakfast" — but it
+ * stays live, because a control that opens a menu and then ignores the choice
+ * is worse than one that is not there. Picking a different slot here is a
+ * correction, and the repository's upsert handles the awkward case of moving a
+ * line that already exists into a slot that already holds the same food.
+ *
+ * **The slot is chosen here, not in the footer.** The footer chip is the four
+ * [MealType]s, which a plan line is not restricted to — it can also be
+ * [PlanSlot.AnyTime], for the foods whose meal was only ever somewhere to file
+ * them (see [PlanSlot] for why that distinction had to be declarable). So the
+ * chip is suppressed and the five slots get a chip row at the top of the
+ * sheet, where "what this line is" belongs anyway: before "how much of it",
+ * rather than tucked in a dropdown beside the confirm button.
  */
 @Composable
 fun PlanAmountSheet(
     food: FoodEntity,
-    meal: MealType,
+    slot: PlanSlot,
     existing: PlanItemEntity? = null,
     onConfirm: (PlanItemEntity) -> Unit,
     onDismiss: () -> Unit,
@@ -66,7 +84,7 @@ fun PlanAmountSheet(
         )
     }
     var servings by remember(food.id, existing?.id) { mutableStateOf(existing?.servings ?: 1.0) }
-    var mealChoice by remember(food.id, existing?.id) { mutableStateOf(meal) }
+    var slotChoice by remember(food.id, existing?.id) { mutableStateOf(slot) }
     var oil by remember(food.id, existing?.id) {
         mutableStateOf(existing?.oil?.let { CookingOil.fromName(it) })
     }
@@ -79,19 +97,37 @@ fun PlanAmountSheet(
 
     ServingSheet(
         food = food,
-        meal = mealChoice,
+        // Still required by the sheet's signature, and still what the entry
+        // would land in if this were a log — but the chip that edits it is
+        // suppressed below, so an any-time line never has to pretend to be a
+        // Snack to satisfy the type.
+        meal = (slotChoice as? PlanSlot.At)?.meal ?: MealType.currentForTime(),
         variant = variant,
         servings = servings,
         onVariantChange = { variant = it },
         onServingsChange = { servings = it },
-        onMealChange = { mealChoice = it },
+        onMealChange = {},
+        showMealChip = false,
+        extraBlock = {
+            Section("Planned for") {
+                ChipRow {
+                    PlanSlot.entries.forEach { option ->
+                        HapticFilterChip(
+                            selected = option == slotChoice,
+                            onClick = { slotChoice = option },
+                            label = { Text(option.displayName, maxLines = 1) },
+                        )
+                    }
+                }
+            }
+        },
         onConfirm = {
             val isCustom = variant.isCustomGrams
             onConfirm(
                 PlanItemEntity(
                     id = existing?.id ?: 0,
                     foodId = food.id,
-                    mealType = mealChoice.name,
+                    mealType = slotChoice.storedName,
                     servings = if (isCustom) 1.0 else servings,
                     grams = if (isCustom) variant.grams else variant.grams * servings,
                     servingLabel = variant.label,
@@ -110,7 +146,7 @@ fun PlanAmountSheet(
         },
         onDismiss = onDismiss,
         confirmText = if (existing == null) "Add to plan" else "Save amount",
-        subtitle = "Planned for ${mealChoice.displayName}",
+        subtitle = "Planned for ${slotChoice.displayName.lowercase()}",
         oil = oil,
         onOilChange = { oil = it },
         style = style,
@@ -120,4 +156,15 @@ fun PlanAmountSheet(
         onDelete = onRemove?.let { remove -> { remove(); onDismiss() } },
         deleteText = "Remove from plan",
     )
+}
+
+/** The slot chips, scrollable for the same reason the preparation rows are. */
+@Composable
+private fun ChipRow(content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) { content() }
 }

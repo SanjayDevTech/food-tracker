@@ -8,6 +8,29 @@ enum class MealType(val displayName: String, val emoji: String) {
 
     companion object {
         fun fromName(name: String): MealType = entries.firstOrNull { it.name == name } ?: Snack
+
+        /**
+         * The meal the wall clock says you are in.
+         *
+         * One definition, because there were two and they disagreed: Today's
+         * FAB called 18:00–19:00 dinner while the deep-link router called it a
+         * snack, so the same tap landed in different meals depending on which
+         * screen you came from. 19:00 wins — filter coffee and an evening
+         * tiffin are the overwhelmingly more likely 18:30, and a wrong guess
+         * costs one tap on a footer chip either way.
+         *
+         * Drives Today's auto-expanded row and FAB, the reminder deep links,
+         * and the meal an any-time plan line is checked off into.
+         */
+        fun currentForTime(): MealType {
+            val hour = java.time.LocalTime.now().hour
+            return when {
+                hour < 11 -> Breakfast
+                hour < 15 -> Lunch
+                hour < 19 -> Snack
+                else -> Dinner
+            }
+        }
     }
 }
 

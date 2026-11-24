@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import com.example.foodtracker.data.CookingOil
 import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.OilAmount
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodLogEntity
@@ -22,6 +23,12 @@ import com.example.foodtracker.util.DateUtil
  * The serving sheet again, opened on the amount the plan already holds — so
  * the normal case is read the number, tap the button. The controls are live
  * because the day is not always the plan: you had three rotis, not two.
+ *
+ * An any-time line lands in the meal the clock is in — see the `meal` state
+ * below. That is the completion of the any-time idea rather than a detail of
+ * it: the reason guava is planned for no particular time is that it is eaten at
+ * whatever meal you happen to be having, so the entry it becomes belongs there
+ * and not in a slot the plan declined to name.
  *
  * **Nothing typed here touches the plan.** This writes a [FoodLogEntity] and
  * stops. A plan that quietly rewrote itself every time you ate slightly more
@@ -51,7 +58,18 @@ fun PlanCheckSheet(
         )
     }
     var servings by remember(item.id) { mutableStateOf(item.servings) }
-    var meal by remember(item.id) { mutableStateOf(MealType.fromName(item.mealType)) }
+    // An any-time line has no meal to open on, so it opens on the one the
+    // clock is in — which is the whole point of checking one off: you are
+    // eating it now, and it should land where "now" is. A line planned for a
+    // real meal still opens on that meal, and the footer chip edits either.
+    var meal by remember(item.id) {
+        mutableStateOf(
+            when (val slot = PlanSlot.fromName(item.mealType)) {
+                is PlanSlot.At -> slot.meal
+                PlanSlot.AnyTime -> MealType.currentForTime()
+            }
+        )
+    }
     // The preparation the plan decided on, not the food's default: the user
     // already answered "ghee roast?" when they built the list, and asking again
     // every morning is the friction the plan exists to remove.

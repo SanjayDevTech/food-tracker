@@ -38,7 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.NutrientCategory
 import com.example.foodtracker.data.NutrientField
 import com.example.foodtracker.data.db.FoodEntity
@@ -104,7 +104,7 @@ fun RichFoodsScreen(
      * rows inert: arriving from "find foods rich in iron" is a question, and a
      * page reached by asking it has nowhere to put an answer.
      */
-    planMeal: MealType? = null,
+    planSlot: PlanSlot? = null,
     /** Called once a food has been added to the plan; the caller navigates. */
     onPlanned: () -> Unit = {},
 ) {
@@ -134,10 +134,10 @@ fun RichFoodsScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = if (planMeal == null) {
+                title = if (planSlot == null) {
                     "Rich in…"
                 } else {
-                    "Rich in… · ${planMeal.displayName}"
+                    "Rich in… · ${planSlot.displayName}"
                 },
                 onBack = onBack,
                 actions = {
@@ -240,7 +240,7 @@ fun RichFoodsScreen(
                         RichFoodRow(
                             result = result,
                             fields = state.selectedFields,
-                            onPick = planMeal?.let { { picked = result.food } },
+                            onPick = planSlot?.let { { picked = result.food } },
                         )
                     }
                 }
@@ -249,10 +249,10 @@ fun RichFoodsScreen(
     }
 
     val food = picked
-    if (food != null && planMeal != null) {
+    if (food != null && planSlot != null) {
         PlanAmountSheet(
             food = food,
-            meal = planMeal,
+            slot = planSlot,
             onConfirm = { item -> planVm.add(item, onDone = onPlanned) },
             onDismiss = { picked = null },
         )
@@ -405,7 +405,7 @@ private fun RichFoodRow(
     // the page's margin. The caller draws it, so the last row has no dangling
     // rule under it.
     Column(Modifier.fillMaxWidth()) {
-        // Inert unless a plan sent us here — see the `planMeal` parameter.
+        // Inert unless a plan sent us here — see the `planSlot` parameter.
         FoodRow(food = result.food, onClick = onPick ?: {})
         Column(
             // Aligned with the food name above: 16dp row padding + 40dp

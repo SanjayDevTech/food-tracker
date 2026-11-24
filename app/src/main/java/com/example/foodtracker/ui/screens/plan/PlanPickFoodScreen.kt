@@ -24,7 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.db.FoodEntity
 import com.example.foodtracker.ui.appViewModel
 import com.example.foodtracker.ui.components.EmptyState
@@ -38,7 +38,7 @@ import com.example.foodtracker.ui.theme.Radius
 import com.example.foodtracker.ui.theme.Spacing
 
 /**
- * Pick a food to plan for one meal.
+ * Pick a food to plan for one slot — a meal, or no particular time.
  *
  * **Local foods only, and no tabs.** The Log picker needs Often / Favourites /
  * Custom because it is used several times a day against 160-odd foods and the
@@ -49,12 +49,12 @@ import com.example.foodtracker.ui.theme.Spacing
  *
  * The one discovery route it does offer is Rich-in, because that is the
  * decision this screen exists to support — *what should I be eating more of* —
- * and it arrives there carrying the meal, so a result can be added without
+ * and it arrives there carrying the slot, so a result can be added without
  * coming back here first.
  */
 @Composable
 fun PlanPickFoodScreen(
-    meal: MealType,
+    slot: PlanSlot,
     onBack: () -> Unit,
     onOpenRichFoods: () -> Unit,
     modifier: Modifier = Modifier,
@@ -71,7 +71,7 @@ fun PlanPickFoodScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AppTopBar(
-                title = "Add to ${meal.displayName.lowercase()}",
+                title = "Add to ${slot.displayName.lowercase()}",
                 onBack = onBack,
                 actions = {
                     AppTextButton(text = "Rich in…", onClick = { haptics.light(); onOpenRichFoods() })
@@ -127,7 +127,7 @@ fun PlanPickFoodScreen(
     picked?.let { food ->
         PlanAmountSheet(
             food = food,
-            meal = meal,
+            slot = slot,
             // Back to the editor on confirm. Planning a food is a one-shot
             // errand — you came here to add idli, not to browse — and leaving
             // the picker open would make the next tap add a second food to a

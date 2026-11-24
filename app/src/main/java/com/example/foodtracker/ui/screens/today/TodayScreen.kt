@@ -326,16 +326,15 @@ private fun planCaption(nextFoods: List<String>): String {
     return shown.joinToString(" · ") + if (rest > 0) " · +$rest more" else ""
 }
 
-/** The meal the wall clock says you are in. Drives the auto-expanded row and the FAB. */
-internal fun currentMeal(): MealType {
-    val hour = LocalTime.now().hour
-    return when {
-        hour < 11 -> MealType.Breakfast
-        hour < 15 -> MealType.Lunch
-        hour < 18 -> MealType.Snack
-        else -> MealType.Dinner
-    }
-}
+/**
+ * The meal the wall clock says you are in. Drives the auto-expanded row and the
+ * FAB.
+ *
+ * Delegates now: this file and the deep-link router each had their own copy and
+ * the two drew the snack/dinner line an hour apart. See
+ * [MealType.currentForTime].
+ */
+internal fun currentMeal(): MealType = MealType.currentForTime()
 
 private fun agoLabel(epochDay: Long): String {
     val days = DateUtil.todayEpochDay() - epochDay

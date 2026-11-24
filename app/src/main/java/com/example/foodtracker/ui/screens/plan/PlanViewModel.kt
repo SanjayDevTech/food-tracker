@@ -3,7 +3,7 @@ package com.example.foodtracker.ui.screens.plan
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.foodtracker.data.FoodRepository
-import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.NutrientGoals
 import com.example.foodtracker.data.Nutrients
 import com.example.foodtracker.data.ProfileStore
@@ -30,16 +30,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The plan editor's state: every planned line, grouped by the meal it belongs
- * to, in [MealType] order.
+ * The plan editor's state: every planned line, grouped by the slot it belongs
+ * to, in [PlanSlot.entries] order.
  *
- * Meals with nothing planned are present as empty lists rather than missing,
- * because the editor renders all four — it is the one screen where an empty
- * Lunch is information ("you have not planned lunch") rather than clutter. On
- * Today, where the plan is only a shortcut, the empty ones are dropped.
+ * Slots with nothing planned are present as empty lists rather than missing,
+ * because the editor renders all five — it is the one screen where an empty
+ * Lunch is information ("you have not planned lunch") rather than clutter, and
+ * where an empty "Any time" is the only thing advertising that foods need not
+ * be filed under a meal at all. On Today, where the plan is only a shortcut,
+ * the empty ones are dropped.
  */
 data class PlanEditorState(
-    val groups: Map<MealType, List<PlanItemWithFood>> = MealType.entries.associateWith { emptyList() },
+    val groups: Map<PlanSlot, List<PlanItemWithFood>> =
+        PlanSlot.entries.associateWith { emptyList() },
     val itemCount: Int = 0,
     /**
      * Everything the plan adds up to, at the amounts planned.
@@ -69,9 +72,9 @@ class PlanViewModel(
         repository.observePlan(),
         profileStore.profile,
     ) { items, profile ->
-            val byMeal = items.groupBy { MealType.fromName(it.item.mealType) }
+            val bySlot = items.groupBy { PlanSlot.fromName(it.item.mealType) }
             PlanEditorState(
-                groups = MealType.entries.associateWith { byMeal[it].orEmpty() },
+                groups = PlanSlot.entries.associateWith { bySlot[it].orEmpty() },
                 itemCount = items.size,
                 totals = items.fold(Nutrients.Zero) { acc, row -> acc + row.nutrients() },
                 goals = GoalCalculator.goalsFor(profile),
@@ -144,7 +147,7 @@ class PlanAddViewModel(private val repository: FoodRepository) : ViewModel() {
  * yesterday.
  */
 data class PlanTodayState(
-    val groups: Map<MealType, List<PlannedRow>> = emptyMap(),
+    val groups: Map<PlanSlot, List<PlannedRow>> = emptyMap(),
 )
 
 class PlanTodayViewModel(private val repository: FoodRepository) : ViewModel() {

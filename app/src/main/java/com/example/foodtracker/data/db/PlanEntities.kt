@@ -33,12 +33,21 @@ import kotlinx.coroutines.flow.Flow
  * checking an item off copies them straight across. Any divergence here would
  * have to be reconciled at the one moment the feature exists to make fast.
  *
- * **`(food_id, meal_type)` is unique**, which is what keeps the tick marks
- * honest. An item reads as logged when today's diary holds an entry for the
- * same food in the same meal; two plan rows for rice at lunch would both answer
- * to one bowl of rice, and no amount of care at the UI layer can disambiguate
- * them afterwards. Adding a food already planned for that meal therefore
- * updates the amount rather than inserting a second row.
+ * `meal_type` holds a [com.example.foodtracker.data.PlanSlot], which is the
+ * four meals *and* `"Any"` — a line planned for today with no claim about when.
+ * It stays a plain String, so that fifth value needed no migration; read it
+ * through `PlanSlot.fromName` and never `MealType.fromName`, which answers
+ * `Snack` for anything it does not recognise.
+ *
+ * **`(food_id, meal_type)` is unique.** It used to be justified as what keeps
+ * the tick marks honest — two plan rows for rice at lunch would both answer to
+ * one bowl — and that argument has since been retired: the matcher draws each
+ * satisfied line's entry out of a multiset, so two lines cannot share a bowl
+ * however they are keyed (see `plannedGroups`). The index earns its place on
+ * the remaining, simpler ground: adding dosa to breakfast when it is already
+ * there is the user saying "actually, three", not "two dosas and also three
+ * dosas". So adding a food already planned for that slot updates the amount
+ * rather than inserting a second row.
  */
 @Entity(
     tableName = "plan_items",

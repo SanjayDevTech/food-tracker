@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.foodtracker.data.MealType
 import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.nutrients
 import com.example.foodtracker.ui.appViewModel
@@ -95,10 +94,10 @@ fun PlanTodayScreen(
             contentPadding = Spacing.screenContent,
             verticalArrangement = Arrangement.spacedBy(Spacing.xxl),
         ) {
-            for ((meal, rows) in state.groups) {
-                item(meal.name) {
+            for ((slot, rows) in state.groups) {
+                item(slot.storedName) {
                     Section(
-                        title = meal.displayName,
+                        title = slot.displayName,
                         trailing = {
                             Text(
                                 "${grouped(rows.sumOf { it.planned.nutrients().calories })} kcal",

@@ -33,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.foodtracker.DeepLink
 import com.example.foodtracker.data.MealType
+import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.ui.LocalAppContainer
 import com.example.foodtracker.ui.components.sheets.WaterSheet
 import com.example.foodtracker.ui.components.sheets.WeighInSheet
@@ -98,7 +99,7 @@ fun AppNav(
             // reuses the destination instead of stacking another copy of it.
             when (link) {
                 is DeepLink.LogMeal -> {
-                    val meal = link.mealName?.let { MealType.fromName(it) } ?: currentMealForTime()
+                    val meal = link.mealName?.let { MealType.fromName(it) } ?: MealType.currentForTime()
                     navController.navigate(LogFoodRoute(meal.name)) { launchSingleTop = true }
                 }
                 DeepLink.OpenWater -> {
@@ -353,7 +354,7 @@ private fun NavGraphBuilder.graph(
         RichFoodsScreen(
             onBack = { navController.popBackStack() },
             preselectedNutrientKey = route.nutrientKey,
-            planMeal = route.planMeal?.let { MealType.fromName(it) },
+            planSlot = route.planMeal?.let { PlanSlot.fromName(it) },
             // Back to the editor, not back one step: the user walked
             // Plan → pick → Rich-in to add one food, and unwinding that
             // through the picker would leave them on a search screen they
@@ -372,13 +373,13 @@ private fun NavGraphBuilder.graph(
     composable<PlanRoute> {
         PlanScreen(
             onBack = { navController.popBackStack() },
-            onAddFood = { meal -> navController.navigate(PlanPickFoodRoute(meal.name)) },
+            onAddFood = { slot -> navController.navigate(PlanPickFoodRoute(slot.storedName)) },
         )
     }
     composable<PlanPickFoodRoute> { entry ->
         val route: PlanPickFoodRoute = entry.toRoute()
         PlanPickFoodScreen(
-            meal = MealType.fromName(route.mealType),
+            slot = PlanSlot.fromName(route.mealType),
             onBack = { navController.popBackStack() },
             onOpenRichFoods = {
                 navController.navigate(RichFoodsRoute(planMeal = route.mealType))
@@ -404,15 +405,5 @@ private fun NavGraphBuilder.graph(
     }
     composable<RemindersRoute> {
         RemindersScreen(onBack = { navController.popBackStack() })
-    }
-}
-
-private fun currentMealForTime(): MealType {
-    val hour = java.time.LocalTime.now().hour
-    return when {
-        hour < 11 -> MealType.Breakfast
-        hour < 15 -> MealType.Lunch
-        hour < 19 -> MealType.Snack
-        else -> MealType.Dinner
     }
 }
