@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.foodtracker.data.OilAmount
 import com.example.foodtracker.data.PlanSlot
 import com.example.foodtracker.data.db.PlanItemWithFood
 import com.example.foodtracker.data.db.nutrients
@@ -277,8 +278,36 @@ internal fun amountLabel(row: PlanItemWithFood): String {
     val label = row.item.servingLabel
     val prep = listOfNotNull(
         row.item.style.takeIf { !it.isNullOrBlank() },
-        row.item.oil.takeIf { !it.isNullOrBlank() && row.food.usesCookingOil() },
+        oilTerm(row),
     ).joinToString(" · ")
     val amount = if (row.item.servings == 1.0) label else "${countText(row.item.servings)} × $label"
     return if (prep.isBlank()) amount else "$amount  ·  $prep"
+}
+
+/**
+ * The oil half of the caption: what was in the pan, qualified by how much of
+ * it.
+ *
+ * The amount has to appear here or the row contradicts itself. A dosa planned
+ * with the oil set to None is priced without it — the kcal beside this string
+ * already has it removed — so printing the bare fat still names a fat that is
+ * not in the dish. "No oil" drops the name entirely, because at zero grams
+ * *which* oil is not a fact about the food any more. "Light" keeps the name
+ * and qualifies it, since a fifth of a spoon of groundnut is still groundnut.
+ *
+ * Normal is left unqualified rather than spelled out: it is the overwhelming
+ * majority of rows and "Palmolein (normal)" would put a word on every line to
+ * earn its absence on two.
+ */
+private fun oilTerm(row: PlanItemWithFood): String? {
+    val oil = row.item.oil?.takeIf { it.isNotBlank() && row.food.usesCookingOil() }
+        ?: return null
+    val amount = row.item.oilAmount
+        ?.takeIf { row.food.usesOilAmountAxis() }
+        ?.let(OilAmount::fromName)
+    return when (amount) {
+        OilAmount.None -> "No oil"
+        OilAmount.Light -> "$oil (light)"
+        OilAmount.Normal, null -> oil
+    }
 }
