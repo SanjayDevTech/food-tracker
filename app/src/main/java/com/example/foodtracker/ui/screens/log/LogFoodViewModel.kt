@@ -225,6 +225,7 @@ class LogFoodViewModel(
             selectedServings = sel.servings,
             selectedOil = sel.oil,
             selectedStyle = sel.style,
+            selectedOilAmount = sel.oilAmount,
             onlineResults = online.results,
             onlinePhase = online.phase,
         )
