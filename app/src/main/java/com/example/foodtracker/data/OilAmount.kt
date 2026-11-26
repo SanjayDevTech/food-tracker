@@ -58,12 +58,16 @@ enum class OilAmount(val label: String, val factor: Double) {
         /**
          * The foods that offer this axis, by pinned `clientUuid`.
          *
-         * **Deliberately one food for now.** The mechanic is general — any dish
-         * with added cooking fat could carry it — but a chip row is a claim
-         * that this is a choice *you* make, and that is only true where you are
-         * the one at the pan. Starting at the dish that prompted it keeps the
-         * claim honest and the blast radius at one row; widening it is adding
-         * uuids here and nothing else.
+         * **Deliberately short.** The mechanic is general — any dish with added
+         * cooking fat could carry it — but a chip row is a claim that this is a
+         * choice *you* make, and that is only true where you are the one at the
+         * pan. So the list is the home griddle and the home fry: the two dosas,
+         * the chapati, the maththi and the dry chicken fry. It is not on a
+         * samosa or a vada pav, where the oil was someone else's decision
+         * before you bought it, and not on a curry, where the tempering is the
+         * dish rather than a dressing you can skip.
+         *
+         * Widening it is adding uuids here and nothing else.
          *
          * Keyed on the pinned uuid rather than the name so a rename cannot
          * silently drop the axis — that is what the pinned identities are for.
@@ -71,6 +75,14 @@ enum class OilAmount(val label: String, val factor: Double) {
         val AXIS_FOOD_UUIDS: Set<String> = setOf(
             // Dosa (plain)
             "dbed1a1c-dc61-4849-b572-e885480d7c5a",
+            // Wheat Dosa
+            "e450728c-21d1-447f-b378-fa1c4ad0a6f8",
+            // Chapati / Roti
+            "3e420f59-d232-48ef-b878-021ea688cef5",
+            // Kerala Maththi (Sardine, fried)
+            "9faa12b5-23b4-4c1e-b7d6-0c9ac3e348f6",
+            // Chicken Boneless (Fried)
+            "5988db31-52f9-41b3-a8b4-108700363af4",
         )
     }
 }

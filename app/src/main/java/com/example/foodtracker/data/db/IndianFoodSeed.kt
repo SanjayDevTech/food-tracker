@@ -69,7 +69,7 @@ object IndianFoodSeed {
      * every seeded food in place by name — preserving the user's log history,
      * favourites, weight entries, and custom foods.
      */
-    const val SEED_VERSION = 22
+    const val SEED_VERSION = 23
 
     private fun food(
         name: String,
@@ -199,6 +199,21 @@ object IndianFoodSeed {
     private val AA_TOOR = AminoPattern(eaa = 0.369, leucine = 0.071)
     private val AA_SOY = AminoPattern(eaa = 0.383, leucine = 0.079)
 
+    // Fish — as complete as egg, and the only pattern here that arrives with
+    // EPA and DHA attached rather than ALA.
+    private val AA_FISH = AminoPattern(eaa = 0.424, leucine = 0.078)
+
+    // Nuts and seeds — the spread is wider than the pulses'. Almond is the
+    // weakest here, lysine-poor and barely ahead of wheat; sesame and pumpkin
+    // sit up with the pulses. Worth carrying per-seed rather than as one
+    // "nuts" average, since a 30 g handful is a real share of a day's leucine.
+    private val AA_ALMOND = AminoPattern(eaa = 0.295, leucine = 0.071)
+    private val AA_CASHEW = AminoPattern(eaa = 0.345, leucine = 0.076)
+    private val AA_PUMPKIN_SEED = AminoPattern(eaa = 0.380, leucine = 0.077)
+    private val AA_CHIA = AminoPattern(eaa = 0.378, leucine = 0.071)
+    private val AA_FLAX = AminoPattern(eaa = 0.374, leucine = 0.062)
+    private val AA_SESAME = AminoPattern(eaa = 0.399, leucine = 0.071)
+
     /**
      * Attach the optional detail — the protein profile and/or the soluble
      * share of fiber — to an otherwise plain [Nutrients].
@@ -285,6 +300,18 @@ object IndianFoodSeed {
                 vitaminB2 = 0.04, vitaminB3 = 1.00, vitaminB6 = 0.06, folate = 16.0).detail(solubleFiberFraction = 0.33),
             oilGrams = 2.7, oil = CookingOil.Palmolein,
             styleOptions = gheeStyle(4.0)),
+        // Godhumai dosai — wheat flour whisked to a pourable batter and griddled
+        // straight away, with none of the overnight ferment a rice dosa needs.
+        // Thinner and wetter than a chapati of the same flour, so per 100 g it
+        // reads lighter: the atta is the same, there is just more water left in it.
+        food("Wheat Dosa", "e450728c-21d1-447f-b378-fa1c4ad0a6f8", FoodCategory.SouthIndian, 70.0, "1 dosa (70 g)",
+            Nutrients(calories = 185.0, carbs = 30.0, sugar = 1.0, fiber = 3.5, protein = 5.5, fat = 4.5,
+                saturatedFat = 1.4, omega3 = 0.01, sodium = 280.0, calcium = 20.0, iron = 1.8,
+                magnesium = 42.0, potassium = 150.0, zinc = 0.85, phosphorus = 90.0, selenium = 15.0,
+                copper = 0.14, manganese = 0.65, vitaminE = 0.55, vitaminK = 1.0, vitaminB1 = 0.13,
+                vitaminB2 = 0.05, vitaminB3 = 1.40, vitaminB6 = 0.08,
+                folate = 16.0).detail(amino = AA_WHEAT, solubleFiberFraction = 0.14),
+            oilGrams = 3.0, oil = CookingOil.Palmolein),
         food("Masala Dosa", "13282086-58a7-4a9a-81a6-b59076071c69", FoodCategory.SouthIndian, 150.0, "1 masala dosa (150 g)",
             Nutrients(calories = 168.0, carbs = 27.0, sugar = 1.2, fiber = 2.2, protein = 3.6, fat = 5.4,
                 saturatedFat = 2.1, omega3 = 0.01, sodium = 280.0, calcium = 17.0, iron = 1.4,
@@ -571,13 +598,24 @@ object IndianFoodSeed {
                 vitaminK = 24.0, vitaminB1 = 0.18, vitaminB2 = 0.08, vitaminB3 = 1.30, vitaminB6 = 0.13,
                 folate = 80.0).detail(solubleFiberFraction = 0.17),
             oilGrams = 7.0, oil = CookingOil.Gingelly),
+        // Corrected in seed v23. The water-soluble vitamins were raw cabbage's,
+        // carried into a dish that spends ten minutes in a hot pan: vitamin C
+        // stood at 30 mg against raw cabbage's own 36.6, and folate at 40
+        // against 43, as though the cooking cost nothing. Sauteing destroys
+        // roughly half the ascorbate and a third of the folate, and the B6 goes
+        // with them. Beans Poriyal two entries down was already costed this way,
+        // which is what made this one visible as the outlier.
+        //
+        // Vitamin K is deliberately NOT reduced: it is fat-soluble and heat
+        // stable, and 53.6 against raw cabbage's 76 is already just the dilution
+        // by oil and tempering. Nothing was wrong with it.
         food("Cabbage Poriyal", "3e66e394-facb-40ca-b9d7-10ac4cc9058b", FoodCategory.SouthIndian, 100.0, "1 bowl (100 g)",
             Nutrients(calories = 80.0, carbs = 7.0, sugar = 2.6, fiber = 2.8, protein = 2.0, fat = 5.0,
                 saturatedFat = 0.7, omega3 = 0.04, sodium = 240.0, calcium = 40.0, iron = 0.8,
                 magnesium = 14.0, potassium = 200.0, zinc = 0.30, phosphorus = 35.0, selenium = 0.6,
-                copper = 0.05, manganese = 0.18, vitaminA = 6.0, vitaminC = 30.0, vitaminE = 0.26,
-                vitaminK = 53.6, vitaminB1 = 0.05, vitaminB2 = 0.04, vitaminB3 = 0.30, vitaminB6 = 0.12,
-                folate = 40.0).detail(solubleFiberFraction = 0.29),
+                copper = 0.05, manganese = 0.18, vitaminA = 6.0, vitaminC = 14.0, vitaminE = 0.26,
+                vitaminK = 53.6, vitaminB1 = 0.04, vitaminB2 = 0.04, vitaminB3 = 0.30, vitaminB6 = 0.07,
+                folate = 22.0).detail(solubleFiberFraction = 0.29),
             oilGrams = 4.5, oil = CookingOil.Gingelly),
         food("Beans Poriyal", "a7ea6e58-8241-4684-ad93-66d08640930f", FoodCategory.SouthIndian, 100.0, "1 bowl (100 g)",
             Nutrients(calories = 90.0, carbs = 8.0, sugar = 2.4, fiber = 3.0, protein = 2.5, fat = 5.0,
@@ -858,7 +896,8 @@ object IndianFoodSeed {
                 saturatedFat = 1.1, sodium = 250.0, calcium = 24.0, iron = 3.5, magnesium = 80.0,
                 potassium = 290.0, zinc = 1.60, phosphorus = 160.0, selenium = 30.0, copper = 0.25,
                 manganese = 1.20, vitaminE = 0.84, vitaminK = 1.6, vitaminB1 = 0.25, vitaminB2 = 0.10,
-                vitaminB3 = 2.50, vitaminB6 = 0.15, folate = 30.0).detail(solubleFiberFraction = 0.14),
+                vitaminB3 = 2.50, vitaminB6 = 0.15,
+                folate = 30.0).detail(amino = AA_WHEAT, solubleFiberFraction = 0.14),
             oilGrams = 1.5, oil = CookingOil.Palmolein),
         food("Naan", "f0d46c5d-9ea6-4fc6-8757-27bde8aa5e52", FoodCategory.NorthIndian, 90.0, "1 naan (90 g)",
             Nutrients(calories = 305.0, carbs = 50.0, sugar = 2.0, fiber = 2.5, protein = 9.0, fat = 7.5,
@@ -1386,6 +1425,45 @@ object IndianFoodSeed {
                 vitaminD = 0.1, vitaminE = 0.45, vitaminK = 3.0, vitaminB1 = 0.06, vitaminB2 = 0.12,
                 vitaminB3 = 5.00, vitaminB6 = 0.25, vitaminB12 = 0.40, folate = 10.0).detail(solubleFiberFraction = 0.2),
             oilGrams = 4.0, oil = CookingOil.Coconut),
+        // Kerala maththi / mathi — Indian oil sardine, masala-smeared and
+        // shallow fried.
+        //
+        // **Per 100 g of FLESH, not of fish.** Every other bone-in entry here
+        // (see the chicken curry above) is costed per gram of what reaches the
+        // plate, bone included. This one is not, by request: the spine comes out
+        // and is never eaten, so logging the whole fish against flesh figures
+        // would book a third more of everything than was swallowed. Weigh or
+        // estimate what you actually ate. One medium maththi yields about 55 g.
+        //
+        // Consequently the calcium here is flesh calcium — 85 mg, not the ~380 mg
+        // of a tinned sardine. That famous number is the dissolved skeleton, and
+        // a spine you spit out contributes none of it.
+        //
+        // Oil sardine fat is the least certain figure in this file: it is the
+        // fish's whole commercial point and it swings from roughly 2% to 20% of
+        // body weight across the year, lean after spawning and heavy before the
+        // monsoon. 14.5 g here is a mid-season fish plus the frying oil, and the
+        // omega-3 moves with it. Unlike every plant entry in this seed, that
+        // omega-3 is EPA and DHA rather than ALA.
+        food("Kerala Maththi (Sardine, fried)", "9faa12b5-23b4-4c1e-b7d6-0c9ac3e348f6", FoodCategory.Protein, 55.0, "1 fish, flesh only (55 g)",
+            Nutrients(calories = 242.0, carbs = 2.0, sugar = 0.3, fiber = 0.3, protein = 24.5, fat = 14.5,
+                saturatedFat = 3.6, omega3 = 1.40, cholesterol = 75.0, sodium = 420.0, calcium = 85.0,
+                iron = 1.8, magnesium = 35.0, potassium = 390.0, zinc = 1.10, phosphorus = 280.0,
+                selenium = 45.0, copper = 0.12, manganese = 0.10, vitaminA = 30.0, vitaminD = 4.5,
+                vitaminE = 1.60, vitaminK = 2.0, vitaminB1 = 0.06, vitaminB2 = 0.22, vitaminB3 = 6.50,
+                vitaminB6 = 0.35, vitaminB12 = 9.00, folate = 10.0).detail(amino = AA_FISH),
+            oilGrams = 4.5, oil = CookingOil.Coconut),
+        // Boneless chicken, masala-coated and shallow fried — the dry fry, not a
+        // curry. Weight is all meat, so protein reads high next to the bone-in
+        // curry above.
+        food("Chicken Boneless (Fried)", "5988db31-52f9-41b3-a8b4-108700363af4", FoodCategory.Protein, 100.0, "1 serving (100 g)",
+            Nutrients(calories = 245.0, carbs = 4.0, sugar = 0.5, fiber = 0.3, protein = 27.0, fat = 13.5,
+                saturatedFat = 3.4, omega3 = 0.08, cholesterol = 95.0, sodium = 430.0, calcium = 18.0,
+                iron = 1.3, magnesium = 28.0, potassium = 290.0, zinc = 1.60, phosphorus = 215.0,
+                selenium = 25.0, copper = 0.06, manganese = 0.05, vitaminA = 15.0, vitaminD = 0.2,
+                vitaminE = 0.90, vitaminK = 2.5, vitaminB1 = 0.08, vitaminB2 = 0.17, vitaminB3 = 9.50,
+                vitaminB6 = 0.50, vitaminB12 = 0.45, folate = 8.0).detail(amino = AA_CHICKEN),
+            oilGrams = 5.0, oil = CookingOil.Palmolein),
         food("Toor Dal (cooked)", "ccead290-ba21-4c70-8aa6-f9788cfc8bb1", FoodCategory.Protein, 200.0, "1 bowl (200 g)",
             Nutrients(calories = 95.0, carbs = 16.5, sugar = 0.4, fiber = 3.5, protein = 6.0, fat = 0.5, saturatedFat = 0.10,
                 calcium = 17.0, iron = 1.6, magnesium = 38.0, potassium = 280.0, zinc = 1.30,
@@ -1460,6 +1538,59 @@ object IndianFoodSeed {
                 manganese = 3.00, vitaminE = 0.20, vitaminK = 2.0, vitaminB1 = 0.70, vitaminB2 = 0.25,
                 vitaminB3 = 2.60, vitaminB6 = 0.57, folate = 305.0).detail(amino = AA_SOY, solubleFiberFraction = 0.15)),
 
+        // ---------- NUTS & SEEDS ----------
+        // All six are USDA SR Legacy single ingredients, per 100 g of the kernel
+        // or seed as eaten. Serving sizes are deliberately small and carry no
+        // Small/Medium/Large presets: these are measured by the handful or the
+        // spoon, and a "large almonds" is not a portion anyone serves.
+        //
+        // Worth knowing before reading the omega-3 column: flax and chia are the
+        // two largest ALA sources in this entire seed by an order of magnitude,
+        // and both beat the 1.6 g daily goal in a single tablespoon. That is ALA,
+        // not the EPA and DHA in the sardine above — the body converts it at a
+        // few percent, so the two are not interchangeable even though the app
+        // adds them into one figure.
+        food("Almonds", "05a2cf83-c784-4e77-a1ab-cfddab9fc5dc", FoodCategory.Snack, 15.0, "~12 almonds (15 g)",
+            Nutrients(calories = 579.0, carbs = 21.6, sugar = 4.4, fiber = 12.5, protein = 21.2, fat = 49.9,
+                saturatedFat = 3.8, sodium = 1.0, calcium = 269.0, iron = 3.7, magnesium = 270.0,
+                potassium = 733.0, zinc = 3.12, phosphorus = 481.0, selenium = 4.1, copper = 1.03,
+                manganese = 2.18, vitaminE = 25.63, vitaminB1 = 0.21, vitaminB2 = 1.14,
+                vitaminB3 = 3.62, vitaminB6 = 0.14, folate = 44.0).detail(amino = AA_ALMOND, solubleFiberFraction = 0.08),
+            servingVariants = listOf(ServingVariant("~12 almonds", 15.0), ServingVariant("Handful", 30.0))),
+        food("Cashews", "a780e99e-2e58-45bd-964b-5d09a0a9e19b", FoodCategory.Snack, 15.0, "~9 cashews (15 g)",
+            Nutrients(calories = 553.0, carbs = 30.2, sugar = 5.9, fiber = 3.3, protein = 18.2, fat = 43.8,
+                saturatedFat = 7.8, omega3 = 0.06, sodium = 12.0, calcium = 37.0, iron = 6.7,
+                magnesium = 292.0, potassium = 660.0, zinc = 5.78, phosphorus = 593.0, selenium = 19.9,
+                copper = 2.20, manganese = 1.66, vitaminE = 0.90, vitaminK = 34.1, vitaminB1 = 0.42,
+                vitaminB2 = 0.06, vitaminB3 = 1.06, vitaminB6 = 0.42, folate = 25.0).detail(amino = AA_CASHEW, solubleFiberFraction = 0.15),
+            servingVariants = listOf(ServingVariant("~9 cashews", 15.0), ServingVariant("Handful", 30.0))),
+        food("Pumpkin Seeds", "211d85f5-3235-4192-8a69-8ce1ac98f9bb", FoodCategory.Snack, 15.0, "1 tbsp (15 g)",
+            Nutrients(calories = 559.0, carbs = 10.7, sugar = 1.3, fiber = 6.0, protein = 30.2, fat = 49.1,
+                saturatedFat = 8.7, omega3 = 0.12, sodium = 7.0, calcium = 46.0, iron = 8.8,
+                magnesium = 592.0, potassium = 809.0, zinc = 7.81, phosphorus = 1233.0, selenium = 9.4,
+                copper = 1.34, manganese = 4.54, vitaminE = 2.18, vitaminK = 7.3, vitaminB1 = 0.27,
+                vitaminB2 = 0.15, vitaminB3 = 4.99, vitaminB6 = 0.14, folate = 58.0).detail(amino = AA_PUMPKIN_SEED, solubleFiberFraction = 0.12),
+            servingVariants = listOf(ServingVariant("1 tbsp", 15.0), ServingVariant("Handful", 30.0))),
+        food("Chia Seeds", "e253a4a4-f59e-4363-bd47-fa72bab1c3bd", FoodCategory.Snack, 12.0, "1 tbsp (12 g)",
+            Nutrients(calories = 486.0, carbs = 42.1, fiber = 34.4, protein = 16.5, fat = 30.7,
+                saturatedFat = 3.3, omega3 = 17.83, sodium = 16.0, calcium = 631.0, iron = 7.7,
+                magnesium = 335.0, potassium = 407.0, zinc = 4.58, phosphorus = 860.0, selenium = 55.2,
+                copper = 0.92, manganese = 2.72, vitaminC = 1.6, vitaminE = 0.50, vitaminB1 = 0.62,
+                vitaminB2 = 0.17, vitaminB3 = 8.83, folate = 49.0).detail(amino = AA_CHIA, solubleFiberFraction = 0.15)),
+        food("Flaxseeds", "2c0c86f2-1fa8-4f39-a010-995efb493d4e", FoodCategory.Snack, 10.0, "1 tbsp (10 g)",
+            Nutrients(calories = 534.0, carbs = 28.9, sugar = 1.6, fiber = 27.3, protein = 18.3, fat = 42.2,
+                saturatedFat = 3.7, omega3 = 22.81, sodium = 30.0, calcium = 255.0, iron = 5.7,
+                magnesium = 392.0, potassium = 813.0, zinc = 4.34, phosphorus = 642.0, selenium = 25.4,
+                copper = 1.22, manganese = 2.48, vitaminC = 0.6, vitaminE = 0.31, vitaminK = 4.3,
+                vitaminB1 = 1.64, vitaminB2 = 0.16, vitaminB3 = 3.08, vitaminB6 = 0.47,
+                folate = 87.0).detail(amino = AA_FLAX, solubleFiberFraction = 0.30)),
+        food("Sesame Seeds", "191d98b5-6a33-4e03-a028-d5ef50beca73", FoodCategory.Snack, 9.0, "1 tbsp (9 g)",
+            Nutrients(calories = 573.0, carbs = 23.5, sugar = 0.3, fiber = 11.8, protein = 17.7, fat = 49.7,
+                saturatedFat = 7.0, omega3 = 0.38, sodium = 11.0, calcium = 975.0, iron = 14.6,
+                magnesium = 351.0, potassium = 468.0, zinc = 7.75, phosphorus = 629.0, selenium = 34.4,
+                copper = 4.08, manganese = 2.46, vitaminE = 0.25, vitaminB1 = 0.79, vitaminB2 = 0.25,
+                vitaminB3 = 4.52, vitaminB6 = 0.79, folate = 97.0).detail(amino = AA_SESAME, solubleFiberFraction = 0.10)),
+
         // ---------- OTHER ----------
         // Plain sugar — default serving is 1 tsp (~4 g), but log can be scaled
         // up for 1 tbsp (~12 g) or measured weights.
@@ -1467,5 +1598,14 @@ object IndianFoodSeed {
             Nutrients(calories = 387.0, carbs = 100.0, sugar = 100.0, protein = 0.0, fat = 0.0, sodium = 1.0,
                 calcium = 1.0, potassium = 2.0, phosphorus = 0.0, selenium = 0.0, copper = 0.00,
                 manganese = 0.00, vitaminB1 = 0.00, vitaminB2 = 0.00, vitaminB3 = 0.00, vitaminB6 = 0.00)),
+        // Honey is ~82 g of sugar per 100 g and 17 kcal/100 g LIGHTER than plain
+        // sugar, because the rest is water. The mineral column is real but
+        // nutritionally beside the point at a teaspoon a time: this is sugar
+        // with trace elements, and the app counts it as such.
+        food("Honey", "a6e7a4e1-e3da-44af-8162-ff43f45d7a14", FoodCategory.Other, 21.0, "1 tbsp (21 g)",
+            Nutrients(calories = 304.0, carbs = 82.4, sugar = 82.1, fiber = 0.2, protein = 0.3, fat = 0.0,
+                sodium = 4.0, calcium = 6.0, iron = 0.42, magnesium = 2.0, potassium = 52.0,
+                zinc = 0.22, phosphorus = 4.0, selenium = 0.8, copper = 0.04, manganese = 0.08,
+                vitaminC = 0.5, vitaminB2 = 0.04, vitaminB3 = 0.12, vitaminB6 = 0.02, folate = 2.0)),
     )
 }
