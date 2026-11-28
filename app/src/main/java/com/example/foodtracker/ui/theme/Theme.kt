@@ -2,6 +2,7 @@ package com.example.foodtracker.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -173,7 +174,22 @@ fun AppTheme(
             colorScheme = if (dark) DarkColors else LightColors,
             typography = Typography,
             shapes = AppShapes,
-            content = content,
-        )
+        ) {
+            // `MaterialTheme` sets the colour scheme but NOT the content colour:
+            // that is `Surface`'s job, and this app never wraps its screens in
+            // one. Without this line `LocalContentColor` keeps Material 3's
+            // default of plain black, so every `Icon` drawn without an explicit
+            // `tint` and every `Text` without a `color` renders black in BOTH
+            // themes — invisible-adjacent on a dark background, and merely
+            // lucky-looking on a light one. The profile screen's pencil was the
+            // visible symptom; 16 icons and 34 text calls were relying on it.
+            //
+            // Components that own their content colour (buttons, text fields,
+            // chips, menus) still override this locally, which is why most of
+            // those calls looked fine.
+            CompositionLocalProvider(LocalContentColor provides (if (dark) DarkColors else LightColors).onSurface) {
+                content()
+            }
+        }
     }
 }
