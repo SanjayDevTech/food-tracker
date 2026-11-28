@@ -51,6 +51,7 @@ import com.example.foodtracker.ui.screens.you.sheets.AllTargetsSheet
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * Edit profile & goals, rebuilt against
@@ -166,7 +167,7 @@ fun EditProfileScreen(onBack: () -> Unit) {
                         steps = 0,
                         unit = "kg",
                         onChange = { vm.updateDraft { p -> p.copy(weightKg = ((it * 10).toInt() / 10.0)) } },
-                        valueFormatter = { "%.1f".format(it) },
+                        valueFormatter = { "%.1f".format(Locale.US, it) },
                         granularity = 1f,
                         stepBy = 0.1f,
                         // The stepper nudges by 0.1 kg; the slider snaps to whole
@@ -365,7 +366,7 @@ private fun GoalWeightSlider(
         steps = 0,
         unit = "kg",
         onChange = { onUpdate { p -> p.copy(goalWeightKg = ((it * 10).toInt() / 10.0)) } },
-        valueFormatter = { "%.1f".format(it) },
+        valueFormatter = { "%.1f".format(Locale.US, it) },
         granularity = 1f,
         stepBy = 0.1f,
         onSliderChange = { onUpdate { p -> p.copy(goalWeightKg = it.roundToInt().toDouble()) } },

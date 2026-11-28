@@ -59,6 +59,7 @@ import com.example.foodtracker.util.DateUtil
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToLong
+import java.util.Locale
 
 /**
  * How a body weight is written, everywhere it is written.
@@ -70,7 +71,7 @@ import kotlin.math.roundToLong
  * single tenth, and a reading that silently drops it would make the number
  * look stuck.
  */
-fun kgText(kg: Double): String = "%.1f".format(kg)
+fun kgText(kg: Double): String = "%.1f".format(Locale.US, kg)
 
 /** A change, with its sign kept: `+0.4 kg`, `−1.2 kg`. */
 fun signedKgText(deltaKg: Double): String {

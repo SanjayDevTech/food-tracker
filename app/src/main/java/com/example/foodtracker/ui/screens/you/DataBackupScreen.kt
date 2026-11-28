@@ -484,7 +484,7 @@ private fun analysisExportFilename(range: AnalysisRange): String {
 private fun humanReadableSize(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-    else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+    else -> "%.1f MB".format(Locale.US, bytes / (1024.0 * 1024.0))
 }
 
 @Composable

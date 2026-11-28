@@ -63,6 +63,7 @@ import com.example.foodtracker.ui.theme.Spacing
 import com.example.foodtracker.util.DateUtil
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * Trends — the second tab. A pinned range pill, then one card per chart:
@@ -190,7 +191,7 @@ fun TrendsScreen(
                 ChartCard(
                     title = "Meal timing",
                     modifier = Modifier.staggerIn(3),
-                    summary = state.avgWindowHours?.let { "%.1f h eating window".format(it) },
+                    summary = state.avgWindowHours?.let { "%.1f h eating window".format(Locale.US, it) },
                     insight = timingInsight(state),
                     empty = if (state.timingDays > 0) null else NEED_A_DAY_TIMING,
                     crossfadeKey = state.range,

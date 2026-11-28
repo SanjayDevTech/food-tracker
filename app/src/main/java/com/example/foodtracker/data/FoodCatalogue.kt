@@ -46,18 +46,80 @@ object FoodCatalogue {
     @Serializable
     private data class Per100g(
         val calories: Double = 0.0, val carbs: Double = 0.0, val sugar: Double = 0.0, val fiber: Double = 0.0,
+        /**
+         * The soluble share of [fiber], held as a ratio for the same reason
+         * [IndianFoodSeed] holds it that way: the two parts then add up to the
+         * total shown above them instead of contradicting it.
+         *
+         * The seed's own fractions are looked up per ingredient from IFCT 2017
+         * Table 1, and a composite dish is weighted by the fibre each
+         * component contributes rather than by its mass. This file follows the
+         * same rule, but the composition comes from the solve described on
+         * [copper] below — so the class shares were not taken on faith, they
+         * were fitted to the seed's own 151 sourced fractions and
+         * cross-validated. Typical error is 0.05 on a fraction whose real
+         * range is 0.07 to 0.50, or about 0.11 g of soluble fibre per 100 g.
+         *
+         * 0 means unknown, which the app hides, and is what the 28 foods with
+         * no fibre at all get.
+         */
+        val solubleFiberFraction: Double = 0.0,
         val protein: Double = 0.0, val fat: Double = 0.0, val saturatedFat: Double = 0.0,
+        /**
+         * Like every other figure here, this is the finished dish **including
+         * its default cooking oil** — which for most of the catalogue is all
+         * the omega-3 there is. [CookingOil.withCookingOil] and
+         * [withOilAmount] both adjust relative to that, so a dish that stored
+         * 0 while frying in 35 g of ghee would lose the oil's share on every
+         * swap. See `oilGrams` and `oil` below, which is where the figure
+         * comes from.
+         */
+        val omega3: Double = 0.0,
         val cholesterol: Double = 0.0, val sodium: Double = 0.0, val potassium: Double = 0.0,
         val calcium: Double = 0.0, val iron: Double = 0.0, val magnesium: Double = 0.0, val zinc: Double = 0.0,
-        val phosphorus: Double = 0.0, val vitaminA: Double = 0.0, val vitaminC: Double = 0.0,
+        val phosphorus: Double = 0.0,
+        /**
+         * Copper and manganese are **derived, not looked up**.
+         *
+         * No reference table carries them for a shorshe ilish or a rava
+         * kesari, so each dish's composition is solved from the ten figures
+         * already recorded for it — energy, the macros, fibre, and the four
+         * minerals iron, magnesium, zinc and phosphorus — against a table of
+         * food classes (wheat, rice, millet, dal, coconut, fish, dairy…), and
+         * these two are read off that composition. The cooking oil is taken
+         * out first, since `oilGrams` already states it.
+         *
+         * Checked against the 178 hand-sourced [IndianFoodSeed] foods, scoring
+         * only the mixed dishes — the single ingredients are what the class
+         * table was built from, so they grade the model on its own input.
+         * Median error is 22% for copper and 26% for manganese, roughly two in
+         * three within 1.5x of the real figure, with no systematic drift.
+         *
+         * Selenium is deliberately absent. The same method gives 36% on it and
+         * misses by more than 1.5x half the time, because selenium follows the
+         * soil a crop grew in and nothing in a dish's composition recovers
+         * that. A wrong number is worse than a missing one.
+         */
+        val copper: Double = 0.0, val manganese: Double = 0.0,
+        val vitaminA: Double = 0.0, val vitaminC: Double = 0.0,
         val vitaminE: Double = 0.0, val vitaminB1: Double = 0.0, val vitaminB2: Double = 0.0,
         val vitaminB3: Double = 0.0, val vitaminB6: Double = 0.0, val folate: Double = 0.0,
         val vitaminB12: Double = 0.0, val vitaminK: Double = 0.0,
     ) {
-        fun toNutrients() = Nutrients(
+        fun toNutrients(): Nutrients {
+            val soluble = fiber * solubleFiberFraction
+            return base().copy(
+                solubleFiber = soluble,
+                insolubleFiber = if (solubleFiberFraction > 0.0) fiber - soluble else 0.0,
+            )
+        }
+
+        private fun base() = Nutrients(
             calories = calories, carbs = carbs, sugar = sugar, fiber = fiber, protein = protein, fat = fat,
-            saturatedFat = saturatedFat, cholesterol = cholesterol, sodium = sodium, potassium = potassium,
+            saturatedFat = saturatedFat, omega3 = omega3,
+            cholesterol = cholesterol, sodium = sodium, potassium = potassium,
             calcium = calcium, iron = iron, magnesium = magnesium, zinc = zinc, phosphorus = phosphorus,
+            copper = copper, manganese = manganese,
             vitaminA = vitaminA, vitaminC = vitaminC, vitaminE = vitaminE, vitaminB1 = vitaminB1,
             vitaminB2 = vitaminB2, vitaminB3 = vitaminB3, vitaminB6 = vitaminB6, folate = folate,
             vitaminB12 = vitaminB12, vitaminK = vitaminK,

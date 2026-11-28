@@ -72,7 +72,7 @@ object IndianFoodSeed {
      * Covers `assets/food_catalogue.json` too: bump it when that file changes,
      * so existing installs pick up added or corrected catalogue foods.
      */
-    const val SEED_VERSION = 24
+    const val SEED_VERSION = 25
 
     private fun food(
         name: String,

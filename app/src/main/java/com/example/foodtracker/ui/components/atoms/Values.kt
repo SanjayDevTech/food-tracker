@@ -29,12 +29,19 @@ import kotlin.math.roundToInt
  * One rounding rule for the whole app. This is what kills the ~40 ad-hoc
  * `"%.1f".format(x)` call sites, which between them produced `1.0 ×` servings,
  * `2740.0 mg` of sodium and `0.0 µg` of B12 on the same screen.
+ *
+ * **Every number is formatted in [Locale.US], never the device locale.**
+ * Not because US formatting is better, but because the two halves have to
+ * agree: [grouped] pins the thousands mark while a bare `"%.1f".format(x)`
+ * follows the phone, so on a comma-decimal locale [formatValue] printed
+ * `1,234` and `1,5` — one comma meaning thousands, the other meaning the
+ * decimal point, on the same screen. Dates and month names are a separate
+ * question and do still follow the device.
  */
 
-/** A non-breaking space. Thousands separator and unit gap both use it. */
+/** A non-breaking space. The gap between a value and its unit. */
 const val NBSP = ' '
 
-/** `2100` → `2 100`. Grouped with a non-breaking space so it never wraps. */
 /** Whole number with comma grouping: `2,468`. */
 fun grouped(value: Double): String = String.format(Locale.US, "%,d", value.roundToInt())
 
@@ -46,7 +53,7 @@ fun grouped(value: Double): String = String.format(Locale.US, "%,d", value.round
  * overwhelmingly common case as `1.0`.
  */
 fun countText(value: Double): String =
-    if (value % 1.0 == 0.0) value.roundToInt().toString() else "%.1f".format(value)
+    if (value % 1.0 == 0.0) value.roundToInt().toString() else "%.1f".format(Locale.US, value)
 
 /**
  * Precision follows magnitude, which is the whole point: 0.4 µg of B12 needs a
@@ -55,8 +62,8 @@ fun countText(value: Double): String =
 fun formatValue(value: Double): String = when {
     value >= 1000 -> grouped(value)
     value >= 10 -> value.roundToInt().toString()
-    value >= 1 -> "%.1f".format(value)
-    value > 0 -> "%.2f".format(value).trimEnd('0').trimEnd('.')
+    value >= 1 -> "%.1f".format(Locale.US, value)
+    value > 0 -> "%.2f".format(Locale.US, value).trimEnd('0').trimEnd('.')
     else -> "0"
 }
 

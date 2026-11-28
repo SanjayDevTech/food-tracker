@@ -31,6 +31,7 @@ import com.example.foodtracker.ui.theme.Spacing
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * What the AI actually did, readable on the device that it failed on.
@@ -104,7 +105,7 @@ fun AiDevLogSheet(onDismiss: () -> Unit) {
                         append(entry.provider)
                         append(" · ")
                         append(entry.model)
-                        if (entry.durationMs > 0) append(" · ${"%.1f".format(entry.durationMs / 1000.0)} s")
+                        if (entry.durationMs > 0) append(" · ${"%.1f".format(Locale.US, entry.durationMs / 1000.0)} s")
                         append(" · ")
                         append(clockTime(entry.atMillis))
                     },

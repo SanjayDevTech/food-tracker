@@ -397,20 +397,11 @@ class FoodRepository(
     fun observeLogForRange(start: Long, end: Long): Flow<List<FoodLogWithFood>> =
         foodLogDao.observeForRange(start, end)
 
-    fun observeRecentFoods(limit: Int = 12): Flow<List<FoodEntity>> =
-        foodLogDao.observeRecentFoods(limit)
-
     /** Direct (non-Flow) reads — used by widget rendering so we get the
      *  latest state immediately after a write, dodging the Room
      *  InvalidationTracker propagation lag. */
     suspend fun getLogForDay(epochDay: Long): List<FoodLogWithFood> =
         foodLogDao.getForDay(epochDay)
-    suspend fun getRecentFoods(limit: Int): List<FoodEntity> =
-        foodLogDao.getRecentFoods(limit)
-
-    fun observeFrequentFoods(days: Int = 30, limit: Int = 12): Flow<List<FoodEntity>> =
-        foodLogDao.observeFrequentFoods(DateUtil.todayEpochDay() - days, limit)
-
     suspend fun addFoodLog(entry: FoodLogEntity): Long =
         foodLogDao.insert(entry).also { onWidgetDataChanged() }
 

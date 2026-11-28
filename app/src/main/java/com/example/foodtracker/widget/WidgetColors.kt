@@ -1,5 +1,6 @@
 package com.example.foodtracker.widget
 
+import android.annotation.SuppressLint
 import androidx.glance.unit.ColorProvider
 import com.example.foodtracker.R
 import com.example.foodtracker.ui.theme.DarkError
@@ -37,7 +38,19 @@ import com.example.foodtracker.ui.theme.MacroProtein
  * Macro chip tints stay fixed, as before — they are data-viz and need
  * distinguishable hues — but they are the app's macro palette now, not a
  * separate set of Material-palette hexes that happened to live in this file.
+ *
+ * **On the suppression.** `ColorProvider(@ColorRes Int)` is the only way Glance
+ * turns a colour resource into a provider, and as of glance 1.3.0-alpha02 it
+ * carries `@RestrictTo(LIBRARY_GROUP)` — its `ColorProvider(Color)` sibling is
+ * public, and `androidx.glance.appwidget.unit` offers nothing that reads a
+ * resource. Taking the public route would mean naming the literals from
+ * `Color.kt` here and leaving `colors_widget.xml` to serve only the preview
+ * drawables, which is exactly the two-tables-drifting-apart problem the
+ * paragraph above exists to prevent. The restriction is about who owns the
+ * API, not about whether it is safe to call, so this is suppressed rather
+ * than worked around. Revisit when Glance ships a public resource provider.
  */
+@SuppressLint("RestrictedApi")
 object WidgetColors {
     val Surface = ColorProvider(R.color.widget_surface)
     val OnSurface = ColorProvider(R.color.widget_on_surface)

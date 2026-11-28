@@ -70,6 +70,7 @@ import com.example.foodtracker.ui.theme.meshGradient
 import com.example.foodtracker.util.DateUtil
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Sparkles
+import com.example.foodtracker.ui.components.atoms.deviceLocale
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -128,7 +129,7 @@ fun AllNutrientsScreen(
             AppTopBar(
                 title = "All nutrients",
                 subtitle = DateUtil.epochDayToDate(state.epochDay)
-                    .format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())),
+                    .format(DateTimeFormatter.ofPattern("EEE d MMM", deviceLocale())),
                 onBack = onBack,
             )
         },

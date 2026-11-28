@@ -65,6 +65,7 @@ import com.example.foodtracker.ui.components.atoms.PastelIcon
 import com.example.foodtracker.ui.components.atoms.RoundIconButton
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.components.atoms.cardColor
+import com.example.foodtracker.ui.components.atoms.deviceLocale
 import com.example.foodtracker.ui.components.atoms.pressable
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Pastel
@@ -121,7 +122,7 @@ fun TodayHeader(
         ) {
             PillArrow(Lucide.ChevronLeft, "Previous day", enabled = true) { onSelectDay(epochDay - 1) }
             Text(
-                DateUtil.epochDayToDate(epochDay).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())),
+                DateUtil.epochDayToDate(epochDay).format(DateTimeFormatter.ofPattern("d MMM", deviceLocale())),
                 style = AppText.label,
                 color = scheme.onSurface,
                 modifier = Modifier

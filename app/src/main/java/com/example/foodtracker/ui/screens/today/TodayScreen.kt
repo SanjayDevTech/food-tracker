@@ -162,6 +162,21 @@ fun TodayScreen(
                     streak = history.streak.current,
                 )
             }
+            // Above the meals: the plan is what the day is SUPPOSED to be, so
+            // it reads before the record of what actually happened. Absent
+            // entirely when no plan is set, so Today is unchanged for anyone
+            // who skips the feature.
+            if (state.hasPlan) {
+                item("plan") {
+                    PlanCard(
+                        remaining = state.planRemaining,
+                        summary = state.planSummary,
+                        caption = planCaption(state.planNextFoods),
+                        onClick = { haptics.light(); onOpenPlan() },
+                        modifier = Modifier.staggerIn(1),
+                    )
+                }
+            }
             item("meals") {
                 MealsSection(
                     groups = state.mealGroups,
@@ -182,7 +197,7 @@ fun TodayScreen(
                             else vm.clearUndo()
                         }
                     },
-                    modifier = Modifier.staggerIn(4),
+                    modifier = Modifier.staggerIn(2),
                 )
             }
             item("bento") {
@@ -193,7 +208,7 @@ fun TodayScreen(
                     waterGoalMl = state.goals.waterMl,
                     onMacro = { field -> haptics.light(); detailField = field },
                     onWater = { haptics.light(); sheet = TodaySheet.Water },
-                    modifier = Modifier.staggerIn(1),
+                    modifier = Modifier.staggerIn(3),
                 )
             }
             item("streak") {
@@ -201,7 +216,7 @@ fun TodayScreen(
                     streak = history.streak,
                     loggedDays = history.loggedDays,
                     loggedToday = today in history.loggedDays,
-                    modifier = Modifier.staggerIn(2),
+                    modifier = Modifier.staggerIn(4),
                     onClick = { haptics.light(); selectDay(today) },
                 )
             }
@@ -214,21 +229,8 @@ fun TodayScreen(
                     hasLogs = state.logs.isNotEmpty(),
                     onWeight = { haptics.light(); sheet = TodaySheet.Weight },
                     onNutrients = { onOpenAllNutrients(state.epochDay) },
-                    modifier = Modifier.staggerIn(3),
+                    modifier = Modifier.staggerIn(5),
                 )
-            }
-            // Absent entirely when no plan is set, so Today is unchanged for
-            // anyone who skips the feature.
-            if (state.hasPlan) {
-                item("plan") {
-                    PlanCard(
-                        remaining = state.planRemaining,
-                        summary = state.planSummary,
-                        caption = planCaption(state.planNextFoods),
-                        onClick = { haptics.light(); onOpenPlan() },
-                        modifier = Modifier.staggerIn(3),
-                    )
-                }
             }
             item("rhythm") {
                 RhythmHeatmap(

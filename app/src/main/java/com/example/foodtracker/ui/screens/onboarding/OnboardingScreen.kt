@@ -95,6 +95,7 @@ import com.example.foodtracker.ui.theme.Sizes
 import com.example.foodtracker.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * First run, five pages cut to three.
@@ -283,7 +284,7 @@ private fun AboutYouPage(state: OnboardingUiState, vm: OnboardingViewModel) {
             Spacer(Modifier.height(Spacing.s))
             StepperSliderRow(
                 label = "Weight",
-                displayValue = "%.1f kg".format(state.profile.weightKg),
+                displayValue = "%.1f kg".format(Locale.US, state.profile.weightKg),
                 sliderValue = state.profile.weightKg.toFloat(),
                 sliderRange = 18f..200f,
                 granularity = 1f,
@@ -360,7 +361,7 @@ private fun GoalPage(state: OnboardingUiState, vm: OnboardingViewModel) {
             // be the same two words twice.
             StepperSliderRow(
                 label = "Goal weight",
-                displayValue = "%.1f kg".format(goalWeight),
+                displayValue = "%.1f kg".format(Locale.US, goalWeight),
                 sliderValue = goalWeight.toFloat(),
                 sliderRange = goalRange,
                 granularity = 1f,

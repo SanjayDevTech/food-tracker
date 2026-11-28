@@ -75,6 +75,7 @@ import com.example.foodtracker.ui.components.atoms.Ring
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.components.atoms.StatusCell
 import com.example.foodtracker.ui.components.atoms.cardColor
+import com.example.foodtracker.ui.components.atoms.deviceLocale
 import com.example.foodtracker.ui.components.atoms.grouped
 import com.example.foodtracker.ui.components.atoms.pressable
 import com.example.foodtracker.ui.components.atoms.softFill
@@ -329,7 +330,7 @@ fun StreakTile(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        DateUtil.epochDayToDate(day).dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                        DateUtil.epochDayToDate(day).dayOfWeek.getDisplayName(TextStyle.NARROW, deviceLocale()),
                         style = AppText.eyebrow,
                         color = if (day == today) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -366,7 +367,7 @@ fun BentoFacts(
             Spacer(Modifier.height(Spacing.m))
             Metric(
                 label = "Weight",
-                value = weightKg?.let { "%.1f".format(it) } ?: "—",
+                value = weightKg?.let { "%.1f".format(Locale.US, it) } ?: "—",
                 unit = if (weightKg != null) "kg" else "",
                 size = MetricSize.Large,
             )
@@ -433,17 +434,21 @@ fun RhythmHeatmap(
     ) {
         // Month names over the first week of each month, skipping any that
         // would collide with the previous label.
-        val labels = remember(start) {
+        // The locale is read out here, not inside: `remember` would otherwise
+        // cache the month names in whatever language was current when the grid
+        // was first composed and keep them after the phone's language changed.
+        val locale = deviceLocale()
+        val labels = remember(start, locale) {
             val out = mutableListOf<Pair<Int, String>>()
             var lastMonth = -1
             for (w in 0 until HEAT_WEEKS) {
                 val date = DateUtil.epochDayToDate(start + w * 7L)
                 if (date.monthValue != lastMonth) {
                     if (out.isEmpty() || w - out.last().first >= 3) {
-                        out += w to date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+                        out += w to date.month.getDisplayName(TextStyle.SHORT, locale)
                     } else if (out.last().first == 0) {
                         // A month that only clips the first column gives way.
-                        out[out.lastIndex] = w to date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+                        out[out.lastIndex] = w to date.month.getDisplayName(TextStyle.SHORT, locale)
                     }
                     lastMonth = date.monthValue
                 }

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
 import com.example.foodtracker.util.DateUtil
+import java.util.Locale
 
 /**
  * Plan against actual, on a real time axis that can run past today.
@@ -90,7 +91,7 @@ fun PlanChart(
             }
             // Top and bottom of the scale, so a flat line still says what it is.
             listOf(maxV to 0f, minV to h).forEach { (v, gy) ->
-                val text = if (v >= 100) grouped(v) else "%.1f".format(v)
+                val text = if (v >= 100) grouped(v) else "%.1f".format(Locale.US, v)
                 val layout = measurer.measure(AnnotatedString(text), axisStyle)
                 val ty = if (gy == 0f) 2.dp.toPx() else gy - layout.size.height - 2.dp.toPx()
                 drawText(layout, topLeft = Offset(w - layout.size.width - 2.dp.toPx(), ty))

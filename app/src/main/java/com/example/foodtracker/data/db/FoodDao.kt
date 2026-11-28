@@ -182,7 +182,14 @@ interface FoodLogDao {
     @Query("SELECT * FROM food_log WHERE date_epoch_day = :epochDay ORDER BY logged_at_millis ASC")
     fun observeForDay(epochDay: Long): Flow<List<FoodLogWithFood>>
 
-    /** Read-after-write consistent version of [observeForDay]; see FoodDao.getRecentFoods. */
+    /**
+     * Read-after-write consistent version of [observeForDay].
+     *
+     * Glance widgets read this directly instead of `.first()`-ing the flow, so
+     * the snapshot reflects the latest write rather than the pre-write state:
+     * Room's InvalidationTracker emits asynchronously, which races with widget
+     * refresh callbacks.
+     */
     @Transaction
     @Query("SELECT * FROM food_log WHERE date_epoch_day = :epochDay ORDER BY logged_at_millis ASC")
     suspend fun getForDay(epochDay: Long): List<FoodLogWithFood>
@@ -195,64 +202,6 @@ interface FoodLogDao {
     @Transaction
     @Query("SELECT * FROM food_log WHERE date_epoch_day BETWEEN :startEpochDay AND :endEpochDay ORDER BY date_epoch_day ASC, logged_at_millis ASC")
     suspend fun getForRange(startEpochDay: Long, endEpochDay: Long): List<FoodLogWithFood>
-
-    /** Recently logged foods, most recent first, deduplicated. */
-    @Transaction
-    @Query(
-        """
-        SELECT f.* FROM foods f
-        INNER JOIN (
-            SELECT food_id, MAX(logged_at_millis) AS last_used
-            FROM food_log
-            GROUP BY food_id
-        ) recent ON recent.food_id = f.id
-        WHERE f.is_hidden = 0
-        ORDER BY recent.last_used DESC
-        LIMIT :limit
-        """
-    )
-    fun observeRecentFoods(limit: Int): Flow<List<FoodEntity>>
-
-    /**
-     * Read-after-write consistent version of [observeRecentFoods]. Glance
-     * widgets read this directly instead of `.first()`-ing the flow so the
-     * snapshot reflects the latest write, not the pre-write state (Room's
-     * InvalidationTracker emits asynchronously, which races with widget
-     * refresh callbacks).
-     */
-    @Transaction
-    @Query(
-        """
-        SELECT f.* FROM foods f
-        INNER JOIN (
-            SELECT food_id, MAX(logged_at_millis) AS last_used
-            FROM food_log
-            GROUP BY food_id
-        ) recent ON recent.food_id = f.id
-        WHERE f.is_hidden = 0
-        ORDER BY recent.last_used DESC
-        LIMIT :limit
-        """
-    )
-    suspend fun getRecentFoods(limit: Int): List<FoodEntity>
-
-    /** Most-logged foods over the last `days` days. */
-    @Transaction
-    @Query(
-        """
-        SELECT f.* FROM foods f
-        INNER JOIN (
-            SELECT food_id, COUNT(*) AS uses
-            FROM food_log
-            WHERE date_epoch_day >= :sinceEpochDay
-            GROUP BY food_id
-        ) freq ON freq.food_id = f.id
-        WHERE f.is_hidden = 0
-        ORDER BY freq.uses DESC, f.name COLLATE NOCASE ASC
-        LIMIT :limit
-        """
-    )
-    fun observeFrequentFoods(sinceEpochDay: Long, limit: Int): Flow<List<FoodEntity>>
 
     @Insert
     suspend fun insert(entry: FoodLogEntity): Long

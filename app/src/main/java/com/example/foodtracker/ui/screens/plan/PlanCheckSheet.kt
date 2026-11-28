@@ -13,9 +13,11 @@ import com.example.foodtracker.data.ServingVariant
 import com.example.foodtracker.data.StyleOption
 import com.example.foodtracker.data.db.FoodLogEntity
 import com.example.foodtracker.data.db.PlanItemWithFood
+import com.example.foodtracker.domain.MealTiming
 import com.example.foodtracker.ui.components.serving.ServingSheet
 import com.example.foodtracker.ui.components.serving.isCustomGrams
 import com.example.foodtracker.util.DateUtil
+import java.time.LocalTime
 
 /**
  * Check a planned line off into today's diary.
@@ -77,6 +79,21 @@ fun PlanCheckSheet(
     var style by remember(item.id) { mutableStateOf(StyleOption.find(food.styleOptions, item.style)) }
     var oilAmount by remember(item.id) { mutableStateOf(OilAmount.fromName(item.oilAmount)) }
 
+    /**
+     * When it was eaten, held as an override so the default keeps following
+     * the meal chip until the user sets a time themselves.
+     *
+     * Ticking a line off is not the same moment as eating it — breakfast gets
+     * checked when you next open the app, not at the table — so stamping "now"
+     * would quietly push every entry later than it happened, in exactly the
+     * column the eating-window chart and the late-eating flag read.
+     */
+    var eatenAtOverride by remember(item.id) { mutableStateOf<LocalTime?>(null) }
+    val today = DateUtil.todayEpochDay()
+    val eatenAt = eatenAtOverride ?: MealTiming.defaultFor(
+        meal, today, today, LocalTime.now(), MealType.currentForTime(),
+    )
+
     ServingSheet(
         food = food,
         meal = meal,
@@ -85,12 +102,14 @@ fun PlanCheckSheet(
         onVariantChange = { variant = it },
         onServingsChange = { servings = it },
         onMealChange = { meal = it },
+        eatenAt = eatenAt,
+        onEatenAtChange = { eatenAtOverride = it },
         onConfirm = {
             val isCustom = variant.isCustomGrams
             onLog(
                 FoodLogEntity(
                     foodId = food.id,
-                    dateEpochDay = DateUtil.todayEpochDay(),
+                    dateEpochDay = today,
                     mealType = meal.name,
                     servings = if (isCustom) 1.0 else servings,
                     grams = if (isCustom) variant.grams else variant.grams * servings,
@@ -100,7 +119,7 @@ fun PlanCheckSheet(
                     oilAmount = if (food.usesOilAmountAxis()) {
                         (oilAmount ?: food.preselectedOilAmount()).name
                     } else null,
-                    loggedAtMillis = System.currentTimeMillis(),
+                    loggedAtMillis = MealTiming.toMillis(today, eatenAt, DateUtil.zoneId()),
                 )
             )
             onDismiss()

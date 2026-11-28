@@ -6,6 +6,7 @@ import com.composables.icons.lucide.ExternalLink
 import com.composables.icons.lucide.ScanBarcode
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Sparkles
+import com.composables.icons.lucide.Type
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -92,7 +93,7 @@ fun PrivacyScreen(onBack: () -> Unit = {}) {
                 }
             }
             item("leaves") {
-                Section("Leaves only when you tap") {
+                Section("What leaves this phone") {
                     ShareBlock(
                         icon = Lucide.Search,
                         feature = "Search online",
@@ -117,8 +118,20 @@ fun PrivacyScreen(onBack: () -> Unit = {}) {
                         to = "the provider you chose",
                     )
                     AppDivider()
+                    ShareBlock(
+                        icon = Lucide.Type,
+                        feature = "The two typefaces",
+                        badge = "Once, on first run",
+                        sends = "which fonts it needs — nothing about you",
+                        to = "Google Play Services",
+                    )
+                    AppDivider()
                     Text(
-                        "Nothing else rides along — no name, no diary, no device id.",
+                        "Nothing else rides along — no name, no diary, no device id. " +
+                            "The fonts are the one thing that does not wait for a tap: " +
+                            "Play Services fetches them once and shares them with every " +
+                            "other app that asks. Without Play Services the system font " +
+                            "stands in and nothing is requested at all.",
                         style = AppText.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Spacing.m),

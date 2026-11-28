@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class AddFoodFormState(
     val name: String = "",
@@ -361,6 +362,6 @@ class AddFoodViewModel(
 
 private fun String.toDoubleOrZero(): Double = this.toDoubleOrNull() ?: 0.0
 private fun Double.formatGrams(): String =
-    if (this % 1.0 == 0.0) toInt().toString() else "%.1f".format(this)
+    if (this % 1.0 == 0.0) toInt().toString() else "%.1f".format(Locale.US, this)
 private fun Double.formatField(): String =
-    if (this == 0.0) "" else if (this >= 100) this.toInt().toString() else "%.2f".format(this)
+    if (this == 0.0) "" else if (this >= 100) this.toInt().toString() else "%.2f".format(Locale.US, this)

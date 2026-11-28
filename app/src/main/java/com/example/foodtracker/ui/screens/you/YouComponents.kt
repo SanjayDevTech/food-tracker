@@ -58,6 +58,7 @@ import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Sizes
 import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.round
+import java.util.Locale
 
 /**
  * The molecules the You slice is built from, rebuilt against
@@ -172,7 +173,7 @@ fun ProfileHeader(
         ) {
             GlassStat("Age", profile.ageYears.toString(), "yrs", Modifier.weight(1f).fillMaxHeight())
             GlassStat("Height", profile.heightCm.toString(), "cm", Modifier.weight(1f).fillMaxHeight())
-            GlassStat("Weight", "%.1f".format(profile.weightKg), "kg", Modifier.weight(1f).fillMaxHeight())
+            GlassStat("Weight", "%.1f".format(Locale.US, profile.weightKg), "kg", Modifier.weight(1f).fillMaxHeight())
         }
         Spacer(Modifier.height(Spacing.s))
         Row(
@@ -229,7 +230,7 @@ fun goalLine(profile: UserProfile): String = buildString {
     append(profile.goal.displayName)
     if (profile.goal != Goal.Maintain) {
         append(" · ")
-        append("%.2f".format(profile.weightChangeRate.kgPerWeek))
+        append("%.2f".format(Locale.US, profile.weightChangeRate.kgPerWeek))
         append(" kg/week")
     }
 }
@@ -273,7 +274,7 @@ fun GoalSection(
                 if (done) {
                     "On target"
                 } else {
-                    "%.1f kg to %s".format(
+                    "%.1f kg to %s".format(Locale.US, 
                         progress.deltaKg,
                         if (profile.goal == Goal.Lose) "lose" else "gain",
                     )
@@ -284,8 +285,8 @@ fun GoalSection(
         },
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
-            StatBlock("Now", "%.1f".format(profile.weightKg), "kg", Modifier.weight(1f))
-            StatBlock("Target", "%.1f".format(goalWeight), "kg", Modifier.weight(1f))
+            StatBlock("Now", "%.1f".format(Locale.US, profile.weightKg), "kg", Modifier.weight(1f))
+            StatBlock("Target", "%.1f".format(Locale.US, goalWeight), "kg", Modifier.weight(1f))
         }
         Spacer(Modifier.height(Spacing.l))
         Meter(fraction = fraction ?: 0f, color = scheme.secondary, height = 8.dp)
@@ -304,9 +305,9 @@ fun GoalSection(
 fun weeksLabel(weeks: Double): String {
     val rounded = round(weeks * 10) / 10.0
     if (rounded < 1.0) return "less than a week"
-    if (rounded < 6.0) return "${"%.0f".format(rounded)} week${if (rounded < 1.5) "" else "s"}"
+    if (rounded < 6.0) return "${"%.0f".format(Locale.US, rounded)} week${if (rounded < 1.5) "" else "s"}"
     val months = rounded / 4.345
-    return "${"%.0f".format(round(months))} month${if (months < 1.5) "" else "s"}"
+    return "${"%.0f".format(Locale.US, round(months))} month${if (months < 1.5) "" else "s"}"
 }
 
 // ---- Stat blocks ----------------------------------------------------------

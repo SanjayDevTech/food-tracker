@@ -296,63 +296,73 @@ fun LogFoodScreen(
                 if (showCustomAddRow) {
                     item("add-custom", span = { GridItemSpan(maxLineSpan) }) { AddCustomFoodRow(onClick = onAddCustomFood) }
                 }
-                items(listForTab, key = { it.id }) { food ->
-                    FoodCard(
-                        food = food,
-                        rank = if (state.tab == LogTab.Ranked) state.ranks[food.id] else null,
-                        onClick = {
-                            haptics.light()
-                            if (isHiddenView) pendingHidden = food else vm.select(food)
-                        },
-                        onLongClick = food.takeIf { it.isCustom && !isHiddenView }?.let {
-                            {
-                                haptics.confirm()
-                                pendingDelete = it
-                            }
-                        },
-                        badge = {
-                            if (isHiddenView) {
-                                CardBadge("Hidden")
-                            } else {
-                                // Filled against outline carries the state on
-                                // its own, so the accent comes off the star:
-                                // rule 3 spends `primary` on readings and the
-                                // primary action, and a mint glyph repeated
-                                // down a list of favourites is the largest
-                                // single use of it anywhere in the app.
-                                IconButton(onClick = {
-                                    haptics.light()
-                                    vm.toggleFavourite(food)
-                                }) {
-                                    if (food.isFavourite) {
-                                        Icon(
-                                            Icons.Rounded.Star,
-                                            contentDescription = "Unfavourite",
-                                            tint = MacroCarbs,
-                                        )
-                                    } else {
-                                        Icon(
-                                            Lucide.Star,
-                                            contentDescription = "Favourite",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp),
-                                        )
+                // The placeholders stand IN PLACE OF the cards, never after
+                // them. They used to be emitted below `listForTab`, so while
+                // the list was still empty `placeholder-0` was item 0 — and
+                // the moment the 40 foods arrived it became item 40. A keyed
+                // LazyGrid holds its anchor to the key it is showing, so it
+                // followed the placeholder down and the picker opened 32 rows
+                // deep, somewhere in the B’s. Emitting one set or the other
+                // keeps item 0 the first food.
+                if (!showingCards) {
+                    items(PLACEHOLDER_CARDS, key = { "placeholder-$it" }) { FoodCardPlaceholder() }
+                } else {
+                    items(listForTab, key = { it.id }) { food ->
+                        FoodCard(
+                            food = food,
+                            rank = if (state.tab == LogTab.Ranked) state.ranks[food.id] else null,
+                            onClick = {
+                                haptics.light()
+                                if (isHiddenView) pendingHidden = food else vm.select(food)
+                            },
+                            onLongClick = food.takeIf { it.isCustom && !isHiddenView }?.let {
+                                {
+                                    haptics.confirm()
+                                    pendingDelete = it
+                                }
+                            },
+                            badge = {
+                                if (isHiddenView) {
+                                    CardBadge("Hidden")
+                                } else {
+                                    // Filled against outline carries the state on
+                                    // its own, so the accent comes off the star:
+                                    // rule 3 spends `primary` on readings and the
+                                    // primary action, and a mint glyph repeated
+                                    // down a list of favourites is the largest
+                                    // single use of it anywhere in the app.
+                                    IconButton(onClick = {
+                                        haptics.light()
+                                        vm.toggleFavourite(food)
+                                    }) {
+                                        if (food.isFavourite) {
+                                            Icon(
+                                                Icons.Rounded.Star,
+                                                contentDescription = "Unfavourite",
+                                                tint = MacroCarbs,
+                                            )
+                                        } else {
+                                            Icon(
+                                                Lucide.Star,
+                                                contentDescription = "Favourite",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                        },
-                    )
-                }
-                if (state.loading || !ready) {
-                    items(PLACEHOLDER_CARDS, key = { "placeholder-$it" }) { FoodCardPlaceholder() }
-                } else if (listForTab.isEmpty()) {
-                    item("empty", span = { GridItemSpan(maxLineSpan) }) {
-                        EmptyTabHint(
-                            tab = state.tab,
-                            isHiddenView = isHiddenView,
-                            hasQuery = state.query.isNotBlank(),
-                            onAddCustomFood = onAddCustomFood,
+                            },
                         )
+                    }
+                    if (listForTab.isEmpty()) {
+                        item("empty", span = { GridItemSpan(maxLineSpan) }) {
+                            EmptyTabHint(
+                                tab = state.tab,
+                                isHiddenView = isHiddenView,
+                                hasQuery = state.query.isNotBlank(),
+                                onAddCustomFood = onAddCustomFood,
+                            )
+                        }
                     }
                 }
                 if (state.onlineResults.isNotEmpty()) {

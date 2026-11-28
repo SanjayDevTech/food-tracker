@@ -28,6 +28,7 @@ import com.example.foodtracker.ui.theme.BmiOverweight
 import com.example.foodtracker.ui.theme.BmiUnderweight
 import com.example.foodtracker.ui.theme.Spacing
 import kotlin.math.abs
+import java.util.Locale
 
 /**
  * Horizontal coloured band showing BMI categories with a triangular marker
@@ -86,7 +87,7 @@ fun BmiBar(
             Spacer(Modifier.width(Spacing.m))
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "%.1f".format(currentBmi),
+                    "%.1f".format(Locale.US, currentBmi),
                     style = AppText.numberL,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -94,7 +95,7 @@ fun BmiBar(
                     val delta = goalBmi - currentBmi
                     val arrow = if (delta > 0) "↑" else if (delta < 0) "↓" else "→"
                     Text(
-                        "$goalLabel $arrow ${"%.1f".format(goalBmi)}",
+                        "$goalLabel $arrow ${"%.1f".format(Locale.US, goalBmi)}",
                         style = AppText.bodyS,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

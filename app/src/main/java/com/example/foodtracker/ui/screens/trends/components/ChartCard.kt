@@ -3,7 +3,6 @@ package com.example.foodtracker.ui.screens.trends.components
 import com.composables.icons.lucide.ChevronRight
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -24,6 +23,11 @@ import com.example.foodtracker.ui.components.atoms.AppDivider
 import com.example.foodtracker.ui.components.atoms.Section
 import com.example.foodtracker.ui.theme.AppText
 import com.example.foodtracker.ui.theme.Spacing
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 
 /** How long a chart takes to swap when the range changes — the generic 200ms. */
 private const val RANGE_FADE_MS = 200
@@ -127,15 +131,19 @@ fun ChartCard(
         if (empty != null) {
             EmptyChartLine(empty)
         } else if (crossfadeKey != null) {
-            Crossfade(
-                targetState = crossfadeKey,
-                animationSpec = tween(RANGE_FADE_MS, easing = FastOutSlowInEasing),
-                label = "chart",
-            ) { _ ->
-                // The key is read for its identity only; `content` closes over
-                // the state it draws, which has already changed with the key.
-                content()
+            // Not a Crossfade, though it used to be one. A crossfade needs the
+            // OUTGOING chart to keep drawing its own data while it fades, and
+            // that data is gone the moment the range changes: `content` closes
+            // over current state, so both halves of the crossfade recomposed
+            // to the NEW chart and the transition was a dip in opacity wearing
+            // a crossfade's name. Fading the new chart in is the effect that
+            // was actually shipping, so it is what this does now — minus the
+            // second, redundant composition of the whole chart.
+            val fade = remember(crossfadeKey) { Animatable(0f) }
+            LaunchedEffect(crossfadeKey) {
+                fade.animateTo(1f, tween(RANGE_FADE_MS, easing = FastOutSlowInEasing))
             }
+            Box(Modifier.graphicsLayer { alpha = fade.value }) { content() }
         } else {
             content()
         }
