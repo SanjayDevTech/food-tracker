@@ -34,6 +34,28 @@ data class Nutrients(
     val vitaminB2: Double = 0.0,
     val vitaminB3: Double = 0.0,
     val vitaminB6: Double = 0.0,
+    /**
+     * Choline, mg. Grouped with the vitamins because that is where a reader
+     * looks for it, though it is formally its own essential nutrient.
+     *
+     * **Carried only for foods that are a single ingredient, and deliberately
+     * floored.** Unlike every other nutrient here, a choline figure in this app
+     * must never exceed the real one, so each value is the bottom of its
+     * source's range rather than the middle — typically 70-80% of the published
+     * figure, and lower where the publication rests on one sample.
+     *
+     * Composite dishes carry 0, meaning unknown. That is not an oversight and
+     * not a gap waiting to be filled: the composition model that derived copper
+     * and manganese was measured against the 104 mixed seed dishes and cannot
+     * bound choline. The multiplier needed to stop it over-reporting (0.34)
+     * still over-reports 5% of dishes while cutting the rest to a quarter of
+     * their true size, and restricting to better-determined dishes makes the
+     * bias worse. So no dish value is derived at all.
+     *
+     * The ingredient floors, their sources and the nine published figures that
+     * had to be rejected are recorded in the commit that introduced this field.
+     */
+    val choline: Double = 0.0,
 
     // ── Optional detail ──────────────────────────────────────────────
     // Sub-components of fiber and protein. 0 means UNKNOWN here, not
@@ -77,6 +99,7 @@ data class Nutrients(
         vitaminB2 + other.vitaminB2,
         vitaminB3 + other.vitaminB3,
         vitaminB6 + other.vitaminB6,
+        choline + other.choline,
         solubleFiber + other.solubleFiber,
         insolubleFiber + other.insolubleFiber,
         essentialAminoAcids + other.essentialAminoAcids,
@@ -114,6 +137,7 @@ data class Nutrients(
         vitaminB2 * factor,
         vitaminB3 * factor,
         vitaminB6 * factor,
+        choline * factor,
         solubleFiber * factor,
         insolubleFiber * factor,
         essentialAminoAcids * factor,
@@ -286,6 +310,7 @@ val AllNutrientFields: List<NutrientField> = listOf(
     NutrientField("vitaminB6", "Vitamin B6", NutrientUnit.Milligram, NutrientCategory.Vitamins, { it.vitaminB6 }, { it.vitaminB6 }),
     NutrientField("vitaminB12", "Vitamin B12", NutrientUnit.Microgram, NutrientCategory.Vitamins, { it.vitaminB12 }, { it.vitaminB12 }),
     NutrientField("folate", "Folate", NutrientUnit.Microgram, NutrientCategory.Vitamins, { it.folate }, { it.folate }),
+    NutrientField("choline", "Choline", NutrientUnit.Milligram, NutrientCategory.Vitamins, { it.choline }, { it.choline }),
 )
 
 /**

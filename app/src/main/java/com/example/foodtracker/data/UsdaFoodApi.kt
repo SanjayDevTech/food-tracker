@@ -237,6 +237,16 @@ class UsdaFoodApi {
         selenium = byId[1103] ?: 0.0,
         copper = byId[1098] ?: 0.0,
         manganese = byId[1101] ?: 0.0,
+        // 1180 is "Choline, total" and nothing else. Four nutrients sit close
+        // enough to it, by name or by column, to be grabbed by mistake — and three
+        // of them are LARGER, which for choline is the dangerous direction:
+        //   betaine, which sits beside choline in USDA's own records and runs 73
+        //     mg/100 g for wheat flour against choline's 31, and 103 for spinach;
+        //   CHOCAL, which is cholecalciferol (vitamin D3) in the Indian tables;
+        //   CHOL, which is cholesterol in the Bangladeshi and fisheries sources;
+        //   CHORL, which is cholesterol in the Dutch NEVO table.
+        // Match the id, never the name.
+        choline = byId[1180] ?: 0.0,
         // Prefer RAE for Vit A; fall back to IU-based legacy id where needed.
         vitaminA = byId[1106] ?: 0.0,
         vitaminC = byId[1162] ?: 0.0,

@@ -611,6 +611,7 @@ private fun vitaminFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(
     NumberFieldSpec("Vitamin B6", "mg", s.vitaminB6) { v -> vm.update { it.copy(vitaminB6 = v) } },
     NumberFieldSpec("Vitamin B12", "µg", s.vitaminB12) { v -> vm.update { it.copy(vitaminB12 = v) } },
     NumberFieldSpec("Folate", "µg", s.folate) { v -> vm.update { it.copy(folate = v) } },
+    NumberFieldSpec("Choline", "mg", s.choline) { v -> vm.update { it.copy(choline = v) } },
 )
 
 private fun optionalFields(s: AddFoodFormState, vm: AddFoodViewModel) = listOf(

@@ -55,6 +55,16 @@ class NutrientParityTest {
         "selenium" to "no method reaches it; needs per-food sourcing",
     )
 
+    // Choline is sparse in BOTH halves on purpose, so it is not listed above and
+    // must not be. It is carried only for foods that ARE a single ingredient with a
+    // traceable figure — 39 of the seed, 28 of the catalogue — and left absent for
+    // every composite dish. The reason is measured, not assumed: the composition
+    // model that filled in copper and manganese cannot bound choline. Scaling its
+    // dish predictions down far enough to stop over-reporting (k = 0.34) still
+    // over-reports 5% of dishes while cutting the rest to a quarter of their true
+    // size, and tightening the fit makes the bias WORSE, not better. A nutrient the
+    // app must never overstate therefore gets no derived values at all.
+    //
     // Not listed above, and deliberately so: vitaminD (8% of the seed, none of
     // the catalogue), essentialAminoAcids and leucine (16% / none). Each is
     // sparse in BOTH halves rather than carried by one and missing from the
@@ -81,6 +91,7 @@ class NutrientParityTest {
         "vitaminB1" to { it.vitaminB1 }, "vitaminB2" to { it.vitaminB2 },
         "vitaminB3" to { it.vitaminB3 }, "vitaminB6" to { it.vitaminB6 },
         "solubleFiber" to { it.solubleFiber }, "insolubleFiber" to { it.insolubleFiber },
+        "choline" to { it.choline },
         "essentialAminoAcids" to { it.essentialAminoAcids }, "leucine" to { it.leucine },
     )
 

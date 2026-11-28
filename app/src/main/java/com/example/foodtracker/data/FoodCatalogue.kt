@@ -101,6 +101,7 @@ object FoodCatalogue {
          * that. A wrong number is worse than a missing one.
          */
         val copper: Double = 0.0, val manganese: Double = 0.0,
+        val choline: Double = 0.0,
         val vitaminA: Double = 0.0, val vitaminC: Double = 0.0,
         val vitaminE: Double = 0.0, val vitaminB1: Double = 0.0, val vitaminB2: Double = 0.0,
         val vitaminB3: Double = 0.0, val vitaminB6: Double = 0.0, val folate: Double = 0.0,
@@ -119,7 +120,7 @@ object FoodCatalogue {
             saturatedFat = saturatedFat, omega3 = omega3,
             cholesterol = cholesterol, sodium = sodium, potassium = potassium,
             calcium = calcium, iron = iron, magnesium = magnesium, zinc = zinc, phosphorus = phosphorus,
-            copper = copper, manganese = manganese,
+            copper = copper, manganese = manganese, choline = choline,
             vitaminA = vitaminA, vitaminC = vitaminC, vitaminE = vitaminE, vitaminB1 = vitaminB1,
             vitaminB2 = vitaminB2, vitaminB3 = vitaminB3, vitaminB6 = vitaminB6, folate = folate,
             vitaminB12 = vitaminB12, vitaminK = vitaminK,

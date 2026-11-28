@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WeightLogEntity::class,
         PlanItemEntity::class,
     ],
-    version = 13,
+    version = 14,
     // Exported to app/schemas so future migrations have a reference to diff.
     exportSchema = true,
 )
@@ -233,6 +233,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v13 -> v14: adds `choline` to `foods`. Non-destructive ALTER, same
+         * rationale as [MIGRATION_4_5] — every existing food keeps its row and
+         * reads 0 until the reseed fills it in.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE foods ADD COLUMN choline REAL NOT NULL DEFAULT 0")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -249,6 +260,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_10_11,
                     MIGRATION_11_12,
                     MIGRATION_12_13,
+                    MIGRATION_13_14,
                 )
                 // Scoped to the pre-release versions that never had migrations
                 // written. Deliberately NOT the blanket

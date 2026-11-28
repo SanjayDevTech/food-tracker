@@ -129,6 +129,7 @@ object GoalCalculator {
             selenium = 55.0,
             copper = 0.9,
             manganese = if (isFemale) 1.8 else 2.3,
+            choline = if (isFemale) 425.0 else 550.0,
             vitaminA = 900.0,
             vitaminC = if (isFemale) 75.0 else 90.0,
             vitaminD = 15.0,

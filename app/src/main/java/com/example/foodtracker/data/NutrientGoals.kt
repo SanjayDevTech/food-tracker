@@ -23,6 +23,7 @@ data class NutrientGoals(
     val selenium: Double,
     val copper: Double,
     val manganese: Double,
+    val choline: Double,
     val vitaminA: Double,
     val vitaminC: Double,
     val vitaminD: Double,

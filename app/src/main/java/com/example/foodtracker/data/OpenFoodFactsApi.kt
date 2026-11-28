@@ -246,6 +246,7 @@ class OpenFoodFactsApi {
         selenium = nutriments.num("selenium$suffix")?.times(1_000_000.0) ?: 0.0,
         copper = nutriments.num("copper$suffix")?.times(1000.0) ?: 0.0,
         manganese = nutriments.num("manganese$suffix")?.times(1000.0) ?: 0.0,
+        choline = nutriments.num("choline$suffix")?.times(1000.0) ?: 0.0,
         vitaminA = nutriments.num("vitamin-a$suffix")?.times(1_000_000.0) ?: 0.0,
         vitaminC = nutriments.num("vitamin-c$suffix")?.times(1000.0) ?: 0.0,
         vitaminD = nutriments.num("vitamin-d$suffix")?.times(1_000_000.0) ?: 0.0,

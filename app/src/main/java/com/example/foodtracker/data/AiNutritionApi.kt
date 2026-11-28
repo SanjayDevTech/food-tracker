@@ -60,7 +60,7 @@ private val NUTRIENT_KEYS = listOf(
     "omega3", "cholesterol", "sodium", "calcium", "iron", "magnesium",
     "potassium", "zinc", "phosphorus", "selenium", "copper", "manganese",
     "vitaminA", "vitaminC", "vitaminD", "vitaminE", "vitaminK", "vitaminB12",
-    "folate", "vitaminB1", "vitaminB2", "vitaminB3", "vitaminB6",
+    "folate", "vitaminB1", "vitaminB2", "vitaminB3", "vitaminB6", "choline",
 )
 
 /**
@@ -388,7 +388,8 @@ class AiNutritionApi {
         Units — kcal: calories. grams: carbs, sugar, fiber, protein, fat,
         saturatedFat, omega3. milligrams: cholesterol, sodium, calcium, iron,
         magnesium, potassium, zinc, phosphorus, copper, manganese, vitaminC,
-        vitaminE, vitaminB1, vitaminB2, vitaminB3, vitaminB6. micrograms:
+        vitaminE, vitaminB1, vitaminB2, vitaminB3, vitaminB6, choline.
+        micrograms:
         selenium, vitaminA, vitaminD, vitaminK, vitaminB12, folate.
         ${jsonContract(schemaEnforced)}
         ${instructionsPrompt(instructions)}
@@ -472,6 +473,7 @@ class AiNutritionApi {
         put("calcium", n.calcium); put("iron", n.iron); put("magnesium", n.magnesium)
         put("potassium", n.potassium); put("zinc", n.zinc); put("phosphorus", n.phosphorus)
         put("selenium", n.selenium); put("copper", n.copper); put("manganese", n.manganese)
+        put("choline", n.choline)
         put("vitaminA", n.vitaminA); put("vitaminC", n.vitaminC); put("vitaminD", n.vitaminD)
         put("vitaminE", n.vitaminE); put("vitaminK", n.vitaminK); put("vitaminB12", n.vitaminB12)
         put("folate", n.folate); put("vitaminB1", n.vitaminB1); put("vitaminB2", n.vitaminB2)
@@ -850,6 +852,7 @@ class AiNutritionApi {
             selenium = num("selenium"),
             copper = num("copper"),
             manganese = num("manganese"),
+            choline = num("choline"),
             vitaminA = num("vitaminA"),
             vitaminC = num("vitaminC"),
             vitaminD = num("vitaminD"),
