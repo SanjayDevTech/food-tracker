@@ -10,9 +10,14 @@
     <!-- Tints the notification small icon and app name; same as the accent. -->
     <color name="notification_accent">#FFF2663A</color>
 
-    <!-- Window background: the canvas colour (night override in values-night).
-         The splash stays light in both themes. -->
+    <!-- Window background and splash, both with night overrides in
+         values-night. `splash_mark` is the bowl in ic_splash: it needs its own
+         token because the bowl must inverse with the background, while the
+         green tick works on either. Giving it a colour rather than a
+         drawable-night copy of the vector keeps the mark in ONE file, which is
+         what ic_launcher_foreground.xml's comment asks for. -->
     <color name="launcher_background">#FFF4F4F7</color>
     <color name="splash_background">#FFF4F4F7</color>
+    <color name="splash_mark">#FF121214</color>
     <bool name="light_system_bars">true</bool>
 </resources>

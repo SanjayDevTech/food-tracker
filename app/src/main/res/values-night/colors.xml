@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="launcher_background">#FF0B0B0E</color>
+    <!-- The splash followed the light values because these two were absent,
+         so a dark-themed phone opened the app on a near-white screen. The mark
+         inverts with it; the tick stays green and reads on both. -->
+    <color name="splash_background">#FF0B0B0E</color>
+    <color name="splash_mark">#FFF4F4F7</color>
     <bool name="light_system_bars">false</bool>
 </resources>
